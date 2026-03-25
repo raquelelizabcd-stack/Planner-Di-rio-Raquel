@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", sans-serif;
+  
+  --color-bg-dark: var(--bg-color);
+  --color-bg-card: var(--card-color);
+  --color-roxo-suave: var(--primary-color);
+  --color-rosa-claro: #f8bbd0;
+  --color-azul-petroleo: #0d9488;
+  --color-border-dark: var(--border-color);
+  --radius-card: var(--card-radius);
+}
+
+:root {
+  --bg-color: #1e1e1e;
+  --card-color: #2c2c2c;
+  --primary-color: #6a5acd;
+  --border-color: #3e3e3e;
+  --card-radius: 1.5rem;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-dark text-slate-200 font-sans antialiased;
+  }
+}
+
+.glass-card {
+  @apply bg-bg-card/80 backdrop-blur-md border border-border-dark shadow-xl rounded-[var(--card-radius)];
+}
+
+.sidebar-item-active {
+  @apply bg-roxo-suave/20 text-roxo-suave border-r-4 border-roxo-suave;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-bg-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border-dark rounded-full hover:bg-slate-600 transition-colors;
+}
