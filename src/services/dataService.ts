@@ -17,12 +17,13 @@ export const dataService = {
   },
 
   async saveProject(project: Project) {
+    console.log('Attempting to save project:', project);
     const { error } = await supabase
       .from('projects')
       .upsert(project);
 
     if (error) {
-      console.error('Error saving project:', error);
+      console.error('Supabase save error:', error);
       throw error;
     }
   },

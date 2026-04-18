@@ -1330,7 +1330,11 @@ export default function App() {
       if (updated) {
         dataService.saveProject(updated).then(() => {
           showToastWithMsg('Projeto atualizado com sucesso');
-        }).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+        }).catch(err => {
+          console.error('Save error:', err);
+          showToastWithMsg(`Erro ao salvar: ${err.message || 'Erro no banco'}`);
+          setDebugNotes(prev => `${new Date().toLocaleTimeString()}: Erro ao atualizar projeto - ${JSON.stringify(err)}\n${prev}`);
+        });
       }
       setEditingProjectId(null);
     } else {
@@ -1353,7 +1357,11 @@ export default function App() {
       };
       
       setProjects([newProject, ...projects]);
-      dataService.saveProject(newProject).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+      dataService.saveProject(newProject).catch(err => {
+        console.error('Create error:', err);
+        showToastWithMsg(`Erro ao salvar: ${err.message || 'Erro no banco'}`);
+        setDebugNotes(prev => `${new Date().toLocaleTimeString()}: Erro ao criar projeto - ${JSON.stringify(err)}\n${prev}`);
+      });
     }
     
     // Reset form fields
@@ -1621,7 +1629,10 @@ export default function App() {
   const addKanbanTask = (title: string) => {
     const newTask: KanbanTask = { id: Date.now().toString(), title, status: 'todo' };
     setKanbanTasks([...kanbanTasks, newTask]);
-    dataService.saveReminder(newTask).catch(err => showToastWithMsg('Erro ao salvar lembrete no banco de dados'));
+    dataService.saveReminder(newTask).catch(err => {
+      showToastWithMsg('Erro ao salvar lembrete');
+      setDebugNotes(prev => `${new Date().toLocaleTimeString()}: Erro ao salvar lembrete - ${err.message}\n${prev}`);
+    });
   };
 
   const moveKanbanTask = (id: string, status: KanbanTask['status']) => {
