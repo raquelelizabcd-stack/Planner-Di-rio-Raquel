@@ -7,6 +7,11 @@ export interface Project {
   deadline?: string;
   techStack?: string[];
   createdAt: number;
+  githubEmail?: string;
+  githubUrl?: string;
+  supabaseEmail?: string;
+  supabaseUrl?: string;
+  projectUrl?: string;
 }
 
 export interface TokenState {
@@ -106,4 +111,55 @@ export interface ScratchNote {
   date: number;
 }
 
-export type TabType = 'dashboard' | 'ongoing' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings';
+export interface StudyNotebook {
+  id: string;
+  title: string;
+  icon: string;
+  color: string;
+  createdAt: number;
+}
+
+export interface StudyNote {
+  id: string;
+  title: string;
+  content: string;
+  notebookId: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface StudyTopic {
+  id: string;
+  title: string;
+  completed: boolean;
+  priority: 'High' | 'Medium' | 'Low';
+  notebookId?: string;
+  createdAt: number;
+}
+
+export interface StudyPlan {
+  id: string;
+  title: string;
+  date: string;
+  completed: boolean;
+  priority: 'High' | 'Medium' | 'Low';
+  createdAt: number;
+}
+
+export interface StudySession {
+  id: string;
+  startTime: number;
+  duration: number; // in seconds
+  type: 'work' | 'break';
+  notebookId?: string;
+}
+
+export interface StudyProgress {
+  id: string;
+  topic: string;
+  learned: boolean;
+}
+
+export type StudyTabType = 'general' | 'notes' | 'topics' | 'focus' | 'planning';
+
+export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies';

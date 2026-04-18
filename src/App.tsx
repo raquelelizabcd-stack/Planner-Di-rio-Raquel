@@ -8,6 +8,7 @@ import {
   Plus, 
   Save, 
   Trash2, 
+  Check,
   CheckCircle2, 
   Clock,
   ChevronRight,
@@ -47,6 +48,8 @@ import {
   User,
   Lock,
   Shield,
+  Edit2,
+  ListChecks,
   Palette,
   Monitor,
   Database as DbIcon,
@@ -55,6 +58,7 @@ import {
   MessageSquare,
   Send,
   Minimize2,
+  Maximize2,
   ChevronDown,
   HelpCircle,
   CheckCircle,
@@ -70,7 +74,14 @@ import {
   CloudRain,
   MapPin,
   Archive,
-  Volume2
+  Volume2,
+  BarChart2,
+  Search,
+  MoreVertical,
+  FolderPlus,
+  FilePlus,
+  Filter,
+  ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -97,7 +108,13 @@ import {
   ScratchNote,
   Habit,
   DiaryEntry,
-  PersonalNote
+  PersonalNote,
+  StudyNote,
+  StudyTopic,
+  StudyPlan,
+  StudyNotebook,
+  StudySession,
+  StudyTabType
 } from './types';
 
 // Gauge Component using Canvas and Math.PI
@@ -185,12 +202,30 @@ const ChatWidget = ({
   billsDueCount, 
   ideas, 
   projectsCount, 
-  setActiveTab 
+  studyTopics,
+  studySessions,
+  studyPlans,
+  studyNotes,
+  habits,
+  activeTab,
+  setActiveTab,
+  addStudyTopic,
+  addStudyNote,
+  startPomodoro
 }: { 
   billsDueCount: number; 
   ideas: ScratchNote[]; 
   projectsCount: number; 
+  studyTopics: StudyTopic[];
+  studySessions: StudySession[];
+  studyPlans: StudyPlan[];
+  studyNotes: StudyNote[];
+  habits: Habit[];
+  activeTab: TabType;
   setActiveTab: (tab: any) => void; 
+  addStudyTopic: (title: string, priority: 'High' | 'Medium' | 'Low') => void;
+  addStudyNote: (title: string, content: string, notebookId: string) => void;
+  startPomodoro: () => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -198,8 +233,94 @@ const ChatWidget = ({
   const [helpTopic, setHelpTopic] = useState<string | null>(null);
   
   const [messages, setMessages] = useState<{ role: 'user' | 'bot', text: string }[]>([
-    { role: 'bot', text: 'Olá! Sou a Raquel AI Helper. O DeepSeek é melhor para código, o Gemini para resumos e o Claude para escrita criativa. Escolha o melhor para cada tarefa no seletor acima! Como posso te ajudar hoje?' }
+    { role: 'bot', text: 'Oi, Raquel! Sou seu assistente pessoal. Estou aqui para te ajudar a organizar sua rotina, estudos e projetos. Como posso ser útil agora?' }
   ]);
+
+  // Proactive logic when opening the chat
+  useEffect(() => {
+    if (isOpen && messages.length === 1) {
+      const today = new Date().setHours(0, 0, 0, 0);
+      const todaySessions = studySessions.filter(s => s.startTime >= today && s.type === 'work').length;
+      const pendingTopics = studyTopics.filter(t => !t.completed).length;
+      const dueBills = billsDueCount;
+      
+      // Behavioral memory: Study streak
+      const lastStudyDate = localStorage.getItem('raquel_last_study_date');
+      const currentStreak = parseInt(localStorage.getItem('raquel_study_streak') || '0');
+      
+      let proactiveMsg = "";
+
+      if (todaySessions === 0 && pendingTopics > 0) {
+        proactiveMsg = `Raquel, notei que você ainda não iniciou seus estudos hoje. Que tal começar com um bloco de 25 minutos para manter o ritmo? Você tem ${pendingTopics} tópicos pendentes.`;
+        if (currentStreak > 1) {
+          proactiveMsg += ` Não vamos deixar sua sequência de ${currentStreak} dias acabar!`;
+        }
+      } else if (dueBills > 0) {
+        proactiveMsg = `Oi Raquel! Lembrete rápido: você tem ${dueBills} ${dueBills === 1 ? 'conta' : 'contas'} que precisam de atenção no financeiro. Quer resolver isso agora?`;
+      } else if (todaySessions > 3) {
+        proactiveMsg = `Raquel, você está indo muito bem hoje! Já foram ${todaySessions} sessões de foco. Não esqueça de descansar um pouco também!`;
+      }
+
+      if (proactiveMsg) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, { role: 'bot', text: proactiveMsg }]);
+        }, 1000);
+      }
+    }
+  }, [isOpen]);
+
+  // Trigger when Studies tab is opened
+  const lastTriggeredRef = useRef<number>(0);
+  useEffect(() => {
+    if (activeTab === 'studies') {
+      const now = Date.now();
+      // Only trigger once every 30 minutes to avoid annoyance
+      if (now - lastTriggeredRef.current < 30 * 60 * 1000) return;
+      
+      const today = new Date().setHours(0, 0, 0, 0);
+      const todaySessions = studySessions.filter(s => s.startTime >= today && s.type === 'work').length;
+      const pendingTopics = studyTopics.filter(t => !t.completed).length;
+
+      let triggerMsg = "";
+      if (todaySessions === 0 && pendingTopics > 0) {
+        triggerMsg = "Raquel, você ainda não estudou hoje. Que tal começar com 25 minutos de foco agora?";
+      } else if (pendingTopics > 8) {
+        triggerMsg = `Você tem ${pendingTopics} tópicos pendentes. Recomendo dar uma organizada neles para não acumular!`;
+      }
+
+      if (triggerMsg) {
+        setMessages(prev => [...prev, { role: 'bot', text: triggerMsg }]);
+        setIsOpen(true);
+        lastTriggeredRef.current = now;
+      }
+    }
+  }, [activeTab]);
+
+  // Update streak when a session is completed
+  useEffect(() => {
+    const today = new Date().toLocaleDateString();
+    const lastSession = studySessions.filter(s => s.type === 'work').sort((a, b) => b.startTime - a.startTime)[0];
+    
+    if (lastSession) {
+      const lastSessionDate = new Date(lastSession.startTime).toLocaleDateString();
+      if (lastSessionDate === today) {
+        const lastSavedDate = localStorage.getItem('raquel_last_study_date');
+        if (lastSavedDate !== today) {
+          const prevDate = new Date();
+          prevDate.setDate(prevDate.getDate() - 1);
+          const yesterday = prevDate.toLocaleDateString();
+          
+          let newStreak = 1;
+          if (lastSavedDate === yesterday) {
+            newStreak = parseInt(localStorage.getItem('raquel_study_streak') || '0') + 1;
+          }
+          
+          localStorage.setItem('raquel_last_study_date', today);
+          localStorage.setItem('raquel_study_streak', newStreak.toString());
+        }
+      }
+    }
+  }, [studySessions]);
   const [input, setInput] = useState('');
   const [aiEnabled, setAiEnabled] = useState(() => localStorage.getItem('raquel_ai_enabled') === 'true');
   const [apiKeys, setApiKeys] = useState(() => {
@@ -217,7 +338,6 @@ const ChatWidget = ({
   const saveKeys = () => {
     localStorage.setItem('raquel_api_keys', JSON.stringify(apiKeys));
     localStorage.setItem('raquel_ai_enabled', String(aiEnabled));
-    // Trigger a small toast or visual feedback
   };
 
   const handleSend = async () => {
@@ -232,43 +352,120 @@ const ChatWidget = ({
       let response = "";
 
       if (aiEnabled && (apiKeys.gemini || apiKeys.openai || apiKeys.claude || apiKeys.deepseek)) {
-        // Mock AI call
-        response = "Estou processando sua pergunta com inteligência artificial avançada... (Simulação de resposta via API)";
+        // Mock AI call - in a real app we would call the API here
+        response = "Raquel, estou processando sua solicitação com IA... (Simulação de resposta)";
       } else {
         // Local logic (Expert Mode)
         const lowerMsg = userMsg.toLowerCase();
         
         if (lowerMsg.includes('conta') || lowerMsg.includes('vencer') || lowerMsg.includes('financeiro') || lowerMsg.includes('pagar')) {
           const dueText = billsDueCount > 0 
-            ? `Você tem ${billsDueCount} ${billsDueCount === 1 ? 'conta' : 'contas'} vencendo hoje ou nos próximos dias. Quer que eu te leve para a aba Financeiro para conferir?`
-            : "Não encontrei contas vencendo nos próximos dias. Tudo sob controle no seu financeiro!";
+            ? `Raquel, você tem ${billsDueCount} ${billsDueCount === 1 ? 'conta' : 'contas'} vencendo hoje ou nos próximos dias. Quer que eu te leve para a aba Financeiro para conferir?`
+            : "Raquel, não encontrei contas vencendo nos próximos dias. Tudo sob controle no seu financeiro! Você é muito organizada.";
           response = dueText;
+        } else if (lowerMsg.includes('o que fiz hoje') || lowerMsg.includes('resumo de hoje')) {
+          const today = new Date().setHours(0, 0, 0, 0);
+          const todaySessions = studySessions.filter(s => s.startTime >= today && s.type === 'work').length;
+          const completedToday = studyTopics.filter(t => t.completed && t.createdAt >= today).length;
+          const notesToday = studyNotes.filter(n => n.createdAt >= today).length;
+          
+          response = `Raquel, hoje você:\n- Completou ${todaySessions} sessões de foco\n- Concluiu ${completedToday} tópicos\n- Criou ${notesToday} anotações\n\nBom trabalho!`;
+        } else if (lowerMsg.includes('o que estudei hoje') || lowerMsg.includes('o que eu estudei')) {
+          const today = new Date().setHours(0, 0, 0, 0);
+          const todayNotes = studyNotes.filter(n => n.createdAt >= today);
+          if (todayNotes.length > 0) {
+            response = `Raquel, hoje você fez anotações sobre: ${todayNotes.map(n => n.title).join(', ')}.`;
+          } else {
+            response = "Raquel, você ainda não fez nenhuma anotação de estudo hoje. Que tal registrar o que aprendeu?";
+          }
+        } else if (lowerMsg.includes('criar tópico') || lowerMsg.includes('novo tópico')) {
+          const title = userMsg.replace(/criar tópico|novo tópico/gi, '').trim();
+          if (title) {
+            addStudyTopic(title, 'Medium');
+            response = `Certo, Raquel! Criei o tópico "${title}" com prioridade média para você.`;
+          } else {
+            response = "Qual seria o título do novo tópico que você quer criar?";
+          }
+        } else if (lowerMsg.includes('iniciar foco') || lowerMsg.includes('começar pomodoro') || lowerMsg.includes('foco agora')) {
+          startPomodoro();
+          response = "Iniciei o timer de 25 minutos para você, Raquel. Bom foco! Te levei para a aba de estudos.";
+        } else if (lowerMsg.includes('não sei por onde começar') || lowerMsg.includes('me ajuda a começar')) {
+          const pendingTopics = studyTopics.filter(t => !t.completed);
+          if (pendingTopics.length > 0) {
+            const highPriority = pendingTopics.filter(t => t.priority === 'High');
+            const target = highPriority.length > 0 ? highPriority[0] : pendingTopics[0];
+            response = `Raquel, que tal começar pelo tópico "${target.title}"? Ele parece ser um bom ponto de partida. Quer que eu inicie um timer de 25 minutos para você focar nele?`;
+          } else {
+            response = "Raquel, você está com tudo em dia! Que tal criar um novo tópico de algo que você queira aprender hoje?";
+          }
+        } else if (lowerMsg.includes('estudar') || lowerMsg.includes('estudo') || lowerMsg.includes('tópico') || lowerMsg.includes('aprender')) {
+          const pendingTopics = studyTopics.filter(t => !t.completed);
+          if (pendingTopics.length > 0) {
+            const highPriority = pendingTopics.filter(t => t.priority === 'High');
+            if (highPriority.length > 0) {
+              response = `Raquel, você tem ${pendingTopics.length} tópicos pendentes. Recomendo começar pelo de prioridade alta: "${highPriority[0].title}". Quer que eu te leve para a aba de Estudos?`;
+            } else {
+              response = `Raquel, você tem ${pendingTopics.length} tópicos pendentes. O mais antigo é "${pendingTopics[0].title}". Que tal dar uma olhada neles agora?`;
+            }
+          } else {
+            response = "Raquel, você está em dia com seus tópicos de estudo! 🎉 Você está voando! Quer planejar os próximos passos ou revisar alguma nota?";
+          }
+        } else if (lowerMsg.includes('sessão') || lowerMsg.includes('pomodoro') || lowerMsg.includes('foco')) {
+          const today = new Date().setHours(0, 0, 0, 0);
+          const todaySessions = studySessions.filter(s => s.startTime >= today && s.type === 'work').length;
+          
+          if (todaySessions > 0) {
+            response = `Raquel, você já completou ${todaySessions} sessões de foco hoje. Excelente ritmo! Quer encarar mais 25 minutos agora?`;
+          } else {
+            response = "Raquel, você ainda não iniciou nenhuma sessão de foco hoje. Que tal começar com apenas 25 minutos? Eu te acompanho e prometo que vai valer a pena!";
+          }
+        } else if (lowerMsg.includes('hábito') || lowerMsg.includes('rotina') || lowerMsg.includes('consistência')) {
+          const completedToday = habits.filter(h => h.completedToday).length;
+          const totalHabits = habits.length;
+          
+          if (totalHabits === 0) {
+            response = "Raquel, você ainda não cadastrou nenhum hábito. Que tal definir algumas metas diárias no seu Diário? Pequenos passos levam a grandes resultados.";
+          } else if (completedToday === totalHabits) {
+            response = `Raquel, você completou todos os seus ${totalHabits} hábitos de hoje! Você está imparável! 🔥 Orgulho de você!`;
+          } else {
+            response = `Raquel, você completou ${completedToday} de ${totalHabits} hábitos hoje. Ainda faltam alguns para fechar o dia com chave de ouro! Vamos lá?`;
+          }
+        } else if (lowerMsg.includes('resumo') || lowerMsg.includes('como estou') || lowerMsg.includes('meu dia')) {
+          const pendingTopics = studyTopics.filter(t => !t.completed).length;
+          const today = new Date().setHours(0, 0, 0, 0);
+          const todaySessions = studySessions.filter(s => s.startTime >= today && s.type === 'work').length;
+          
+          response = `Raquel, aqui está seu resumo atualizado:\n\n` +
+                     `- 💸 Financeiro: ${billsDueCount > 0 ? `${billsDueCount} contas pendentes.` : 'Tudo pago! Organização nota 10.'}\n` +
+                     `- 📚 Estudos: ${pendingTopics} tópicos pendentes e ${todaySessions} sessões de foco hoje.\n` +
+                     `- 🚀 Projetos: ${projectsCount} ativos.\n\n` +
+                     `Raquel, você está no caminho certo. Como posso te ajudar a avançar ainda mais agora?`;
         } else if (lowerMsg.includes('ideia') || lowerMsg.includes('insight') || lowerMsg.includes('banco')) {
           const ideaCount = ideas.filter(n => n.category === 'Ideia').length;
           if (ideaCount > 0) {
             const lastIdeas = ideas.filter(n => n.category === 'Ideia').slice(0, 2).map(i => `"${i.content.substring(0, 30)}..."`).join(', ');
-            response = `Seu Banco de Ideias tem ${ideaCount} insights salvos. Os mais recentes são: ${lastIdeas}. Quer anotar algo novo?`;
+            response = `Raquel, seu Banco de Ideias tem ${ideaCount} insights. Os últimos foram: ${lastIdeas}. Quer anotar algo novo?`;
           } else {
-            response = "Seu Banco de Ideias ainda está vazio. Que tal salvar seu primeiro insight no Dashboard? Eu posso te ajudar a organizar seus pensamentos.";
+            response = "Raquel, seu Banco de Ideias está vazio. Que tal salvar seu primeiro insight no Dashboard? Posso te ajudar a organizar seus pensamentos.";
           }
         } else if (lowerMsg.includes('projeto') || lowerMsg.includes('adicionar') || lowerMsg.includes('tarefa')) {
-          response = `Você tem ${projectsCount} projetos ativos no momento. Para adicionar um novo, vá em 'Projetos em andamento' e use o botão '+ Novo Projeto'. Quer que eu te leve lá?`;
+          response = `Raquel, você tem ${projectsCount} projetos ativos. Para adicionar um novo, vá em 'Projetos em andamento' e use o botão '+ Novo Projeto'. Quer que eu te leve lá?`;
         } else if (lowerMsg.includes('diário') || lowerMsg.includes('escrever') || lowerMsg.includes('humor') || lowerMsg.includes('hábito')) {
           setActiveTab('diary');
-          response = "Certo! Te levei para o seu Diário Pessoal. Lá você pode registrar seu humor, hábitos e agora usar o novo 'Espaço de Escrita Livre' com Markdown!";
+          response = "Certo, Raquel! Te levei para o seu Diário Pessoal. Lá você pode registrar seu humor e hábitos.";
         } else if (lowerMsg.includes('dashboard') || lowerMsg.includes('início')) {
           setActiveTab('dashboard');
-          response = "Voltando para o Dashboard. Aqui você tem a visão geral do seu dia.";
+          response = "Voltando para o Dashboard, Raquel. Aqui você tem a visão geral do seu dia.";
         } else if (lowerMsg.includes('ajuda') || lowerMsg.includes('como funciona') || lowerMsg.includes('tutorial')) {
-          response = "Eu sou sua assistente Raquel! Posso te ajudar a gerenciar finanças, projetos, ideias e seu diário. Você também pode conectar APIs de IA (Gemini, OpenAI, etc) nas configurações do chat para respostas ainda mais inteligentes.";
+          response = "Raquel, eu sou seu assistente! Posso te ajudar com finanças, estudos, projetos e seu diário. Se precisar de algo mais inteligente, pode conectar uma API de IA nas configurações.";
         } else if (lowerMsg.includes('oi') || lowerMsg.includes('olá') || lowerMsg.includes('bom dia') || lowerMsg.includes('boa tarde')) {
-          response = "Olá! Como posso tornar seu dia mais produtivo hoje? Posso checar suas contas, projetos ou te ajudar com o diário.";
+          response = "Oi, Raquel! Como posso tornar seu dia mais produtivo hoje? Posso checar seus estudos, contas ou projetos.";
         } else {
           const randomResponses = [
-            "Entendi! Posso te dar informações sobre suas contas, resumir suas ideias ou te guiar pelo sistema. O que prefere?",
-            "Interessante! Quer que eu verifique seus lembretes ou te ajude a organizar um novo projeto?",
-            "Estou aqui para ajudar. Você pode me perguntar sobre seu progresso nos hábitos ou sobre suas finanças.",
-            "Como posso ser útil? Posso te levar para qualquer aba do sistema ou responder dúvidas sobre como usar as ferramentas."
+            "Raquel, entendi! Posso te dar informações sobre seus estudos, contas ou resumir suas ideias. O que prefere?",
+            "Interessante, Raquel! Quer que eu verifique seus lembretes ou te ajude a organizar um novo projeto?",
+            "Raquel, estou aqui para ajudar. Você pode me perguntar sobre seu progresso nos hábitos ou sobre suas finanças.",
+            "Como posso ser útil, Raquel? Posso te levar para qualquer aba do sistema ou responder dúvidas sobre as ferramentas."
           ];
           response = randomResponses[Math.floor(Math.random() * randomResponses.length)];
         }
@@ -286,14 +483,14 @@ const ChatWidget = ({
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[100] flex flex-col items-end">
+    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-[100] flex flex-col items-end">
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, scale: 0.8, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
-            className="w-80 sm:w-96 glass-card rounded-3xl overflow-hidden mb-4 flex flex-col shadow-2xl border-white/10"
+            className="w-[calc(100vw-2rem)] sm:w-96 glass-card rounded-3xl overflow-hidden mb-4 flex flex-col shadow-2xl border-white/10"
             style={{ height: '500px' }}
           >
             {/* Header */}
@@ -303,7 +500,7 @@ const ChatWidget = ({
                   <Bot size={20} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-display font-bold text-white">Raquel AI Helper</h4>
+                  <h4 className="text-sm font-display font-bold text-white">Assistente da Raquel</h4>
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-[10px] text-slate-400 uppercase font-bold tracking-widest">Online</span>
@@ -563,7 +760,7 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md glass-card p-8 rounded-3xl"
+        className="w-full max-w-md glass-card p-6 md:p-8 rounded-3xl"
       >
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-roxo-suave/20 rounded-2xl flex items-center justify-center text-roxo-suave mb-4">
@@ -657,8 +854,59 @@ export default function App() {
   const [userEmail, setUserEmail] = useState('raquelelizabcd@gmail.com');
   const [userPassword, setUserPassword] = useState('********');
   
+  // Study State
+  const [studyNotebooks, setStudyNotebooks] = useState<StudyNotebook[]>(() => {
+    const saved = localStorage.getItem('raquel_study_notebooks');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', title: 'Programação', icon: '💻', color: '#6366f1', createdAt: Date.now() },
+      { id: '2', title: 'Finanças', icon: '💰', color: '#10b981', createdAt: Date.now() },
+      { id: '3', title: 'Pessoal', icon: '🏠', color: '#f59e0b', createdAt: Date.now() },
+    ];
+  });
+  const [studySessions, setStudySessions] = useState<StudySession[]>(() => {
+    const saved = localStorage.getItem('raquel_study_sessions');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [activeStudyTab, setActiveStudyTab] = useState<StudyTabType>('general');
+  const [studySearchQuery, setStudySearchQuery] = useState('');
+  const [selectedNotebookId, setSelectedNotebookId] = useState<string | null>(null);
+  const [isStudyNoteFocusMode, setIsStudyNoteFocusMode] = useState(false);
+  const [activeStudyNoteId, setActiveStudyNoteId] = useState<string | null>(null);
+  const [pomodoroMode, setPomodoroMode] = useState<'work' | 'break'>('work');
+
+  const [studyNotes, setStudyNotes] = useState<StudyNote[]>(() => {
+    const saved = localStorage.getItem('raquel_study_notes');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [studyTopics, setStudyTopics] = useState<StudyTopic[]>(() => {
+    const saved = localStorage.getItem('raquel_study_topics');
+    return saved ? JSON.parse(saved) : [
+      { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
+      { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
+      { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
+      { id: '4', title: 'Finanças pessoais', completed: false, priority: 'Low', createdAt: Date.now() },
+    ];
+  });
+  const [studyPlans, setStudyPlans] = useState<StudyPlan[]>(() => {
+    const saved = localStorage.getItem('raquel_study_plans');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Study Form State
+  const [activeStudyNoteTitle, setActiveStudyNoteTitle] = useState('');
+  const [newStudyNote, setNewStudyNote] = useState('');
+  const [editingStudyNoteId, setEditingStudyNoteId] = useState<string | null>(null);
+  const [newStudyTopic, setNewStudyTopic] = useState('');
+  const [newStudyTopicPriority, setNewStudyTopicPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [newStudyPlanTitle, setNewStudyPlanTitle] = useState('');
+  const [newStudyPlanDate, setNewStudyPlanDate] = useState('');
+  const [newStudyPlanPriority, setNewStudyPlanPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [newNotebookTitle, setNewNotebookTitle] = useState('');
+  const [newNotebookIcon, setNewNotebookIcon] = useState('📚');
+  const [newNotebookColor, setNewNotebookColor] = useState('#6366f1');
+  
   // Settings State
-  const [theme, setTheme] = useState<'original' | 'deep' | 'navy'>('original');
+  const [theme, setTheme] = useState<'original' | 'deep' | 'navy' | 'light-rose'>('original');
   const [accentColor, setAccentColor] = useState('#6a5acd');
   const [borderRadius, setBorderRadius] = useState(24); // in pixels
   
@@ -691,6 +939,7 @@ export default function App() {
     const root = document.documentElement;
     
     // Apply Theme
+    root.setAttribute('data-theme', theme);
     if (theme === 'original') {
       root.style.setProperty('--bg-color', '#1e1e1e');
       root.style.setProperty('--card-color', '#2c2c2c');
@@ -703,6 +952,10 @@ export default function App() {
       root.style.setProperty('--bg-color', '#0a192f');
       root.style.setProperty('--card-color', '#112240');
       root.style.setProperty('--border-color', '#233554');
+    } else if (theme === 'light-rose') {
+      root.style.setProperty('--bg-color', '#fff5f7');
+      root.style.setProperty('--card-color', '#ffffff');
+      root.style.setProperty('--border-color', '#ffe4e9');
     }
     
     // Apply Accent
@@ -714,9 +967,47 @@ export default function App() {
   const [debugNotes, setDebugNotes] = useState<string>('');
   const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
   const [isPomodoroActive, setIsPomodoroActive] = useState(false);
-  const [pomodoroMode, setPomodoroMode] = useState<'work' | 'break'>('work');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showToastWithMsg = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const addStudyTopic = (title: string, priority: 'High' | 'Medium' | 'Low') => {
+    const newTopic: StudyTopic = {
+      id: Date.now().toString(),
+      title,
+      completed: false,
+      priority,
+      createdAt: Date.now()
+    };
+    setStudyTopics(prev => [newTopic, ...prev]);
+    showToastWithMsg(`Tópico "${title}" criado com sucesso!`);
+  };
+
+  const addStudyNote = (title: string, content: string, notebookId: string) => {
+    const newNote: StudyNote = {
+      id: Date.now().toString(),
+      title,
+      content,
+      notebookId,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    };
+    setStudyNotes(prev => [newNote, ...prev]);
+    showToastWithMsg(`Nota "${title}" salva!`);
+  };
+
+  const startPomodoro = () => {
+    setPomodoroTime(25 * 60);
+    setIsPomodoroActive(true);
+    setActiveTab('studies');
+    setActiveStudyTab('focus');
+  };
   
   // New project form state
   const [showAddProject, setShowAddProject] = useState(false);
@@ -725,7 +1016,13 @@ export default function App() {
   const [newProjectStartDate, setNewProjectStartDate] = useState('');
   const [newProjectDeadline, setNewProjectDeadline] = useState('');
   const [newProjectTechStack, setNewProjectTechStack] = useState('');
+  const [newProjectGithubEmail, setNewProjectGithubEmail] = useState('');
+  const [newProjectGithubUrl, setNewProjectGithubUrl] = useState('');
+  const [newProjectSupabaseEmail, setNewProjectSupabaseEmail] = useState('');
+  const [newProjectSupabaseUrl, setNewProjectSupabaseUrl] = useState('');
+  const [newProjectUrl, setNewProjectUrl] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [projectSaved, setProjectSaved] = useState<Record<string, boolean>>({});
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const saved = localStorage.getItem('raquel_sound_enabled');
     return saved !== null ? JSON.parse(saved) : true;
@@ -841,6 +1138,32 @@ export default function App() {
   }, [goals]);
 
   useEffect(() => {
+    localStorage.setItem('raquel_study_notebooks', JSON.stringify(studyNotebooks));
+  }, [studyNotebooks]);
+
+  useEffect(() => {
+    localStorage.setItem('raquel_study_sessions', JSON.stringify(studySessions));
+  }, [studySessions]);
+
+  useEffect(() => {
+    localStorage.setItem('raquel_study_notes', JSON.stringify(studyNotes));
+  }, [studyNotes]);
+
+  useEffect(() => {
+    localStorage.setItem('raquel_study_topics', JSON.stringify(studyTopics));
+  }, [studyTopics]);
+
+  useEffect(() => {
+    localStorage.setItem('raquel_study_plans', JSON.stringify(studyPlans));
+  }, [studyPlans]);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
     localStorage.setItem('raquel_scratch_dark', JSON.stringify(scratchNotes));
   }, [scratchNotes]);
 
@@ -904,7 +1227,12 @@ export default function App() {
       startDate: newProjectStartDate || undefined,
       deadline: newProjectDeadline || undefined,
       techStack: newProjectTechStack ? newProjectTechStack.split(',').map(s => s.trim()) : undefined,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      githubEmail: newProjectGithubEmail,
+      githubUrl: newProjectGithubUrl,
+      supabaseEmail: newProjectSupabaseEmail,
+      supabaseUrl: newProjectSupabaseUrl,
+      projectUrl: newProjectUrl
     };
     
     setProjects([newProject, ...projects]);
@@ -913,7 +1241,24 @@ export default function App() {
     setNewProjectStartDate('');
     setNewProjectDeadline('');
     setNewProjectTechStack('');
+    setNewProjectGithubEmail('');
+    setNewProjectGithubUrl('');
+    setNewProjectSupabaseEmail('');
+    setNewProjectSupabaseUrl('');
+    setNewProjectUrl('');
     setShowAddProject(false);
+  };
+
+  const updateProjectField = (id: string, field: keyof Project, value: any) => {
+    setProjects(projects.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
+
+  const handleSaveProject = (id: string) => {
+    // Save to localStorage is handled by useEffect on projects change
+    setProjectSaved(prev => ({ ...prev, [id]: true }));
+    setTimeout(() => {
+      setProjectSaved(prev => ({ ...prev, [id]: false }));
+    }, 2000);
   };
 
   const toggleProjectStatus = (id: string) => {
@@ -1153,6 +1498,126 @@ export default function App() {
     setKanbanTasks(kanbanTasks.filter(t => t.id !== id));
   };
 
+  // Study Handlers
+  const handleSaveStudyNote = () => {
+    if (!newStudyNote.trim() || !selectedNotebookId) {
+      if (!selectedNotebookId) showToastWithMsg('Selecione um caderno primeiro!');
+      return;
+    }
+    
+    if (editingStudyNoteId) {
+      setStudyNotes(prev => prev.map(n => n.id === editingStudyNoteId ? { 
+        ...n, 
+        title: activeStudyNoteTitle || 'Sem título',
+        content: newStudyNote,
+        updatedAt: Date.now()
+      } : n));
+      setEditingStudyNoteId(null);
+      setActiveStudyNoteId(null);
+    } else {
+      const note: StudyNote = {
+        id: Date.now().toString(),
+        title: activeStudyNoteTitle || 'Sem título',
+        content: newStudyNote,
+        notebookId: selectedNotebookId,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      setStudyNotes(prev => [note, ...prev]);
+    }
+    setNewStudyNote('');
+    setActiveStudyNoteTitle('');
+    setIsStudyNoteFocusMode(false);
+    showToastWithMsg('Anotação salva com sucesso!');
+  };
+
+  const handleDeleteStudyNote = (id: string) => {
+    setStudyNotes(prev => prev.filter(n => n.id !== id));
+    if (activeStudyNoteId === id) {
+      setActiveStudyNoteId(null);
+      setEditingStudyNoteId(null);
+      setNewStudyNote('');
+      setActiveStudyNoteTitle('');
+    }
+  };
+
+  const handleEditStudyNote = (note: StudyNote) => {
+    setNewStudyNote(note.content);
+    setActiveStudyNoteTitle(note.title);
+    setEditingStudyNoteId(note.id);
+    setActiveStudyNoteId(note.id);
+    setSelectedNotebookId(note.notebookId);
+    setActiveStudyTab('notes');
+  };
+
+  const handleAddStudyTopic = () => {
+    if (!newStudyTopic.trim()) return;
+    const topic: StudyTopic = {
+      id: Date.now().toString(),
+      title: newStudyTopic,
+      completed: false,
+      priority: newStudyTopicPriority,
+      notebookId: selectedNotebookId || undefined,
+      createdAt: Date.now(),
+    };
+    setStudyTopics(prev => [...prev, topic]);
+    setNewStudyTopic('');
+    showToastWithMsg('Tópico adicionado!');
+  };
+
+  const handleToggleStudyTopic = (id: string) => {
+    setStudyTopics(prev => prev.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+  };
+
+  const handleDeleteStudyTopic = (id: string) => {
+    setStudyTopics(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleAddStudyPlan = () => {
+    if (!newStudyPlanTitle.trim() || !newStudyPlanDate) return;
+    const plan: StudyPlan = {
+      id: Date.now().toString(),
+      title: newStudyPlanTitle,
+      date: newStudyPlanDate,
+      completed: false,
+      priority: newStudyPlanPriority,
+      createdAt: Date.now(),
+    };
+    setStudyPlans(prev => [...prev, plan]);
+    setNewStudyPlanTitle('');
+    setNewStudyPlanDate('');
+    showToastWithMsg('Plano de estudo agendado!');
+  };
+
+  const handleToggleStudyPlan = (id: string) => {
+    setStudyPlans(prev => prev.map(p => p.id === id ? { ...p, completed: !p.completed } : p));
+  };
+
+  const handleDeleteStudyPlan = (id: string) => {
+    setStudyPlans(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleAddStudyNotebook = (title?: string) => {
+    const finalTitle = title || newNotebookTitle;
+    if (!finalTitle.trim()) return;
+    const notebook: StudyNotebook = {
+      id: Date.now().toString(),
+      title: finalTitle,
+      icon: newNotebookIcon,
+      color: newNotebookColor,
+      createdAt: Date.now(),
+    };
+    setStudyNotebooks(prev => [...prev, notebook]);
+    setNewNotebookTitle('');
+    showToastWithMsg('Caderno criado!');
+  };
+
+  const handleDeleteStudyNotebook = (id: string) => {
+    setStudyNotebooks(prev => prev.filter(n => n.id !== id));
+    setStudyNotes(prev => prev.filter(note => note.notebookId !== id));
+    if (selectedNotebookId === id) setSelectedNotebookId(null);
+  };
+
   useEffect(() => {
     let interval: any;
     if (isPomodoroActive && pomodoroTime > 0) {
@@ -1191,11 +1656,11 @@ export default function App() {
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
-    { id: 'ongoing', label: 'Projetos em andamento', icon: Rocket, color: 'text-roxo-suave' },
     { id: 'reminders', label: 'Lembretes', icon: Bell, color: 'text-red-400' },
     { id: 'calendar', label: 'Calendário', icon: Calendar, color: 'text-amber-500' },
     { id: 'finance', label: 'Financeiro', icon: Wallet, color: 'text-emerald-500' },
     { id: 'programmer', label: 'Projetos', icon: Code, color: 'text-blue-500' },
+    { id: 'studies', label: 'Estudos', icon: BookOpen, color: 'text-indigo-400' },
     { id: 'diary', label: 'Diário Pessoal', icon: Smile, color: 'text-pink-400' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'text-slate-400' },
   ];
@@ -1239,6 +1704,11 @@ export default function App() {
 
   const ongoingProjects = projects.filter(p => p.status === 'ongoing');
 
+  const pendingStudyTopicsCount = studyTopics.filter(t => !t.completed).length;
+  const todayTimestamp = new Date().setHours(0, 0, 0, 0);
+  const todayStudySessionsCount = studySessions.filter(s => s.startTime >= todayTimestamp && s.type === 'work').length;
+  const pendingStudyTopics = studyTopics.filter(t => !t.completed).slice(0, 3);
+
   if (!isAuthenticated) {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
@@ -1263,18 +1733,20 @@ export default function App() {
         className={`
           fixed inset-y-0 left-0 z-50 transition-all duration-300 
           ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:w-20 md:translate-x-0'}
-          md:relative md:flex flex-col bg-bg-card border-r border-border-dark
+          flex flex-col bg-bg-card border-r border-border-dark
         `}
       >
-        <div className={`p-6 flex items-center justify-between ${!isSidebarOpen && 'md:justify-center md:px-0'}`}>
+        <div className={`p-6 flex items-center justify-between ${isSidebarOpen ? 'bg-white/5 border-b border-white/5 mb-4' : 'md:justify-center md:px-0'}`}>
           {isSidebarOpen && (
-            <motion.h1 
+            <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-xl font-display font-bold bg-gradient-to-r from-roxo-suave to-rosa-claro bg-clip-text text-transparent whitespace-nowrap"
+              className="px-4 py-2 bg-gradient-to-r from-roxo-suave to-rosa-claro rounded-xl shadow-lg shadow-roxo-suave/20"
             >
-              Planner Diário Raquel
-            </motion.h1>
+              <h1 className="text-sm font-display font-bold text-white whitespace-nowrap">
+                Planner Diário Raquel
+              </h1>
+            </motion.div>
           )}
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -1284,7 +1756,7 @@ export default function App() {
           </button>
         </div>
 
-        <nav className={`flex-1 px-3 space-y-2 ${!isSidebarOpen && 'md:px-2'}`}>
+        <nav className={`flex-1 px-3 space-y-2 overflow-y-auto custom-scrollbar ${!isSidebarOpen && 'md:px-2'}`}>
           {sidebarItems.map((item) => (
             <button
               key={item.id}
@@ -1331,7 +1803,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         {/* Fixed Header */}
         <header className="bg-bg-dark/80 backdrop-blur-xl border-b border-border-dark z-20">
           <div className="p-4 md:p-6 flex justify-between items-center">
@@ -1342,12 +1814,12 @@ export default function App() {
               >
                 <Menu size={24} />
               </button>
-              <h2 className="text-lg font-display font-bold text-white">
+              <h2 className="text-lg font-display font-bold text-white md:max-w-none">
                 {sidebarItems.find(i => i.id === activeTab)?.label}
               </h2>
             </div>
             <div className="flex items-center gap-4">
-            {(activeTab === 'ongoing' || activeTab === 'programmer') && (
+            {activeTab === 'programmer' && (
                 <button 
                   onClick={() => setShowAddProject(true)}
                   className="flex items-center gap-2 bg-roxo-suave hover:bg-roxo-suave/80 text-white px-4 py-2 rounded-xl transition-all shadow-lg shadow-roxo-suave/20 text-sm font-bold"
@@ -1365,7 +1837,7 @@ export default function App() {
 
         {/* Scrollable Content */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          {(activeTab === 'ongoing' || activeTab === 'programmer') && (
+          {activeTab === 'programmer' && (
             <div className="mb-8 flex flex-col md:flex-row gap-4 items-center justify-between">
               <div className="relative w-full md:w-96">
                 <input 
@@ -1378,7 +1850,7 @@ export default function App() {
                 <Rocket className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={20} />
               </div>
               <div className="flex gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                <span>Total: {filteredProjects.filter(p => p.status === (activeTab === 'ongoing' ? 'ongoing' : 'completed')).length}</span>
+                <span>Total: {filteredProjects.filter(p => p.status === 'completed').length}</span>
               </div>
             </div>
           )}
@@ -1392,7 +1864,7 @@ export default function App() {
                 className="space-y-8"
               >
                 {/* Inspiração do Dia */}
-                <div className="relative overflow-hidden rounded-3xl p-8 bg-gradient-to-r from-indigo-950 to-slate-900 border border-white/10 shadow-2xl">
+                <div className="relative overflow-hidden rounded-3xl p-6 md:p-8 bg-gradient-to-r from-indigo-950 to-slate-900 border border-white/10 shadow-2xl">
                   <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-white/10 rounded-2xl text-roxo-suave">
@@ -1426,7 +1898,7 @@ export default function App() {
                 </div>
 
                 {/* Summary Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
                   <div 
                     onClick={() => setActiveTab('reminders')}
                     className="glass-card p-6 rounded-3xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-all group"
@@ -1465,11 +1937,24 @@ export default function App() {
                       <DollarSign size={24} />
                     </div>
                   </div>
+
+                  <div 
+                    onClick={() => setActiveTab('studies')}
+                    className="glass-card p-6 rounded-3xl flex items-center justify-between cursor-pointer hover:bg-white/5 transition-all group"
+                  >
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Foco Hoje</p>
+                      <h3 className="text-3xl font-display font-black text-white">{todayStudySessionsCount}</h3>
+                    </div>
+                    <div className="p-3 bg-roxo-suave/10 rounded-2xl text-roxo-suave group-hover:scale-110 transition-transform">
+                      <Timer size={24} />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                   {/* Upcoming Appointments */}
-                  <div className="glass-card p-8 rounded-3xl">
+                  <div className="glass-card p-6 md:p-8 rounded-3xl">
                     <div className="flex justify-between items-center mb-6">
                       <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
                         <Calendar size={20} className="text-amber-500" />
@@ -1500,7 +1985,7 @@ export default function App() {
                   </div>
 
                   {/* Priority Reminders */}
-                  <div className="glass-card p-8 rounded-3xl">
+                  <div className="glass-card p-6 md:p-8 rounded-3xl">
                     <div className="flex justify-between items-center mb-6">
                       <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
                         <ListTodo size={20} className="text-red-400" />
@@ -1526,7 +2011,7 @@ export default function App() {
                   </div>
 
                   {/* Quick Finance */}
-                  <div className="glass-card p-8 rounded-3xl">
+                  <div className="glass-card p-6 md:p-8 rounded-3xl">
                     <div className="flex justify-between items-center mb-6">
                       <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
                         <Wallet size={20} className="text-emerald-500" />
@@ -1557,14 +2042,14 @@ export default function App() {
                   </div>
 
                   {/* Project Status */}
-                  <div className="glass-card p-8 rounded-3xl">
+                  <div className="glass-card p-6 md:p-8 rounded-3xl">
                     <div className="flex justify-between items-center mb-6">
                       <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
                         <Rocket size={20} className="text-roxo-suave" />
                         Estado de Projetos
                       </h4>
                       <button 
-                        onClick={() => setActiveTab('ongoing')}
+                        onClick={() => setActiveTab('programmer')}
                         className="text-[10px] font-bold text-roxo-suave hover:underline uppercase tracking-widest"
                       >
                         Ver Projetos
@@ -1591,8 +2076,44 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Study Progress */}
+                  <div className="glass-card p-6 md:p-8 rounded-3xl">
+                    <div className="flex justify-between items-center mb-6">
+                      <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                        <BookOpen size={20} className="text-indigo-400" />
+                        Tópicos de Estudo
+                      </h4>
+                      <button 
+                        onClick={() => setActiveTab('studies')}
+                        className="text-[10px] font-bold text-roxo-suave hover:underline uppercase tracking-widest"
+                      >
+                        Ver Estudos
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      {pendingStudyTopics.length > 0 ? pendingStudyTopics.map(topic => (
+                        <div key={topic.id} className="p-4 bg-white/5 rounded-2xl border border-border-dark flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full ${topic.priority === 'High' ? 'bg-red-400' : topic.priority === 'Medium' ? 'bg-amber-400' : 'bg-blue-400'}`} />
+                            <span className="text-sm text-slate-300">{topic.title}</span>
+                          </div>
+                          <div className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+                            {topic.priority}
+                          </div>
+                        </div>
+                      )) : (
+                        <p className="text-sm text-slate-500 text-center py-4 italic">Nenhum tópico pendente.</p>
+                      )}
+                      {pendingStudyTopicsCount > 3 && (
+                        <p className="text-[10px] text-slate-500 text-center mt-2">
+                          + {pendingStudyTopicsCount - 3} outros tópicos pendentes
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Banco de Ideias */}
-                  <div className="glass-card p-8 rounded-3xl lg:col-span-2">
+                  <div className="glass-card p-6 md:p-8 rounded-3xl lg:col-span-2">
                     <div className="flex justify-between items-center mb-6">
                       <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
                         <Lightbulb size={20} className="text-amber-400" />
@@ -1645,104 +2166,6 @@ export default function App() {
                     </div>
                   </div>
                 </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'ongoing' && (
-              <motion.div
-                key="ongoing"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
-                {showAddProject && (
-                  <motion.div 
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="glass-card p-6 rounded-2xl border-2 border-dashed border-roxo-suave/30 flex flex-col gap-4"
-                  >
-                    <input 
-                      type="text" 
-                      placeholder="Título do Projeto"
-                      className="w-full bg-transparent border-b border-border-dark py-2 focus:outline-none focus:border-roxo-suave font-bold text-white"
-                      value={newProjectTitle}
-                      onChange={(e) => setNewProjectTitle(e.target.value)}
-                    />
-                    <textarea 
-                      placeholder="Descrição rápida..."
-                      className="w-full bg-transparent border-b border-border-dark py-2 focus:outline-none focus:border-roxo-suave text-sm resize-none h-20 text-slate-400"
-                      value={newProjectDesc}
-                      onChange={(e) => setNewProjectDesc(e.target.value)}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold ml-1">Data de Início</label>
-                        <input 
-                          type="date" 
-                          className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                          value={newProjectStartDate}
-                          onChange={(e) => setNewProjectStartDate(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold ml-1">Prazo Final (Opcional)</label>
-                        <input 
-                          type="date" 
-                          className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                          value={newProjectDeadline}
-                          onChange={(e) => setNewProjectDeadline(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold ml-1">Tech Stack (Separado por vírgula)</label>
-                      <input 
-                        type="text" 
-                        placeholder="Ex: React, Tailwind, Node.js"
-                        className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                        value={newProjectTechStack}
-                        onChange={(e) => setNewProjectTechStack(e.target.value)}
-                      />
-                    </div>
-                    <div className="flex gap-2 mt-auto">
-                      <button 
-                        onClick={addProject}
-                        className="flex-1 bg-roxo-suave text-white py-2 rounded-lg text-sm font-bold hover:bg-roxo-suave/80 transition-colors"
-                      >
-                        Criar
-                      </button>
-                      <button 
-                        onClick={() => setShowAddProject(false)}
-                        className="px-4 py-2 text-slate-500 hover:text-slate-300 text-sm font-medium"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {filteredProjects.filter(p => p.status === 'ongoing').map(project => (
-                  <ProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    onToggle={toggleProjectStatus} 
-                    onDelete={deleteProject} 
-                  />
-                ))}
-
-                {filteredProjects.filter(p => p.status === 'ongoing').length === 0 && !showAddProject && (
-                  <div className="col-span-full py-20 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-border-dark rounded-3xl">
-                    <Rocket size={48} className="mb-4 opacity-20" />
-                    <p className="font-medium">Nenhum projeto em andamento.</p>
-                    <button 
-                      onClick={() => setShowAddProject(true)}
-                      className="mt-4 text-roxo-suave font-bold hover:underline"
-                    >
-                      Começar um agora
-                    </button>
-                  </div>
-                )}
               </motion.div>
             )}
 
@@ -2257,6 +2680,16 @@ export default function App() {
                   </div>
                 </div>
 
+                <div className="flex justify-end -mt-4 mb-4">
+                  <button 
+                    onClick={saveNotes}
+                    className="flex items-center gap-2 px-6 py-2 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-roxo-suave/20"
+                  >
+                    <Save size={16} />
+                    Salvar Progresso
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Left Column: Snippets, Logs, Kanban */}
                   <div className="lg:col-span-2 space-y-8">
@@ -2472,6 +2905,60 @@ export default function App() {
                                   value={newProjectDesc}
                                   onChange={(e) => setNewProjectDesc(e.target.value)}
                                 />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">GitHub (E-mail)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="E-mail" 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectGithubEmail}
+                                      onChange={(e) => setNewProjectGithubEmail(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">GitHub (Link)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="https://github.com/..." 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectGithubUrl}
+                                      onChange={(e) => setNewProjectGithubUrl(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Supabase (E-mail)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="E-mail" 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectSupabaseEmail}
+                                      onChange={(e) => setNewProjectSupabaseEmail(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Supabase (Link)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="https://supabase.com/..." 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectSupabaseUrl}
+                                      onChange={(e) => setNewProjectSupabaseUrl(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">URL do Projeto (Deploy)</label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="https://..." 
+                                    className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                    value={newProjectUrl}
+                                    onChange={(e) => setNewProjectUrl(e.target.value)}
+                                  />
+                                </div>
                                 <div className="grid grid-cols-2 gap-4">
                                   <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Data de Início</label>
@@ -2519,12 +3006,12 @@ export default function App() {
                         )}
                       </AnimatePresence>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 gap-6">
                         {filteredProjects.map(project => (
-                          <div key={project.id} className="p-4 bg-white/5 rounded-2xl border border-border-dark flex flex-col group hover:bg-white/10 transition-all relative overflow-hidden">
+                          <div key={project.id} className="p-6 bg-white/5 rounded-2xl border border-border-dark flex flex-col group hover:bg-white/10 transition-all relative overflow-hidden">
                             <div className={`absolute top-0 left-0 w-1 h-full ${project.status === 'ongoing' ? 'bg-roxo-suave' : 'bg-emerald-500'}`} />
                             
-                            <div className="flex justify-between items-start mb-3">
+                            <div className="flex justify-between items-start mb-4">
                               <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-lg ${project.status === 'ongoing' ? 'bg-roxo-suave/10 text-roxo-suave' : 'bg-emerald-500/10 text-emerald-500'}`}>
                                   {project.status === 'ongoing' ? <Clock size={16} /> : <CheckCircle2 size={16} />}
@@ -2557,10 +3044,111 @@ export default function App() {
                             </div>
 
                             {project.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-4 leading-relaxed pl-11">
+                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-6 leading-relaxed pl-11">
                                 {project.description}
                               </p>
                             )}
+
+                            {/* Connection Lines */}
+                            <div className="space-y-3 pl-11 mb-6">
+                              {/* Row 1: Projeto */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-4">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Projeto</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.title}
+                                    onChange={(e) => updateProjectField(project.id, 'title', e.target.value)}
+                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-7">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">URL Repositório/Deploy</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.projectUrl || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'projectUrl', e.target.value)}
+                                    placeholder="https://..."
+                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <button 
+                                    onClick={() => project.projectUrl && window.open(project.projectUrl, '_blank')}
+                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
+                                    title="Abrir Link"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 2: GitHub */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-4">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">GitHub (E-mail)</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.githubEmail || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'githubEmail', e.target.value)}
+                                    placeholder="E-mail"
+                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-7">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Link Perfil/Repo</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.githubUrl || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'githubUrl', e.target.value)}
+                                    placeholder="https://github.com/..."
+                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <button 
+                                    onClick={() => project.githubUrl && window.open(project.githubUrl, '_blank')}
+                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
+                                    title="Abrir Link"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 3: Supabase */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-4">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Supabase (E-mail)</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.supabaseEmail || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'supabaseEmail', e.target.value)}
+                                    placeholder="E-mail"
+                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-7">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Link Dashboard</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.supabaseUrl || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'supabaseUrl', e.target.value)}
+                                    placeholder="https://supabase.com/..."
+                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <button 
+                                    onClick={() => project.supabaseUrl && window.open(project.supabaseUrl, '_blank')}
+                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
+                                    title="Abrir Link"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
 
                             <div className="flex items-center justify-between mt-auto pl-11">
                               <div className="flex gap-2">
@@ -2571,18 +3159,28 @@ export default function App() {
                                   </span>
                                 )}
                               </div>
-                              <button 
-                                onClick={() => {
-                                  if (project.status === 'ongoing') {
-                                    setActiveTab('ongoing');
-                                  } else {
-                                    alert(`Detalhes do projeto: ${project.title}`);
-                                  }
-                                }}
-                                className="text-roxo-suave flex items-center gap-1 text-[10px] font-bold hover:gap-2 transition-all"
-                              >
-                                Abrir <ChevronRight size={12} />
-                              </button>
+                              <div className="flex items-center gap-3">
+                                <button 
+                                  onClick={() => handleSaveProject(project.id)}
+                                  className={`p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-bold ${
+                                    projectSaved[project.id]
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500'
+                                  }`}
+                                  title="Salvar Alterações"
+                                >
+                                  {projectSaved[project.id] ? <Check size={14} /> : <Save size={14} />}
+                                  {projectSaved[project.id] ? 'Salvo' : 'Salvar'}
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setActiveTab('programmer');
+                                  }}
+                                  className="text-roxo-suave flex items-center gap-1 text-[10px] font-bold hover:gap-2 transition-all"
+                                >
+                                  Abrir <ChevronRight size={12} />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -2992,7 +3590,7 @@ export default function App() {
                 </div>
 
                 {/* Meu Espaço de Escrita Livre (Personal Notes) */}
-                <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
+                <div className="glass-card p-6 md:p-8 rounded-3xl relative overflow-hidden">
                   {/* Textured Background Effect */}
                   <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/paper-fibers.png')]" />
                   
@@ -3200,7 +3798,7 @@ export default function App() {
                 </div>
 
                 {/* Timeline of Memories */}
-                <div className="glass-card p-8 rounded-3xl">
+                <div className="glass-card p-6 md:p-8 rounded-3xl">
                   <div className="flex justify-between items-center mb-8">
                     <h4 className="text-xl font-display font-bold text-white flex items-center gap-3">
                       <History size={24} className="text-roxo-suave" />
@@ -3232,13 +3830,792 @@ export default function App() {
                       ))
                     ) : (
                       <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-border-dark rounded-2xl">
-                        <StickyNote size={40} className="mb-4 opacity-20" />
-                        <p className="text-sm font-medium">Nenhuma recordação ainda.</p>
-                        <p className="text-xs">Suas reflexões salvas aparecerão aqui.</p>
+                        <StickyNote size={48} className="mb-4 opacity-20" />
+                        <p className="font-medium">Nenhuma memória registrada ainda.</p>
                       </div>
                     )}
                   </div>
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'studies' && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="max-w-[1600px] mx-auto px-4 sm:px-8 py-6 h-full flex flex-col"
+              >
+                {/* SaaS Study Header with Search */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-indigo-500/20">
+                      📚
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-display font-bold text-white tracking-tight">Estudos</h2>
+                      <p className="text-slate-400 text-sm font-medium">Sua central de conhecimento e produtividade.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 flex-1 max-w-xl">
+                    <div className="relative flex-1 group">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                      <input 
+                        type="text"
+                        placeholder="Pesquisar em notas, tópicos ou planos..."
+                        value={studySearchQuery}
+                        onChange={(e) => setStudySearchQuery(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all placeholder-slate-600"
+                      />
+                    </div>
+                    <button className="p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-400 hover:text-white hover:bg-white/10 transition-all">
+                      <Filter size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-8 flex-1 min-h-0">
+                  {/* Internal Sidebar */}
+                  <aside className="lg:w-64 flex flex-col gap-2">
+                    {[
+                      { id: 'general', label: 'Geral', icon: LayoutDashboard, color: 'text-indigo-400' },
+                      { id: 'notes', label: 'Anotações', icon: BookOpen, color: 'text-emerald-400' },
+                      { id: 'topics', label: 'Tópicos', icon: ListChecks, color: 'text-rose-400' },
+                      { id: 'focus', label: 'Foco (Timer)', icon: Timer, color: 'text-amber-400' },
+                      { id: 'planning', label: 'Planejamento', icon: Calendar, color: 'text-sky-400' },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveStudyTab(item.id as any)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-all group ${
+                          activeStudyTab === item.id 
+                            ? 'bg-white/10 text-white shadow-lg border border-white/10' 
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                        }`}
+                      >
+                        <item.icon size={20} className={activeStudyTab === item.id ? item.color : 'text-slate-600 group-hover:text-slate-400'} />
+                        <span className="font-bold text-sm tracking-wide">{item.label}</span>
+                        {activeStudyTab === item.id && (
+                          <motion.div layoutId="activeStudyTab" className="ml-auto w-1.5 h-1.5 rounded-full bg-white" />
+                        )}
+                      </button>
+                    ))}
+
+                    <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
+                      <div className="flex items-center justify-between px-4">
+                        <h4 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Cadernos</h4>
+                        <button 
+                          onClick={() => {
+                            const name = prompt('Nome do novo caderno:');
+                            if (name) handleAddStudyNotebook(name);
+                          }}
+                          className="p-1 text-slate-600 hover:text-indigo-400 transition-colors"
+                        >
+                          <FolderPlus size={14} />
+                        </button>
+                      </div>
+                      <div className="space-y-1 max-h-[200px] overflow-y-auto custom-scrollbar px-2">
+                        <button
+                          onClick={() => setSelectedNotebookId(null)}
+                          className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                            selectedNotebookId === null ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <Layers size={14} />
+                          Todos os Blocos
+                        </button>
+                        {studyNotebooks.map(notebook => (
+                          <div key={notebook.id} className="group flex items-center">
+                            <button
+                              onClick={() => setSelectedNotebookId(notebook.id)}
+                              className={`flex-1 flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                                selectedNotebookId === notebook.id ? 'bg-indigo-500/10 text-indigo-400' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                              }`}
+                            >
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: notebook.color }} />
+                              <span className="truncate">{notebook.title}</span>
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteStudyNotebook(notebook.id)}
+                              className="p-1 text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </aside>
+
+                  {/* Main Content Area */}
+                  <main className="flex-1 min-h-0 bg-white/[0.02] border border-white/5 rounded-[32px] p-8 overflow-y-auto custom-scrollbar">
+                    <AnimatePresence mode="wait">
+                      {activeStudyTab === 'general' && (
+                        <motion.div
+                          key="general"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                          className="space-y-10"
+                        >
+                          {/* Dashboard Header */}
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-2xl font-display font-bold text-white">Dashboard de Estudos</h3>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-indigo-500/10 rounded-full border border-indigo-500/20">
+                              <Sparkles size={16} className="text-indigo-400" />
+                              <span className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Premium Active</span>
+                            </div>
+                          </div>
+
+                          {/* Stats Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {[
+                              { label: 'Total de Notas', value: studyNotes.length, icon: BookOpen, color: 'bg-indigo-500/20 text-indigo-400' },
+                              { label: 'Tópicos Concluídos', value: studyTopics.filter(t => t.completed).length, icon: CheckCircle2, color: 'bg-emerald-500/20 text-emerald-400' },
+                              { label: 'Sessões de Foco', value: studySessions.length, icon: Timer, color: 'bg-amber-500/20 text-amber-400' },
+                              { label: 'Tempo Total', value: `${Math.floor(studySessions.reduce((acc, s) => acc + s.duration, 0) / 60)}h`, icon: Clock, color: 'bg-rose-500/20 text-rose-400' },
+                            ].map((stat, i) => (
+                              <div key={i} className="p-6 bg-white/5 border border-white/10 rounded-3xl hover:border-white/20 transition-all group">
+                                <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                                  <stat.icon size={24} />
+                                </div>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</p>
+                                <h4 className="text-3xl font-display font-bold text-white">{stat.value}</h4>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                            {/* Recent Progress */}
+                            <div className="glass-card p-8 rounded-3xl border-white/5">
+                              <h4 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                                <TrendingUp size={20} className="text-emerald-400" />
+                                Evolução Semanal
+                              </h4>
+                              <div className="h-48 w-full flex items-end gap-2 px-2">
+                                {[40, 70, 45, 90, 65, 80, 55].map((h, i) => (
+                                  <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
+                                    <div className="w-full relative">
+                                      <motion.div 
+                                        initial={{ height: 0 }}
+                                        animate={{ height: `${h}%` }}
+                                        className={`w-full rounded-t-lg transition-all ${i === 3 ? 'bg-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.4)]' : 'bg-white/10 group-hover:bg-white/20'}`}
+                                      />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                                      {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'][i]}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Priority Topics */}
+                            <div className="glass-card p-8 rounded-3xl border-white/5">
+                              <h4 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
+                                <Target size={20} className="text-rose-400" />
+                                Prioridades Críticas
+                              </h4>
+                              <div className="space-y-4">
+                                {studyTopics.filter(t => t.priority === 'High' && !t.completed).slice(0, 4).map(topic => (
+                                  <div key={topic.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-rose-500/30 transition-all group">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                                      <span className="text-sm font-medium text-slate-200">{topic.title}</span>
+                                    </div>
+                                    <button 
+                                      onClick={() => handleToggleStudyTopic(topic.id)}
+                                      className="p-2 text-slate-600 hover:text-emerald-400 hover:bg-emerald-400/10 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+                                    >
+                                      <Check size={16} />
+                                    </button>
+                                  </div>
+                                ))}
+                                {studyTopics.filter(t => t.priority === 'High' && !t.completed).length === 0 && (
+                                  <div className="py-8 text-center text-slate-600 italic text-sm">
+                                    Nenhuma prioridade alta pendente.
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {activeStudyTab === 'notes' && (
+                        <motion.div
+                          key="notes"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          className="space-y-8"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="text-2xl font-display font-bold text-white">Notas de Estudo</h3>
+                              <p className="text-slate-500 text-sm mt-1">
+                                {selectedNotebookId 
+                                  ? `Visualizando: ${studyNotebooks.find(n => n.id === selectedNotebookId)?.title}` 
+                                  : 'Todos os seus blocos de conhecimento.'}
+                              </p>
+                            </div>
+                            <button 
+                              onClick={() => {
+                                setEditingStudyNoteId(null);
+                                setActiveStudyNoteId(null);
+                                setNewStudyNote('');
+                                setIsStudyNoteFocusMode(true);
+                              }}
+                              className="px-6 py-3 bg-indigo-500 text-white rounded-2xl font-bold hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+                            >
+                              <FilePlus size={20} />
+                              Nova Nota
+                            </button>
+                          </div>
+
+                          {/* Notes Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            <AnimatePresence mode="popLayout">
+                              {studyNotes
+                                .filter(note => {
+                                  const matchesSearch = note.title.toLowerCase().includes(studySearchQuery.toLowerCase()) || 
+                                                       note.content.toLowerCase().includes(studySearchQuery.toLowerCase());
+                                  const matchesNotebook = selectedNotebookId ? note.notebookId === selectedNotebookId : true;
+                                  return matchesSearch && matchesNotebook;
+                                })
+                                .map(note => (
+                                  <motion.div
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.9 }}
+                                    key={note.id}
+                                    onClick={() => handleEditStudyNote(note)}
+                                    className="group relative bg-white/5 border border-white/10 rounded-3xl p-6 hover:border-indigo-500/50 hover:bg-white/[0.08] transition-all cursor-pointer flex flex-col h-64"
+                                  >
+                                    <div className="flex items-start justify-between mb-4">
+                                      <div className="w-10 h-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                                        <StickyNote size={20} />
+                                      </div>
+                                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button 
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteStudyNote(note.id); }}
+                                          className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    <h4 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-indigo-400 transition-colors">
+                                      {note.title || 'Sem título'}
+                                    </h4>
+                                    <div className="text-sm text-slate-400 line-clamp-4 leading-relaxed flex-1 overflow-hidden">
+                                      <Markdown>{note.content}</Markdown>
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center justify-between">
+                                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
+                                        {new Date(note.updatedAt).toLocaleDateString('pt-BR')}
+                                      </span>
+                                      {note.notebookId && (
+                                        <div className="flex items-center gap-1.5">
+                                          <div 
+                                            className="w-1.5 h-1.5 rounded-full" 
+                                            style={{ backgroundColor: studyNotebooks.find(nb => nb.id === note.notebookId)?.color || '#6366f1' }} 
+                                          />
+                                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                            {studyNotebooks.find(nb => nb.id === note.notebookId)?.title}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </motion.div>
+                                ))}
+                            </AnimatePresence>
+                          </div>
+
+                          {studyNotes.length === 0 && (
+                            <div className="py-32 text-center">
+                              <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
+                                <BookOpen size={40} className="text-slate-700" />
+                              </div>
+                              <h4 className="text-xl font-bold text-slate-400">Nenhuma nota encontrada</h4>
+                              <p className="text-slate-600 mt-2">Comece a documentar seu aprendizado hoje.</p>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
+
+                      {activeStudyTab === 'topics' && (
+                        <motion.div
+                          key="topics"
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          className="max-w-4xl mx-auto space-y-8"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-2xl font-display font-bold text-white">Tópicos de Estudo</h3>
+                            <div className="flex items-center gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
+                              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Alta</span>
+                              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /> Média</span>
+                              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Baixa</span>
+                            </div>
+                          </div>
+
+                          {/* Add Topic Bar */}
+                          <div className="flex flex-col md:flex-row gap-4 p-6 bg-white/5 border border-white/10 rounded-3xl shadow-xl">
+                            <input
+                              type="text"
+                              value={newStudyTopic}
+                              onChange={(e) => setNewStudyTopic(e.target.value)}
+                              placeholder="O que você precisa aprender?"
+                              className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-600 text-lg"
+                            />
+                            <div className="flex items-center gap-3">
+                              <select 
+                                value={newStudyTopicPriority}
+                                onChange={(e) => setNewStudyTopicPriority(e.target.value as 'High' | 'Medium' | 'Low')}
+                                className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs font-bold text-slate-400 focus:outline-none focus:border-indigo-500/50"
+                              >
+                                <option value="Low">Baixa</option>
+                                <option value="Medium">Média</option>
+                                <option value="High">Alta</option>
+                              </select>
+                              <button
+                                onClick={handleAddStudyTopic}
+                                disabled={!newStudyTopic.trim()}
+                                className="px-6 py-2.5 bg-white text-black rounded-xl font-bold hover:bg-slate-200 disabled:opacity-50 transition-all flex items-center gap-2"
+                              >
+                                <Plus size={18} />
+                                Adicionar
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Topics List */}
+                          <div className="space-y-3">
+                            <AnimatePresence mode="popLayout">
+                              {studyTopics
+                                .filter(t => t.title.toLowerCase().includes(studySearchQuery.toLowerCase()))
+                                .sort((a, b) => {
+                                  if (a.completed !== b.completed) return a.completed ? 1 : -1;
+                                  const priorityMap = { High: 0, Medium: 1, Low: 2 };
+                                  return priorityMap[a.priority] - priorityMap[b.priority];
+                                })
+                                .map(topic => (
+                                  <motion.div
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
+                                    key={topic.id}
+                                    className={`group flex items-center justify-between p-5 rounded-2xl border transition-all ${
+                                      topic.completed 
+                                        ? 'bg-white/[0.01] border-white/5 opacity-60' 
+                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-4">
+                                      <button
+                                        onClick={() => handleToggleStudyTopic(topic.id)}
+                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                          topic.completed 
+                                            ? 'bg-emerald-500 border-emerald-500 text-white' 
+                                            : 'border-white/20 hover:border-indigo-500'
+                                        }`}
+                                      >
+                                        {topic.completed && <Check size={14} strokeWidth={3} />}
+                                      </button>
+                                      <div>
+                                        <span className={`text-base font-medium transition-all ${topic.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                          {topic.title}
+                                        </span>
+                                        <div className="flex items-center gap-3 mt-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <div className={`w-1.5 h-1.5 rounded-full ${
+                                              topic.priority === 'High' ? 'bg-rose-500' : 
+                                              topic.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                                            }`} />
+                                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{topic.priority}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button 
+                                      onClick={() => handleDeleteStudyTopic(topic.id)}
+                                      className="p-2 text-slate-700 hover:text-red-400 hover:bg-red-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </motion.div>
+                                ))}
+                            </AnimatePresence>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {activeStudyTab === 'focus' && (
+                        <motion.div
+                          key="focus"
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="max-w-4xl mx-auto flex flex-col items-center justify-center py-10"
+                        >
+                          {/* Premium Focus Timer */}
+                          <div className="w-full max-w-md glass-card p-12 rounded-[48px] border-white/10 text-center relative overflow-hidden shadow-2xl">
+                            {/* Animated Background Pulse */}
+                            {isPomodoroActive && (
+                              <motion.div 
+                                animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }}
+                                transition={{ duration: 4, repeat: Infinity }}
+                                className={`absolute inset-0 ${pomodoroMode === 'work' ? 'bg-indigo-500' : 'bg-emerald-500'} blur-[100px] -z-10`}
+                              />
+                            )}
+
+                            <div className="flex items-center justify-center gap-3 mb-12">
+                              {['work', 'break'].map((mode) => (
+                                <button
+                                  key={mode}
+                                  onClick={() => {
+                                    setPomodoroMode(mode as any);
+                                    setPomodoroTime(mode === 'work' ? 25 * 60 : 5 * 60);
+                                    setIsPomodoroActive(false);
+                                  }}
+                                  className={`px-6 py-2 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
+                                    pomodoroMode === mode 
+                                      ? 'bg-white text-black shadow-lg' 
+                                      : 'text-slate-500 hover:text-slate-300'
+                                  }`}
+                                >
+                                  {mode === 'work' ? 'Foco' : 'Pausa'}
+                                </button>
+                              ))}
+                            </div>
+
+                            <div className="relative mb-12">
+                              {/* Progress Ring (SVG) */}
+                              <svg className="w-64 h-64 mx-auto -rotate-90">
+                                <circle
+                                  cx="128"
+                                  cy="128"
+                                  r="120"
+                                  stroke="currentColor"
+                                  strokeWidth="8"
+                                  fill="transparent"
+                                  className="text-white/5"
+                                />
+                                <motion.circle
+                                  cx="128"
+                                  cy="128"
+                                  r="120"
+                                  stroke="currentColor"
+                                  strokeWidth="8"
+                                  fill="transparent"
+                                  strokeDasharray="754"
+                                  animate={{ strokeDashoffset: 754 - (754 * (pomodoroTime / (pomodoroMode === 'work' ? 25 * 60 : 5 * 60))) }}
+                                  className={pomodoroMode === 'work' ? 'text-indigo-500' : 'text-emerald-500'}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-6xl font-display font-black text-white tracking-tighter">
+                                  {formatTime(pomodoroTime)}
+                                </span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">
+                                  {pomodoroMode === 'work' ? 'Sessão de Estudo' : 'Hora de Relaxar'}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-6">
+                              <button
+                                onClick={() => setIsPomodoroActive(!isPomodoroActive)}
+                                className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-all shadow-2xl ${
+                                  isPomodoroActive 
+                                    ? 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20' 
+                                    : 'bg-white text-black hover:scale-105 hover:shadow-white/20'
+                                }`}
+                              >
+                                {isPomodoroActive ? <Pause size={32} /> : <Play size={32} fill="currentColor" />}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setIsPomodoroActive(false);
+                                  setPomodoroTime(pomodoroMode === 'work' ? 25 * 60 : 5 * 60);
+                                }}
+                                className="w-16 h-16 bg-white/5 border border-white/10 rounded-3xl text-slate-400 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center"
+                              >
+                                <RotateCcw size={24} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Session History */}
+                          <div className="w-full max-w-2xl mt-16 space-y-6">
+                            <div className="flex items-center justify-between px-4">
+                              <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Histórico de Sessões</h4>
+                              <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest">
+                                {studySessions.length} sessões hoje
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {studySessions.slice(0, 4).map(session => (
+                                <div key={session.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400">
+                                      <Timer size={16} />
+                                    </div>
+                                    <div>
+                                      <p className="text-xs font-bold text-white uppercase tracking-wider">{session.type === 'work' ? 'Foco' : 'Pausa'}</p>
+                                      <p className="text-[10px] text-slate-500">{new Date(session.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                                    </div>
+                                  </div>
+                                  <span className="text-sm font-bold text-slate-300">{session.duration} min</span>
+                                </div>
+                              ))}
+                              {studySessions.length === 0 && (
+                                <div className="col-span-full py-10 text-center bg-white/[0.02] border border-dashed border-white/10 rounded-2xl text-slate-600 text-sm">
+                                  Nenhuma sessão registrada ainda.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {activeStudyTab === 'planning' && (
+                        <motion.div
+                          key="planning"
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="max-w-5xl mx-auto space-y-10"
+                        >
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-2xl font-display font-bold text-white">Cronograma de Estudos</h3>
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 text-slate-500 hover:text-white transition-colors"><ChevronRight className="rotate-180" size={20} /></button>
+                              <span className="text-sm font-bold text-white uppercase tracking-widest">Março 2026</span>
+                              <button className="p-2 text-slate-500 hover:text-white transition-colors"><ChevronRight size={20} /></button>
+                            </div>
+                          </div>
+
+                          {/* Add Plan Form */}
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-white/5 border border-white/10 rounded-3xl">
+                            <div className="md:col-span-2">
+                              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2 block">O que estudar?</label>
+                              <input
+                                type="text"
+                                value={newStudyPlanTitle}
+                                onChange={(e) => setNewStudyPlanTitle(e.target.value)}
+                                placeholder="Ex: Revisar React Hooks"
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/50"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2 block">Data</label>
+                              <input
+                                type="date"
+                                value={newStudyPlanDate}
+                                onChange={(e) => setNewStudyPlanDate(e.target.value)}
+                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500/50"
+                              />
+                            </div>
+                            <div className="flex items-end">
+                              <button
+                                onClick={handleAddStudyPlan}
+                                disabled={!newStudyPlanTitle.trim() || !newStudyPlanDate}
+                                className="w-full py-2.5 bg-indigo-500 text-white rounded-xl font-bold hover:bg-indigo-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                              >
+                                <Plus size={18} />
+                                Agendar
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Grouped Plans */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {['Hoje', 'Amanhã', 'Futuro'].map((group) => {
+                              const todayStr = new Date().toISOString().split('T')[0];
+                              const tomorrow = new Date();
+                              tomorrow.setDate(tomorrow.getDate() + 1);
+                              const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+                              const filteredPlans = studyPlans.filter(plan => {
+                                if (group === 'Hoje') return plan.date === todayStr;
+                                if (group === 'Amanhã') return plan.date === tomorrowStr;
+                                return plan.date > tomorrowStr;
+                              });
+
+                              return (
+                                <div key={group} className="space-y-6">
+                                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                                    <h4 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{group}</h4>
+                                    <span className="px-2 py-0.5 bg-white/5 rounded-md text-[10px] font-bold text-slate-500">{filteredPlans.length}</span>
+                                  </div>
+                                  <div className="space-y-4">
+                                    {filteredPlans.map(plan => (
+                                      <div 
+                                        key={plan.id} 
+                                        className={`p-5 rounded-2xl border transition-all group ${
+                                          plan.completed 
+                                            ? 'bg-white/[0.01] border-white/5 opacity-50' 
+                                            : 'bg-white/5 border-white/10 hover:border-indigo-500/30'
+                                        }`}
+                                      >
+                                        <div className="flex items-start justify-between mb-3">
+                                          <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${
+                                            plan.priority === 'High' ? 'bg-rose-500/20 text-rose-400' : 
+                                            plan.priority === 'Medium' ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'
+                                          }`}>
+                                            {plan.priority}
+                                          </div>
+                                          <button 
+                                            onClick={() => handleToggleStudyPlan(plan.id)}
+                                            className={`p-1.5 rounded-lg transition-all ${plan.completed ? 'text-emerald-400 bg-emerald-400/10' : 'text-slate-600 hover:text-white hover:bg-white/10'}`}
+                                          >
+                                            <CheckCircle2 size={16} />
+                                          </button>
+                                        </div>
+                                        <h5 className={`text-sm font-bold mb-1 ${plan.completed ? 'text-slate-500 line-through' : 'text-white'}`}>
+                                          {plan.title}
+                                        </h5>
+                                        <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+                                          {new Date(plan.date + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                                        </p>
+                                      </div>
+                                    ))}
+                                    {filteredPlans.length === 0 && (
+                                      <div className="py-10 text-center border-2 border-dashed border-white/5 rounded-2xl text-slate-700 text-xs italic">
+                                        Nada agendado.
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </main>
+                </div>
+
+                {/* Focus Mode Overlay for Notes */}
+                <AnimatePresence>
+                  {isStudyNoteFocusMode && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 z-[200] bg-bg-dark flex flex-col p-8 md:p-20"
+                    >
+                      <div className="max-w-4xl mx-auto w-full flex-1 flex flex-col">
+                        <div className="flex items-center justify-between mb-12">
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
+                              <Edit2 size={20} />
+                            </div>
+                            <h3 className="text-xl font-display font-bold text-white">
+                              {editingStudyNoteId ? 'Editando Nota' : 'Nova Nota de Estudo'}
+                            </h3>
+                          </div>
+                          <button 
+                            onClick={() => setIsStudyNoteFocusMode(false)}
+                            className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-all"
+                          >
+                            <Minimize2 size={24} />
+                          </button>
+                        </div>
+
+                        <div className="flex-1 flex flex-col gap-6">
+                          <input 
+                            type="text"
+                            placeholder="Título da nota..."
+                            value={activeStudyNoteTitle}
+                            onChange={(e) => setActiveStudyNoteTitle(e.target.value)}
+                            className="bg-transparent border-none focus:ring-0 text-4xl font-display font-bold text-white placeholder-slate-800"
+                          />
+                          
+                          <div className="flex items-center gap-4 py-4 border-y border-white/5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Caderno:</span>
+                              <select 
+                                value={selectedNotebookId || ''}
+                                onChange={(e) => setSelectedNotebookId(e.target.value || null)}
+                                className="bg-white/5 border border-white/10 rounded-lg px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest focus:outline-none focus:border-indigo-500/50"
+                              >
+                                <option value="">Nenhum</option>
+                                {studyNotebooks.map(nb => (
+                                  <option key={nb.id} value={nb.id}>{nb.title}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="h-4 w-px bg-white/5" />
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Palavras:</span>
+                              <span className="text-[10px] font-bold text-indigo-400">{newStudyNote.split(/\s+/).filter(Boolean).length}</span>
+                            </div>
+                          </div>
+
+                          <textarea
+                            value={newStudyNote}
+                            onChange={(e) => setNewStudyNote(e.target.value)}
+                            placeholder="Comece a escrever seu conhecimento aqui... Suporta Markdown."
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-xl text-slate-300 placeholder-slate-800 resize-none leading-relaxed custom-scrollbar py-8"
+                          />
+                        </div>
+
+                        <div className="mt-12 flex items-center justify-between gap-4">
+                          <button
+                            onClick={async () => {
+                              if (!newStudyNote.trim()) return;
+                              try {
+                                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+                                const response = await ai.models.generateContent({
+                                  model: "gemini-3-flash-preview",
+                                  contents: `Resuma esta nota de estudo de forma concisa e profissional, mantendo os pontos principais. Use Markdown.\n\nNota:\n${newStudyNote}`,
+                                });
+                                if (response.text) {
+                                  setNewStudyNote(prev => prev + "\n\n---\n### Resumo IA\n" + response.text);
+                                  showToastWithMsg('Resumo gerado com sucesso!');
+                                }
+                              } catch (error) {
+                                console.error('Erro ao resumir nota:', error);
+                                showToastWithMsg('Erro ao conectar com a IA.');
+                              }
+                            }}
+                            className="px-6 py-4 bg-indigo-500/10 text-indigo-400 rounded-2xl font-bold hover:bg-indigo-500/20 transition-all flex items-center gap-2"
+                          >
+                            <Sparkles size={20} />
+                            Resumir com IA
+                          </button>
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => setIsStudyNoteFocusMode(false)}
+                              className="px-8 py-4 text-slate-500 font-bold hover:text-white transition-all"
+                            >
+                              Descartar
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleSaveStudyNote();
+                                setIsStudyNoteFocusMode(false);
+                              }}
+                              disabled={!newStudyNote.trim() || !activeStudyNoteTitle.trim()}
+                              className="px-10 py-4 bg-white text-black rounded-2xl font-bold hover:bg-slate-200 disabled:opacity-50 transition-all shadow-2xl shadow-white/10 flex items-center gap-3"
+                            >
+                              <Save size={20} />
+                              Finalizar e Salvar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
 
@@ -3251,7 +4628,7 @@ export default function App() {
                 className="max-w-4xl mx-auto space-y-8"
               >
                 {/* Personalização Visual */}
-                <div className="glass-card p-8 rounded-3xl">
+                <div className="glass-card p-6 md:p-8 rounded-3xl">
                   <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
                     <Palette size={24} className="text-roxo-suave" />
                     Personalização Visual
@@ -3266,7 +4643,8 @@ export default function App() {
                         {[
                           { id: 'original', label: 'Dark Mode Original', color: '#1e1e1e' },
                           { id: 'deep', label: 'Deep Black (OLED)', color: '#000000' },
-                          { id: 'navy', label: 'Navy Blue', color: '#0a192f' }
+                          { id: 'navy', label: 'Navy Blue', color: '#0a192f' },
+                          { id: 'light-rose', label: 'Light Rose', color: '#fff5f7' }
                         ].map(t => (
                           <button
                             key={t.id}
@@ -3328,7 +4706,7 @@ export default function App() {
                 </div>
 
                 {/* Perfil e Segurança */}
-                <div className="glass-card p-8 rounded-3xl">
+                <div className="glass-card p-6 md:p-8 rounded-3xl">
                   <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
                     <Shield size={24} className="text-red-400" />
                     Perfil e Segurança
@@ -3407,7 +4785,7 @@ export default function App() {
                 </div>
 
                 {/* Informações do Sistema */}
-                <div className="glass-card p-8 rounded-3xl">
+                <div className="glass-card p-6 md:p-8 rounded-3xl">
                   <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
                     <DbIcon size={24} className="text-blue-400" />
                     Informações do Sistema
@@ -3444,10 +4822,10 @@ export default function App() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-8 right-8 bg-azul-petroleo text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50"
+            className="fixed bottom-8 right-8 bg-azul-petroleo text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-3 z-50 border border-white/10"
           >
-            <CheckCircle2 size={20} />
-            <span className="font-medium">Anotações salvas com sucesso!</span>
+            <CheckCircle2 size={20} className="text-emerald-400" />
+            <span className="font-medium">{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -3456,7 +4834,16 @@ export default function App() {
         billsDueCount={billsDueCount}
         ideas={scratchNotes}
         projectsCount={projects.length}
+        studyTopics={studyTopics}
+        studySessions={studySessions}
+        studyPlans={studyPlans}
+        studyNotes={studyNotes}
+        habits={habits}
+        activeTab={activeTab}
         setActiveTab={setActiveTab}
+        addStudyTopic={addStudyTopic}
+        addStudyNote={addStudyNote}
+        startPomodoro={startPomodoro}
       />
     </div>
   );
