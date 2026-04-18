@@ -1039,6 +1039,7 @@ export default function App() {
   const [newProjectSupabaseEmail, setNewProjectSupabaseEmail] = useState('');
   const [newProjectSupabaseUrl, setNewProjectSupabaseUrl] = useState('');
   const [newProjectUrl, setNewProjectUrl] = useState('');
+  const [newProjectDevLocation, setNewProjectDevLocation] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [projectSaved, setProjectSaved] = useState<Record<string, boolean>>({});
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -1287,7 +1288,8 @@ export default function App() {
       githubUrl: newProjectGithubUrl,
       supabaseEmail: newProjectSupabaseEmail,
       supabaseUrl: newProjectSupabaseUrl,
-      projectUrl: newProjectUrl
+      projectUrl: newProjectUrl,
+      devLocation: newProjectDevLocation
     };
     
     setProjects([newProject, ...projects]);
@@ -1302,6 +1304,7 @@ export default function App() {
     setNewProjectSupabaseEmail('');
     setNewProjectSupabaseUrl('');
     setNewProjectUrl('');
+    setNewProjectDevLocation('');
     setShowAddProject(false);
   };
 
@@ -2339,14 +2342,14 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
+                className="space-y-4 md:space-y-8 p-4 md:p-0 pb-24 md:pb-12"
               >
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                   {/* Calendar Grid */}
-                  <div className="lg:col-span-3 glass-card p-4 md:p-6 rounded-3xl overflow-x-auto">
-                    <div className="min-w-[600px]">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-display font-bold text-white">Março 2026</h3>
+                  <div className="lg:col-span-3 glass-card p-3 md:p-6 rounded-3xl">
+                    <div className="w-full">
+                      <div className="flex justify-between items-center mb-4 md:mb-6">
+                        <h3 className="text-lg md:text-xl font-display font-bold text-white">Março 2026</h3>
                         <div className="flex gap-2">
                           <button 
                             onClick={() => setSelectedDate(null)}
@@ -2362,7 +2365,7 @@ export default function App() {
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-7 gap-2">
+                      <div className="grid grid-cols-7 gap-1 md:gap-2">
                         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
                           <div key={day} className="text-center text-[10px] font-bold text-slate-500 uppercase py-2">{day}</div>
                         ))}
@@ -2378,7 +2381,7 @@ export default function App() {
                             <div 
                               key={day} 
                               onClick={() => setSelectedDate(dateStr)}
-                              className={`aspect-square border rounded-xl p-1 flex flex-col transition-all cursor-pointer group hover:bg-white/10 hover:border-roxo-suave/50 ${
+                              className={`aspect-square border rounded-lg md:rounded-xl p-0.5 md:p-1 flex flex-col transition-all cursor-pointer group hover:bg-white/10 hover:border-roxo-suave/50 ${
                                 selectedDate === dateStr 
                                   ? 'border-roxo-suave bg-roxo-suave/10 shadow-[0_0_15px_rgba(106,90,205,0.3)]' 
                                   : 'border-border-dark/30 bg-transparent'
@@ -2460,17 +2463,17 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
+                className="space-y-4 md:space-y-8 p-4 md:p-0 pb-24 md:pb-12"
               >
                 {/* Financial Summary Cards - CFO KPIs */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div className="glass-card p-6 rounded-3xl border-l-4 border-emerald-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl border-l-4 border-emerald-500">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-500 text-sm font-medium">Saldo Consolidado</span>
-                      <Wallet className="text-emerald-500" size={20} />
+                      <span className="text-slate-500 text-xs md:text-sm font-medium">Saldo Consolidado</span>
+                      <Wallet className="text-emerald-500" size={18} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <h3 className={`text-3xl font-display font-black ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <h3 className={`text-2xl md:text-3xl font-display font-black ${balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                         R$ {balance.toFixed(2).replace('.', ',')}
                       </h3>
                       <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full mb-1">
@@ -2478,13 +2481,13 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                  <div className="glass-card p-6 rounded-3xl border-l-4 border-roxo-suave">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl border-l-4 border-roxo-suave">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-500 text-sm font-medium">Previsão de Gastos</span>
-                      <TrendingUp className="text-roxo-suave" size={20} />
+                      <span className="text-slate-500 text-xs md:text-sm font-medium">Previsão de Gastos</span>
+                      <TrendingUp className="text-roxo-suave" size={18} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <h3 className="text-3xl font-display font-black text-white">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <h3 className="text-2xl md:text-3xl font-display font-black text-white">
                         R$ {(totalExpenses * 1.1).toFixed(2).replace('.', ',')}
                       </h3>
                       <span className="text-[10px] font-bold text-slate-500 bg-slate-500/10 px-2 py-0.5 rounded-full mb-1">
@@ -2492,13 +2495,13 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                  <div className="glass-card p-6 rounded-3xl border-l-4 border-blue-500">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl border-l-4 border-blue-500">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-500 text-sm font-medium">Economia Gerada</span>
-                      <TrendingDown className="text-blue-500" size={20} />
+                      <span className="text-slate-500 text-xs md:text-sm font-medium">Economia Gerada</span>
+                      <TrendingDown className="text-blue-500" size={18} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <h3 className="text-3xl font-display font-black text-white">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <h3 className="text-2xl md:text-3xl font-display font-black text-white">
                         R$ {(totalIncome - totalExpenses > 0 ? (totalIncome - totalExpenses) * 0.2 : 0).toFixed(2).replace('.', ',')}
                       </h3>
                       <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-2 py-0.5 rounded-full mb-1">
@@ -2506,13 +2509,13 @@ export default function App() {
                       </span>
                     </div>
                   </div>
-                  <div className="glass-card p-6 rounded-3xl border-l-4 border-amber-500">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl border-l-4 border-amber-500">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-500 text-sm font-medium">Break-even</span>
-                      <Target className="text-amber-500" size={20} />
+                      <span className="text-slate-500 text-xs md:text-sm font-medium">Break-even</span>
+                      <Target className="text-amber-500" size={18} />
                     </div>
-                    <div className="flex items-end gap-2">
-                      <h3 className="text-3xl font-display font-black text-white">
+                    <div className="flex flex-wrap items-end gap-2">
+                      <h3 className="text-2xl md:text-3xl font-display font-black text-white">
                         R$ {totalExpenses.toFixed(2).replace('.', ',')}
                       </h3>
                       <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full mb-1">
@@ -2523,45 +2526,41 @@ export default function App() {
                 </div>
 
                 {/* Fluxo de Caixa Projetado */}
-                <div className="glass-card p-6 rounded-3xl relative overflow-hidden">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="glass-card p-4 md:p-6 rounded-3xl relative overflow-hidden">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                      <h4 className="text-lg font-display font-bold text-white">Fluxo de Caixa Projetado</h4>
-                      <p className="text-xs text-slate-500">Realizado vs Agendado com Saldo Acumulado</p>
+                      <h4 className="text-base md:text-lg font-display font-bold text-white">Fluxo de Caixa Projetado</h4>
+                      <p className="text-[10px] md:text-xs text-slate-500">Realizado vs Agendado</p>
                     </div>
-                    <div className="flex gap-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-emerald-500 rounded-full" />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Entradas</span>
+                    <div className="flex flex-wrap gap-3 md:gap-4 lg:gap-4">
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-emerald-500 rounded-full" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Entradas</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-rosa-claro rounded-full" />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Saídas</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-1 bg-roxo-suave rounded-full" />
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Saldo Acumulado</span>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-rosa-claro rounded-full" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saídas</span>
                       </div>
                     </div>
                   </div>
-                  <div className="h-64 flex items-end gap-4 px-4 relative">
+                  <div className="h-48 md:h-64 flex items-end gap-2 md:gap-4 px-2 md:px-4 relative">
                     {/* Line for Accumulated Balance (Visual representation) */}
                     <div className="absolute inset-x-0 bottom-1/2 h-0.5 bg-roxo-suave/30 z-0" />
                     
                     {/* Bars */}
                     {[1, 2, 3, 4, 5, 6].map(i => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
-                        <div className="flex gap-1 w-full items-end justify-center">
+                      <div key={i} className="flex-1 flex flex-col items-center gap-1 md:gap-2 h-full justify-end group relative">
+                        <div className="flex gap-0.5 md:gap-1 w-full items-end justify-center">
                           <div 
-                            className={`w-4 bg-emerald-500 rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
+                            className={`w-2 md:w-4 bg-emerald-500 rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
                             style={{ height: `${Math.random() * 80 + 20}%` }}
                           />
                           <div 
-                            className={`w-4 bg-rosa-claro rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
+                            className={`w-2 md:w-4 bg-rosa-claro rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
                             style={{ height: `${Math.random() * 60 + 10}%` }}
                           />
                         </div>
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Mês {i}</span>
+                        <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase">M{i}</span>
                         {i === 5 && (
                           <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-roxo-suave text-white text-[8px] px-2 py-1 rounded-full font-bold whitespace-nowrap">
                             PROJEÇÃO
@@ -2575,18 +2574,18 @@ export default function App() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Left Column: Form and Critical Accounts */}
                   <div className="lg:col-span-1 space-y-6">
-                    <div className="glass-card p-6 rounded-3xl">
-                      <h4 className="text-lg font-display font-bold text-white mb-6 flex items-center gap-2">
-                        <Plus size={20} className="text-roxo-suave" />
+                    <div className="glass-card p-5 md:p-6 rounded-3xl">
+                      <h4 className="text-base md:text-lg font-display font-bold text-white mb-6 flex items-center gap-2">
+                        <Plus size={18} className="text-roxo-suave" />
                         Novo Registro
                       </h4>
                       <TransactionForm onAdd={addTransaction} />
                     </div>
 
                     {/* Contas Críticas */}
-                    <div className="glass-card p-6 rounded-3xl border-t-4 border-red-500">
-                      <h4 className="text-lg font-display font-bold text-white mb-4 flex items-center gap-2">
-                        <AlertCircle size={20} className="text-red-500" />
+                    <div className="glass-card p-5 md:p-6 rounded-3xl border-t-4 border-red-500">
+                      <h4 className="text-base md:text-lg font-display font-bold text-white mb-4 flex items-center gap-2">
+                        <AlertCircle size={18} className="text-red-500" />
                         Contas Críticas
                       </h4>
                       <div className="space-y-3">
@@ -2633,21 +2632,21 @@ export default function App() {
                         ) : (
                           transactions.map(t => (
                             <div key={t.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
-                              <div className="flex items-center gap-4">
-                                <div className={`p-2 rounded-xl ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rosa-claro/10 text-rosa-claro'}`}>
-                                  {t.type === 'income' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+                              <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
+                                <div className={`p-2 rounded-xl flex-shrink-0 ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rosa-claro/10 text-rosa-claro'}`}>
+                                  {t.type === 'income' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
                                 </div>
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-bold text-white">{t.title}</p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                    <p className="text-sm font-bold text-white truncate">{t.title}</p>
                                     <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${t.status === 'Pago' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
                                       {t.status}
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase tracking-wider font-bold">
+                                  <div className="flex flex-wrap items-center gap-x-2 text-[9px] md:text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5 uppercase">
                                     <span>{t.category}</span>
-                                    <span className="opacity-50">•</span>
-                                    <span>{t.paymentMethod || 'PIX'}</span>
+                                    <span className="opacity-50 hidden md:inline">•</span>
+                                    <span className="hidden md:inline">{t.paymentMethod || 'PIX'}</span>
                                     {t.recurrence && t.recurrence !== 'Único' && (
                                       <>
                                         <span className="opacity-50">•</span>
@@ -2656,14 +2655,14 @@ export default function App() {
                                     )}
                                     {t.dueDate && (
                                       <span className="flex items-center gap-1">
-                                        • <Calendar size={10} /> Vence em: {new Date(t.dueDate).toLocaleDateString('pt-BR')}
+                                        • <Calendar size={10} /> {new Date(t.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                                       </span>
                                     )}
                                   </div>
                                 </div>
                               </div>
                               <div className="flex items-center gap-4">
-                                <span className={`font-display font-bold ${t.type === 'income' ? 'text-emerald-500' : 'text-rosa-claro'}`}>
+                                <span className={`font-display font-bold text-sm md:text-base ${t.type === 'income' ? 'text-emerald-500' : 'text-rosa-claro'}`}>
                                   {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
                                 </span>
                                 <button 
@@ -2691,111 +2690,118 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-8"
               >
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
-                    <h2 className="text-3xl font-display font-black text-white">Área do Programador</h2>
-                    <p className="text-slate-500 text-sm">Dashboard Premium Dark Mode</p>
+                    <h2 className="text-3xl font-display font-black text-white bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-500">
+                      Área do Programador
+                    </h2>
+                    <p className="text-slate-500 text-sm flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Dashboard Premium Dark Mode
+                    </p>
                   </div>
-                  <button 
-                    onClick={resetTokens}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all border border-border-dark"
-                  >
-                    <RotateCcw size={16} />
-                    Limpar
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={saveNotes}
+                      className="flex items-center gap-2 px-6 py-2.5 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-roxo-suave/20 group"
+                    >
+                      <Save size={16} className="group-hover:scale-110 transition-transform" />
+                      Salvar Progresso
+                    </button>
+                    <button 
+                      onClick={resetTokens}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all border border-border-dark"
+                    >
+                      <RotateCcw size={16} />
+                      Limpar
+                    </button>
+                  </div>
                 </div>
 
                 {/* Token Radar Panel */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
                   {/* Main Radar */}
-                  <div className="lg:col-span-1 glass-card p-4 rounded-2xl flex flex-col items-center justify-center">
+                  <div className="lg:col-span-2 glass-card p-6 rounded-3xl flex flex-col items-center justify-center relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-roxo-suave/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <Gauge 
                       value={tokens.total} 
                       max={5000} 
                       color="#6a5acd" 
-                      size={80} 
-                      strokeWidth={6} 
-                      label="Total"
+                      size={140} 
+                      strokeWidth={8} 
+                      label="Tokens"
                     />
-                    <p className="text-[10px] uppercase tracking-widest text-slate-500 mt-2 font-bold">Radar Principal</p>
+                    <div className="mt-4 text-center">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mb-1">Status de Performance</p>
+                      <h4 className="text-sm font-display font-bold text-white">Radar Principal</h4>
+                    </div>
                   </div>
 
                   {/* AI Cards */}
-                  <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
+                  <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-4">
                     {tokenCards.map(card => (
                       <motion.button
                         key={card.id}
-                        whileHover={{ scale: 1.02 }}
+                        whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.05)' }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => incrementToken(card.id as keyof Omit<TokenState, 'total'>)}
-                        className="glass-card p-3 md:p-4 rounded-2xl flex items-center justify-between group"
+                        className="glass-card p-5 rounded-2xl flex items-center justify-between group border-l-4"
+                        style={{ borderLeftColor: card.color }}
                       >
                         <div className="text-left">
-                          <div className="p-1.5 md:p-2 bg-slate-800 rounded-lg mb-1 md:mb-2 w-fit">
-                            <card.icon size={14} style={{ color: card.color }} />
+                          <div className="p-2 mb-3 bg-white/5 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                            <card.icon size={18} style={{ color: card.color }} />
                           </div>
-                          <p className="text-[10px] md:text-xs font-bold text-slate-400 group-hover:text-white transition-colors">{card.label}</p>
-                          <p className="text-sm md:text-lg font-display font-black text-white">{tokens[card.id as keyof TokenState]}</p>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
+                          <p className="text-xl font-display font-black text-white">{tokens[card.id as keyof TokenState]}</p>
                         </div>
-                        <Gauge 
-                          value={tokens[card.id as keyof TokenState]} 
-                          max={2000} 
-                          color={card.color} 
-                          size={40} 
-                          strokeWidth={4} 
-                        />
+                        <div className="relative">
+                          <Gauge 
+                            value={tokens[card.id as keyof TokenState]} 
+                            max={2000} 
+                            color={card.color} 
+                            size={50} 
+                            strokeWidth={5} 
+                          />
+                        </div>
                       </motion.button>
                     ))}
                   </div>
-                </div>
-
-                <div className="flex justify-end -mt-4 mb-4">
-                  <button 
-                    onClick={saveNotes}
-                    className="flex items-center gap-2 px-6 py-2 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-roxo-suave/20"
-                  >
-                    <Save size={16} />
-                    Salvar Progresso
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Left Column: Snippets, Logs, Kanban */}
                   <div className="lg:col-span-2 space-y-8">
                     {/* Kanban Board */}
-                    <div className="glass-card p-6 rounded-3xl">
-                      <div className="flex justify-between items-center mb-6">
-                        <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                          <ListTodo size={20} className="text-blue-400" />
-                          Kanban de Micro-Tasks
-                        </h4>
+                    <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
+                      <div className="flex justify-between items-center mb-10">
+                        <div>
+                          <h4 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                            <ListTodo size={24} className="text-blue-400" />
+                            Kanban de Micro-Tasks
+                          </h4>
+                          <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Gestão Ágil de Tarefas</p>
+                        </div>
                         <button 
                           onClick={() => {
                             const title = window.prompt('O que precisa ser feito?');
                             if (title) addKanbanTask(title);
                           }}
-                          className="p-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-xl transition-all"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-xl transition-all font-bold text-xs"
                         >
                           <Plus size={18} />
+                          Nova Task
                         </button>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {(['todo', 'doing', 'done'] as const).map(status => (
-                          <div key={status} className="bg-slate-800/30 p-4 rounded-2xl border border-border-dark/50">
-                            <h5 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center justify-between">
+                          <div key={status} className="bg-slate-900/50 p-5 rounded-2xl border border-white/5">
+                            <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
                               <div className="flex items-center gap-2">
+                                <div className={`w-1.5 h-1.5 rounded-full ${status === 'todo' ? 'bg-red-400' : status === 'doing' ? 'bg-amber-400' : 'bg-emerald-400'}`} />
                                 {status === 'todo' ? 'A Fazer' : status === 'doing' ? 'Fazendo' : 'Feito/Concluído'}
-                                {status === 'done' && (
-                                  <button 
-                                    onClick={saveNotes}
-                                    className="p-1 hover:bg-white/5 rounded text-emerald-500 transition-colors"
-                                    title="Salvar Kanban"
-                                  >
-                                    <Save size={12} />
-                                  </button>
-                                )}
                               </div>
-                              <span className="bg-slate-800 px-2 py-0.5 rounded text-white">{kanbanTasks.filter(t => t.status === status).length}</span>
+                              <span className="bg-bg-dark border border-white/5 px-2 py-0.5 rounded-lg text-white font-mono">{kanbanTasks.filter(t => t.status === status).length}</span>
                             </h5>
                             <div className="space-y-3">
                               {kanbanTasks.filter(t => t.status === status).map(task => (
@@ -3055,6 +3061,16 @@ export default function App() {
                                   value={newProjectTechStack}
                                   onChange={(e) => setNewProjectTechStack(e.target.value)}
                                 />
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Local de Desenvolvimento</label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Ex: VS Code, Cloud IDE, LocalHost..." 
+                                    className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                    value={newProjectDevLocation}
+                                    onChange={(e) => setNewProjectDevLocation(e.target.value)}
+                                  />
+                                </div>
                               </div>
                               <div className="flex gap-2 pt-2">
                                 <button 
@@ -3113,13 +3129,37 @@ export default function App() {
                             </div>
 
                             {project.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-6 leading-relaxed pl-11">
+                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-4 leading-relaxed pl-11">
                                 {project.description}
                               </p>
                             )}
 
+                            {project.devLocation && (
+                              <div className="flex items-center gap-2 pl-11 mb-4">
+                                <Monitor size={12} className="text-roxo-suave" />
+                                <span className="text-[10px] font-bold text-slate-400">Desenvolvido em: {project.devLocation}</span>
+                              </div>
+                            )}
+
                             {/* Connection Lines */}
                             <div className="space-y-3 pl-11 mb-6">
+                              {/* Row 0: Local de Desenvolvimento */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-12">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Local de Desenvolvimento</label>
+                                  <div className="flex items-center gap-2">
+                                    <input 
+                                      type="text" 
+                                      value={project.devLocation || ''}
+                                      onChange={(e) => updateProjectField(project.id, 'devLocation', e.target.value)}
+                                      placeholder="Ex: VS Code, Cloud IDE, LocalHost..."
+                                      className="flex-1 bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                    />
+                                    <Monitor size={12} className="text-roxo-suave opacity-50" />
+                                  </div>
+                                </div>
+                              </div>
+
                               {/* Row 1: Projeto */}
                               <div className="grid grid-cols-12 gap-2 items-center">
                                 <div className="col-span-4">

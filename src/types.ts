@@ -12,6 +12,7 @@ export interface Project {
   supabaseEmail?: string;
   supabaseUrl?: string;
   projectUrl?: string;
+  devLocation?: string;
 }
 
 export interface TokenState {
