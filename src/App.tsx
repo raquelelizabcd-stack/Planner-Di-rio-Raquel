@@ -841,6 +841,8 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
 };
 
 export default function App() {
+  const [isEditingTokens, setIsEditingTokens] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [projects, setProjects] = useState<Project[]>([]);
   const [tokens, setTokens] = useState<TokenState>({
@@ -1262,6 +1264,17 @@ export default function App() {
     });
   };
 
+  const setTokenValue = (key: keyof Omit<TokenState, 'total'>, value: number) => {
+    setTokens(prev => {
+      const diff = value - prev[key];
+      return {
+        ...prev,
+        [key]: value,
+        total: prev.total + diff
+      };
+    });
+  };
+
   const resetTokens = () => {
     setTokens({
       total: 0,
@@ -1272,28 +1285,78 @@ export default function App() {
     });
   };
 
+  const startEditingProject = (project: Project) => {
+    setEditingProjectId(project.id);
+    setNewProjectTitle(project.title);
+    setNewProjectDesc(project.description);
+    setNewProjectStartDate(project.startDate || '');
+    setNewProjectDeadline(project.deadline || '');
+    setNewProjectTechStack(project.techStack ? project.techStack.join(', ') : '');
+    setNewProjectGithubEmail(project.githubEmail || '');
+    setNewProjectGithubUrl(project.githubUrl || '');
+    setNewProjectSupabaseEmail(project.supabaseEmail || '');
+    setNewProjectSupabaseUrl(project.supabaseUrl || '');
+    setNewProjectUrl(project.projectUrl || '');
+    setNewProjectDevLocation(project.devLocation || '');
+    setShowAddProject(true);
+  };
+
   const addProject = () => {
     if (!newProjectTitle.trim()) return;
     
-    const newProject: Project = {
-      id: Date.now().toString(),
-      title: newProjectTitle,
-      description: newProjectDesc,
-      status: 'ongoing',
-      startDate: newProjectStartDate || undefined,
-      deadline: newProjectDeadline || undefined,
-      techStack: newProjectTechStack ? newProjectTechStack.split(',').map(s => s.trim()) : undefined,
-      createdAt: Date.now(),
-      githubEmail: newProjectGithubEmail,
-      githubUrl: newProjectGithubUrl,
-      supabaseEmail: newProjectSupabaseEmail,
-      supabaseUrl: newProjectSupabaseUrl,
-      projectUrl: newProjectUrl,
-      devLocation: newProjectDevLocation
-    };
+    if (editingProjectId) {
+      // Update existing project
+      const updatedProjects = projects.map(p => {
+        if (p.id === editingProjectId) {
+          return {
+            ...p,
+            title: newProjectTitle,
+            description: newProjectDesc,
+            startDate: newProjectStartDate || undefined,
+            deadline: newProjectDeadline || undefined,
+            techStack: newProjectTechStack ? newProjectTechStack.split(',').map(s => s.trim()) : undefined,
+            githubEmail: newProjectGithubEmail,
+            githubUrl: newProjectGithubUrl,
+            supabaseEmail: newProjectSupabaseEmail,
+            supabaseUrl: newProjectSupabaseUrl,
+            projectUrl: newProjectUrl,
+            devLocation: newProjectDevLocation
+          };
+        }
+        return p;
+      });
+      setProjects(updatedProjects);
+      const updated = updatedProjects.find(p => p.id === editingProjectId);
+      if (updated) {
+        dataService.saveProject(updated).then(() => {
+          showToastWithMsg('Projeto atualizado com sucesso');
+        }).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+      }
+      setEditingProjectId(null);
+    } else {
+      // Create new project
+      const newProject: Project = {
+        id: Date.now().toString(),
+        title: newProjectTitle,
+        description: newProjectDesc,
+        status: 'ongoing',
+        startDate: newProjectStartDate || undefined,
+        deadline: newProjectDeadline || undefined,
+        techStack: newProjectTechStack ? newProjectTechStack.split(',').map(s => s.trim()) : undefined,
+        createdAt: Date.now(),
+        githubEmail: newProjectGithubEmail,
+        githubUrl: newProjectGithubUrl,
+        supabaseEmail: newProjectSupabaseEmail,
+        supabaseUrl: newProjectSupabaseUrl,
+        projectUrl: newProjectUrl,
+        devLocation: newProjectDevLocation
+      };
+      
+      setProjects([newProject, ...projects]);
+      dataService.saveProject(newProject).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+    }
     
-    setProjects([newProject, ...projects]);
-    dataService.saveProject(newProject).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+    // Reset form fields
     setNewProjectTitle('');
     setNewProjectDesc('');
     setNewProjectStartDate('');
@@ -2737,41 +2800,424 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* AI Cards */}
-                  <div className="lg:col-span-4 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                    {tokenCards.map(card => (
-                      <motion.button
-                        key={card.id}
-                        whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => incrementToken(card.id as keyof Omit<TokenState, 'total'>)}
-                        className="glass-card p-5 rounded-2xl flex items-center justify-between group border-l-4"
-                        style={{ borderLeftColor: card.color }}
-                      >
-                        <div className="text-left">
-                          <div className="p-2 mb-3 bg-white/5 rounded-xl w-fit group-hover:scale-110 transition-transform">
-                            <card.icon size={18} style={{ color: card.color }} />
+                  {/* AI Cards Column */}
+                  <div className="lg:col-span-4 flex flex-col gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                      {tokenCards.map(card => (
+                        <motion.button
+                          key={card.id}
+                          whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.05)' }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            if (isEditingTokens) {
+                              const val = prompt(`Novo valor para ${card.label}:`, tokens[card.id as keyof TokenState].toString());
+                              if (val !== null && !isNaN(parseInt(val))) {
+                                setTokenValue(card.id as keyof Omit<TokenState, 'total'>, parseInt(val));
+                              }
+                            } else {
+                              incrementToken(card.id as keyof Omit<TokenState, 'total'>)
+                            }
+                          }}
+                          className={`glass-card p-5 rounded-2xl flex items-center justify-between group border-l-4 transition-all ${isEditingTokens ? 'ring-2 ring-roxo-suave/50' : ''}`}
+                          style={{ borderLeftColor: card.color }}
+                        >
+                          <div className="text-left">
+                            <div className="p-2 mb-3 bg-white/5 rounded-xl w-fit group-hover:scale-110 transition-transform">
+                              <card.icon size={18} style={{ color: card.color }} />
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
+                            <p className="text-xl font-display font-black text-white">{tokens[card.id as keyof TokenState]}</p>
                           </div>
-                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
-                          <p className="text-xl font-display font-black text-white">{tokens[card.id as keyof TokenState]}</p>
-                        </div>
-                        <div className="relative">
-                          <Gauge 
-                            value={tokens[card.id as keyof TokenState]} 
-                            max={2000} 
-                            color={card.color} 
-                            size={50} 
-                            strokeWidth={5} 
-                          />
-                        </div>
-                      </motion.button>
-                    ))}
+                          <div className="relative">
+                            <Gauge 
+                              value={tokens[card.id as keyof TokenState]} 
+                              max={2000} 
+                              color={card.color} 
+                              size={50} 
+                              strokeWidth={5} 
+                            />
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                    
+                    {/* Botão de Editar solicitado no screenshot */}
+                    <div className="flex justify-start">
+                      <button 
+                        onClick={() => setIsEditingTokens(!isEditingTokens)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          isEditingTokens 
+                            ? 'bg-roxo-suave text-white border-roxo-suave shadow-lg shadow-roxo-suave/20' 
+                            : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/5'
+                        }`}
+                      >
+                        <Edit2 size={14} />
+                        {isEditingTokens ? 'Concluir' : 'Editar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left Column: Snippets, Logs, Kanban */}
+                  {/* Left Column: Projects, Kanban, Snippets */}
                   <div className="lg:col-span-2 space-y-8">
+                    {/* Galeria de Projetos */}
+                    <div className="glass-card p-6 rounded-3xl">
+                      <div className="flex justify-between items-center mb-6">
+                        <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                          <FolderOpen size={20} className="text-pink-500" />
+                          Galeria de Projetos
+                        </h4>
+                        <button 
+                          onClick={() => {
+                            setEditingProjectId(null);
+                            setNewProjectTitle('');
+                            setNewProjectDesc('');
+                            setNewProjectStartDate('');
+                            setNewProjectDeadline('');
+                            setNewProjectTechStack('');
+                            setNewProjectGithubEmail('');
+                            setNewProjectGithubUrl('');
+                            setNewProjectSupabaseEmail('');
+                            setNewProjectSupabaseUrl('');
+                            setNewProjectUrl('');
+                            setNewProjectDevLocation('');
+                            setShowAddProject(true);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-500 rounded-xl transition-all font-bold text-xs"
+                          title="Adicionar Novo Projeto"
+                        >
+                          <Plus size={18} />
+                          Novo Projeto
+                        </button>
+                      </div>
+
+                      <AnimatePresence>
+                        {showAddProject && activeTab === 'programmer' && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden mb-6"
+                          >
+                            <div className="p-6 bg-white/5 rounded-2xl border border-border-dark space-y-4">
+                              <div className="space-y-4">
+                                <input 
+                                  type="text" 
+                                  placeholder="Título do Projeto" 
+                                  className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                  value={newProjectTitle}
+                                  onChange={(e) => setNewProjectTitle(e.target.value)}
+                                />
+                                <textarea 
+                                  placeholder="Descrição do Projeto" 
+                                  className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white h-24 resize-none"
+                                  value={newProjectDesc}
+                                  onChange={(e) => setNewProjectDesc(e.target.value)}
+                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">GitHub (E-mail)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="E-mail" 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectGithubEmail}
+                                      onChange={(e) => setNewProjectGithubEmail(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">GitHub (Link)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="https://github.com/..." 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectGithubUrl}
+                                      onChange={(e) => setNewProjectGithubUrl(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Supabase (E-mail)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="E-mail" 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectSupabaseEmail}
+                                      onChange={(e) => setNewProjectSupabaseEmail(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Supabase (Link)</label>
+                                    <input 
+                                      type="text" 
+                                      placeholder="https://supabase.com/..." 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectSupabaseUrl}
+                                      onChange={(e) => setNewProjectSupabaseUrl(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">URL do Projeto (Deploy)</label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="https://..." 
+                                    className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                    value={newProjectUrl}
+                                    onChange={(e) => setNewProjectUrl(e.target.value)}
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Data de Início</label>
+                                    <input 
+                                      type="date" 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectStartDate}
+                                      onChange={(e) => setNewProjectStartDate(e.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Prazo Final</label>
+                                    <input 
+                                      type="date" 
+                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                      value={newProjectDeadline}
+                                      onChange={(e) => setNewProjectDeadline(e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <input 
+                                  type="text" 
+                                  placeholder="Tech Stack (separado por vírgula)" 
+                                  className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                  value={newProjectTechStack}
+                                  onChange={(e) => setNewProjectTechStack(e.target.value)}
+                                />
+                                <div className="space-y-1">
+                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Local de Desenvolvimento</label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="Ex: VS Code, Cloud IDE, LocalHost..." 
+                                    className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
+                                    value={newProjectDevLocation}
+                                    onChange={(e) => setNewProjectDevLocation(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex gap-2 pt-2">
+                                <button 
+                                  onClick={addProject}
+                                  className="flex-1 bg-roxo-suave text-white py-2 rounded-xl text-sm font-bold hover:bg-roxo-suave/80 transition-colors"
+                                >
+                                  {editingProjectId ? 'Atualizar Projeto' : 'Criar Projeto'}
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setShowAddProject(false);
+                                    setEditingProjectId(null);
+                                  }}
+                                  className="px-4 py-2 text-slate-500 hover:text-slate-300 text-sm font-medium"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        {filteredProjects.map(project => (
+                          <div key={project.id} className="p-6 bg-white/5 rounded-2xl border border-border-dark flex flex-col group hover:bg-white/10 transition-all relative overflow-hidden">
+                            <div className={`absolute top-0 left-0 w-1 h-full ${project.status === 'ongoing' ? 'bg-roxo-suave' : 'bg-emerald-500'}`} />
+                            
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${project.status === 'ongoing' ? 'bg-roxo-suave/10 text-roxo-suave' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                                  {project.status === 'ongoing' ? <Clock size={16} /> : <CheckCircle2 size={16} />}
+                                </div>
+                                <div className="cursor-pointer" onClick={() => project.projectUrl && window.open(project.projectUrl, '_blank')}>
+                                  <h5 className="text-sm font-bold text-white group-hover:text-roxo-suave transition-colors">{project.title}</h5>
+                                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
+                                    {project.status === 'ongoing' ? 'Em progresso' : 'Concluído'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={() => toggleProjectStatus(project.id)}
+                                  className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-roxo-suave transition-colors"
+                                  title={project.status === 'ongoing' ? 'Concluir' : 'Reabrir'}
+                                >
+                                  <CheckCircle2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (window.confirm('Excluir projeto?')) deleteProject(project.id);
+                                  }}
+                                  className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {project.description && (
+                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-4 leading-relaxed pl-11">
+                                {project.description}
+                              </p>
+                            )}
+
+                            {project.devLocation && (
+                              <div className="flex items-center gap-2 pl-11 mb-4 text-roxo-suave/80">
+                                <Monitor size={12} />
+                                <span className="text-[10px] font-bold uppercase tracking-wider">Dev: {project.devLocation}</span>
+                              </div>
+                            )}
+
+                            {/* Connection Lines */}
+                            <div className="space-y-3 pl-11 mb-6">
+                              {/* Row 1: Projeto */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-4">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Projeto</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.title}
+                                    onChange={(e) => updateProjectField(project.id, 'title', e.target.value)}
+                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-7">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">URL Repositório/Deploy</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.projectUrl || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'projectUrl', e.target.value)}
+                                    placeholder="https://..."
+                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <button 
+                                    onClick={() => project.projectUrl && window.open(project.projectUrl, '_blank')}
+                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
+                                    title="Abrir Link"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 2: GitHub */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-4">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">GitHub (E-mail)</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.githubEmail || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'githubEmail', e.target.value)}
+                                    placeholder="E-mail"
+                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-7">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Link Perfil/Repo</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.githubUrl || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'githubUrl', e.target.value)}
+                                    placeholder="https://github.com/..."
+                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-1 flex justify-end">
+                                  <button 
+                                    onClick={() => project.githubUrl && window.open(project.githubUrl, '_blank')}
+                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
+                                    title="Abrir Link"
+                                  >
+                                    <ExternalLink size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 3: Dev Location */}
+                              <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-4">
+                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Local Dev</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.devLocation || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'devLocation', e.target.value)}
+                                    placeholder="VS Code, Cloud IDE..."
+                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                  />
+                                </div>
+                                <div className="col-span-8">
+                                  {/* Empty space for alignment or future fields */}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-auto pl-11">
+                              <div className="flex gap-2">
+                                {project.deadline && (
+                                  <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <Calendar size={10} />
+                                    {new Date(project.deadline).toLocaleDateString('pt-BR')}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <button 
+                                  onClick={() => startEditingProject(project)}
+                                  className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all"
+                                  title="Editar Detalhes"
+                                >
+                                  <Edit2 size={12} /> Editar
+                                </button>
+                                <button 
+                                  onClick={() => handleSaveProject(project.id)}
+                                  className={`p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-bold ${
+                                    projectSaved[project.id]
+                                      ? 'bg-emerald-500 text-white'
+                                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500'
+                                  }`}
+                                  title="Salvar Alterações"
+                                >
+                                  {projectSaved[project.id] ? <Check size={14} /> : <Save size={14} />}
+                                  {projectSaved[project.id] ? 'Salvo' : 'Salvar'}
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    if (project.projectUrl) {
+                                      window.open(project.projectUrl, '_blank');
+                                    } else {
+                                      showToastWithMsg('URL do projeto não definida');
+                                    }
+                                  }}
+                                  className="bg-roxo-suave hover:bg-roxo-suave/80 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all"
+                                >
+                                  Abrir Projeto <ExternalLink size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {filteredProjects.length === 0 && (
+                          <div className="py-12 text-center border-2 border-dashed border-border-dark rounded-2xl">
+                            <FolderOpen size={32} className="text-slate-700 mx-auto mb-3" />
+                            <p className="text-slate-600 text-sm italic">Nenhum projeto encontrado.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Kanban Board */}
                     <div className="glass-card p-8 rounded-3xl relative overflow-hidden">
                       <div className="flex justify-between items-center mb-10">
@@ -2938,366 +3384,6 @@ export default function App() {
                             </div>
                           ))}
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Galeria de Projetos */}
-                    <div className="glass-card p-6 rounded-3xl">
-                      <div className="flex justify-between items-center mb-6">
-                        <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                          <FolderOpen size={20} className="text-pink-500" />
-                          Galeria de Projetos
-                        </h4>
-                        <button 
-                          onClick={() => setShowAddProject(true)}
-                          className="p-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-500 rounded-xl transition-all"
-                          title="Adicionar Novo Projeto"
-                        >
-                          <Plus size={18} />
-                        </button>
-                      </div>
-
-                      <AnimatePresence>
-                        {showAddProject && activeTab === 'programmer' && (
-                          <motion.div 
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden mb-6"
-                          >
-                            <div className="p-6 bg-white/5 rounded-2xl border border-border-dark space-y-4">
-                              <div className="space-y-4">
-                                <input 
-                                  type="text" 
-                                  placeholder="Título do Projeto" 
-                                  className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                  value={newProjectTitle}
-                                  onChange={(e) => setNewProjectTitle(e.target.value)}
-                                />
-                                <textarea 
-                                  placeholder="Descrição do Projeto" 
-                                  className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white h-24 resize-none"
-                                  value={newProjectDesc}
-                                  onChange={(e) => setNewProjectDesc(e.target.value)}
-                                />
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">GitHub (E-mail)</label>
-                                    <input 
-                                      type="text" 
-                                      placeholder="E-mail" 
-                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                      value={newProjectGithubEmail}
-                                      onChange={(e) => setNewProjectGithubEmail(e.target.value)}
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">GitHub (Link)</label>
-                                    <input 
-                                      type="text" 
-                                      placeholder="https://github.com/..." 
-                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                      value={newProjectGithubUrl}
-                                      onChange={(e) => setNewProjectGithubUrl(e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Supabase (E-mail)</label>
-                                    <input 
-                                      type="text" 
-                                      placeholder="E-mail" 
-                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                      value={newProjectSupabaseEmail}
-                                      onChange={(e) => setNewProjectSupabaseEmail(e.target.value)}
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Supabase (Link)</label>
-                                    <input 
-                                      type="text" 
-                                      placeholder="https://supabase.com/..." 
-                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                      value={newProjectSupabaseUrl}
-                                      onChange={(e) => setNewProjectSupabaseUrl(e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">URL do Projeto (Deploy)</label>
-                                  <input 
-                                    type="text" 
-                                    placeholder="https://..." 
-                                    className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                    value={newProjectUrl}
-                                    onChange={(e) => setNewProjectUrl(e.target.value)}
-                                  />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Data de Início</label>
-                                    <input 
-                                      type="date" 
-                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                      value={newProjectStartDate}
-                                      onChange={(e) => setNewProjectStartDate(e.target.value)}
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Prazo Final</label>
-                                    <input 
-                                      type="date" 
-                                      className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                      value={newProjectDeadline}
-                                      onChange={(e) => setNewProjectDeadline(e.target.value)}
-                                    />
-                                  </div>
-                                </div>
-                                <input 
-                                  type="text" 
-                                  placeholder="Tech Stack (separado por vírgula)" 
-                                  className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                  value={newProjectTechStack}
-                                  onChange={(e) => setNewProjectTechStack(e.target.value)}
-                                />
-                                <div className="space-y-1">
-                                  <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Local de Desenvolvimento</label>
-                                  <input 
-                                    type="text" 
-                                    placeholder="Ex: VS Code, Cloud IDE, LocalHost..." 
-                                    className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white"
-                                    value={newProjectDevLocation}
-                                    onChange={(e) => setNewProjectDevLocation(e.target.value)}
-                                  />
-                                </div>
-                              </div>
-                              <div className="flex gap-2 pt-2">
-                                <button 
-                                  onClick={addProject}
-                                  className="flex-1 bg-roxo-suave text-white py-2 rounded-xl text-sm font-bold hover:bg-roxo-suave/80 transition-colors"
-                                >
-                                  Criar Projeto
-                                </button>
-                                <button 
-                                  onClick={() => setShowAddProject(false)}
-                                  className="px-4 py-2 text-slate-500 hover:text-slate-300 text-sm font-medium"
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
-                      <div className="grid grid-cols-1 gap-6">
-                        {filteredProjects.map(project => (
-                          <div key={project.id} className="p-6 bg-white/5 rounded-2xl border border-border-dark flex flex-col group hover:bg-white/10 transition-all relative overflow-hidden">
-                            <div className={`absolute top-0 left-0 w-1 h-full ${project.status === 'ongoing' ? 'bg-roxo-suave' : 'bg-emerald-500'}`} />
-                            
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${project.status === 'ongoing' ? 'bg-roxo-suave/10 text-roxo-suave' : 'bg-emerald-500/10 text-emerald-500'}`}>
-                                  {project.status === 'ongoing' ? <Clock size={16} /> : <CheckCircle2 size={16} />}
-                                </div>
-                                <div>
-                                  <h5 className="text-sm font-bold text-white group-hover:text-roxo-suave transition-colors">{project.title}</h5>
-                                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-widest">
-                                    {project.status === 'ongoing' ? 'Em progresso' : 'Concluído'}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                  onClick={() => toggleProjectStatus(project.id)}
-                                  className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-roxo-suave transition-colors"
-                                  title={project.status === 'ongoing' ? 'Concluir' : 'Reabrir'}
-                                >
-                                  <CheckCircle2 size={14} />
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    if (window.confirm('Excluir projeto?')) deleteProject(project.id);
-                                  }}
-                                  className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
-                                  title="Excluir"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </div>
-
-                            {project.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-4 leading-relaxed pl-11">
-                                {project.description}
-                              </p>
-                            )}
-
-                            {project.devLocation && (
-                              <div className="flex items-center gap-2 pl-11 mb-4">
-                                <Monitor size={12} className="text-roxo-suave" />
-                                <span className="text-[10px] font-bold text-slate-400">Desenvolvido em: {project.devLocation}</span>
-                              </div>
-                            )}
-
-                            {/* Connection Lines */}
-                            <div className="space-y-3 pl-11 mb-6">
-                              {/* Row 0: Local de Desenvolvimento */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-12">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Local de Desenvolvimento</label>
-                                  <div className="flex items-center gap-2">
-                                    <input 
-                                      type="text" 
-                                      value={project.devLocation || ''}
-                                      onChange={(e) => updateProjectField(project.id, 'devLocation', e.target.value)}
-                                      placeholder="Ex: VS Code, Cloud IDE, LocalHost..."
-                                      className="flex-1 bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                    />
-                                    <Monitor size={12} className="text-roxo-suave opacity-50" />
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Row 1: Projeto */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-4">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Projeto</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.title}
-                                    onChange={(e) => updateProjectField(project.id, 'title', e.target.value)}
-                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
-                                </div>
-                                <div className="col-span-7">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">URL Repositório/Deploy</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.projectUrl || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'projectUrl', e.target.value)}
-                                    placeholder="https://..."
-                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
-                                </div>
-                                <div className="col-span-1 flex justify-end">
-                                  <button 
-                                    onClick={() => project.projectUrl && window.open(project.projectUrl, '_blank')}
-                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
-                                    title="Abrir Link"
-                                  >
-                                    <ExternalLink size={12} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Row 2: GitHub */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-4">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">GitHub (E-mail)</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.githubEmail || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'githubEmail', e.target.value)}
-                                    placeholder="E-mail"
-                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
-                                </div>
-                                <div className="col-span-7">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Link Perfil/Repo</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.githubUrl || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'githubUrl', e.target.value)}
-                                    placeholder="https://github.com/..."
-                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
-                                </div>
-                                <div className="col-span-1 flex justify-end">
-                                  <button 
-                                    onClick={() => project.githubUrl && window.open(project.githubUrl, '_blank')}
-                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
-                                    title="Abrir Link"
-                                  >
-                                    <ExternalLink size={12} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Row 3: Supabase */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-4">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Supabase (E-mail)</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.supabaseEmail || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'supabaseEmail', e.target.value)}
-                                    placeholder="E-mail"
-                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
-                                </div>
-                                <div className="col-span-7">
-                                  <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Link Dashboard</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.supabaseUrl || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'supabaseUrl', e.target.value)}
-                                    placeholder="https://supabase.com/..."
-                                    className="w-full bg-slate-800/50 border border-border-dark rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
-                                </div>
-                                <div className="col-span-1 flex justify-end">
-                                  <button 
-                                    onClick={() => project.supabaseUrl && window.open(project.supabaseUrl, '_blank')}
-                                    className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
-                                    title="Abrir Link"
-                                  >
-                                    <ExternalLink size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center justify-between mt-auto pl-11">
-                              <div className="flex gap-2">
-                                {project.deadline && (
-                                  <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                    <Calendar size={10} />
-                                    {new Date(project.deadline).toLocaleDateString('pt-BR')}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <button 
-                                  onClick={() => handleSaveProject(project.id)}
-                                  className={`p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-bold ${
-                                    projectSaved[project.id]
-                                      ? 'bg-emerald-500 text-white'
-                                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500'
-                                  }`}
-                                  title="Salvar Alterações"
-                                >
-                                  {projectSaved[project.id] ? <Check size={14} /> : <Save size={14} />}
-                                  {projectSaved[project.id] ? 'Salvo' : 'Salvar'}
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    setActiveTab('programmer');
-                                  }}
-                                  className="text-roxo-suave flex items-center gap-1 text-[10px] font-bold hover:gap-2 transition-all"
-                                >
-                                  Abrir <ChevronRight size={12} />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                        {filteredProjects.length === 0 && (
-                          <div className="col-span-full py-12 text-center border-2 border-dashed border-border-dark rounded-2xl">
-                            <p className="text-slate-600 text-sm italic">Nenhum projeto encontrado.</p>
-                          </div>
-                        )}
                       </div>
                     </div>
 
