@@ -94,6 +94,8 @@ import {
   Tooltip as RechartsTooltip 
 } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
+import { supabase } from './lib/supabase';
+import { dataService } from './services/dataService';
 import { 
   Project, 
   TabType, 
@@ -745,13 +747,29 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (email === 'raquelelizabcd@gmail.com' && password === 'Joao@21226900') {
-      onLogin();
-    } else {
-      setError('E-mail ou senha incorretos. Tente raquelelizabcd@gmail.com / Joao@21226900');
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError) throw authError;
+
+      if (data.user) {
+        onLogin();
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Erro ao fazer login. Verifique seu e-mail e senha.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -799,16 +817,16 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
                 required
               />
             </div>
-            <p className="text-[10px] text-blue-400 font-bold text-center mt-1">coloque a senha para entrar: Joao@21226900</p>
           </div>
 
           {error && <p className="text-red-400 text-[10px] text-center font-bold leading-tight">{error}</p>}
 
           <button 
             type="submit"
-            className="w-full py-4 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-2xl font-bold shadow-lg shadow-roxo-suave/20 transition-all active:scale-95"
+            disabled={loading}
+            className={`w-full py-4 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-2xl font-bold shadow-lg shadow-roxo-suave/20 transition-all active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            Entrar no Sistema
+            {loading ? 'Entrando...' : 'Entrar no Sistema'}
           </button>
         </form>
 
@@ -967,7 +985,7 @@ export default function App() {
   const [debugNotes, setDebugNotes] = useState<string>('');
   const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
   const [isPomodoroActive, setIsPomodoroActive] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -1082,6 +1100,43 @@ export default function App() {
       ]);
     }
     if (savedDiary) setDiaryEntries(JSON.parse(savedDiary));
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsAuthenticated(true);
+        initSupabase();
+      } else {
+        setIsAuthenticated(false);
+      }
+    });
+
+    // Check current session
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setIsAuthenticated(true);
+        initSupabase();
+      }
+    };
+
+    const initSupabase = async () => {
+      try {
+        const [supaProjects, supaReminders] = await Promise.all([
+          dataService.fetchProjects(),
+          dataService.fetchReminders()
+        ]);
+        if (supaProjects.length > 0) setProjects(supaProjects);
+        if (supaReminders.length > 0) setKanbanTasks(supaReminders);
+      } catch (err) {
+        console.error('Failed to load Supabase data:', err);
+      }
+    };
+    checkSession();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Save data to localStorage
@@ -1236,6 +1291,7 @@ export default function App() {
     };
     
     setProjects([newProject, ...projects]);
+    dataService.saveProject(newProject).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
     setNewProjectTitle('');
     setNewProjectDesc('');
     setNewProjectStartDate('');
@@ -1250,7 +1306,12 @@ export default function App() {
   };
 
   const updateProjectField = (id: string, field: keyof Project, value: any) => {
-    setProjects(projects.map(p => p.id === id ? { ...p, [field]: value } : p));
+    const updatedProjects: Project[] = projects.map(p => p.id === id ? { ...p, [field]: value } as Project : p);
+    setProjects(updatedProjects);
+    const updatedProject = updatedProjects.find(p => p.id === id);
+    if (updatedProject) {
+      dataService.saveProject(updatedProject).catch(err => showToastWithMsg('Erro ao atualizar no banco de dados'));
+    }
   };
 
   const handleSaveProject = (id: string) => {
@@ -1262,13 +1323,19 @@ export default function App() {
   };
 
   const toggleProjectStatus = (id: string) => {
-    setProjects(projects.map(p => 
-      p.id === id ? { ...p, status: p.status === 'ongoing' ? 'completed' : 'ongoing' } : p
-    ));
+    const updatedProjects: Project[] = projects.map(p => 
+      p.id === id ? { ...p, status: p.status === 'ongoing' ? 'completed' : 'ongoing' } as Project : p
+    );
+    setProjects(updatedProjects);
+    const updatedProject = updatedProjects.find(p => p.id === id);
+    if (updatedProject) {
+      dataService.saveProject(updatedProject).catch(err => showToastWithMsg('Erro ao mudar status no banco de dados'));
+    }
   };
 
   const deleteProject = (id: string) => {
     setProjects(projects.filter(p => p.id !== id));
+    dataService.deleteProject(id).catch(err => showToastWithMsg('Erro ao excluir do banco de dados'));
   };
 
   const addTransaction = (
@@ -1488,14 +1555,21 @@ export default function App() {
   const addKanbanTask = (title: string) => {
     const newTask: KanbanTask = { id: Date.now().toString(), title, status: 'todo' };
     setKanbanTasks([...kanbanTasks, newTask]);
+    dataService.saveReminder(newTask).catch(err => showToastWithMsg('Erro ao salvar lembrete no banco de dados'));
   };
 
   const moveKanbanTask = (id: string, status: KanbanTask['status']) => {
-    setKanbanTasks(kanbanTasks.map(t => t.id === id ? { ...t, status } : t));
+    const updatedTasks: KanbanTask[] = kanbanTasks.map(t => t.id === id ? { ...t, status } as KanbanTask : t);
+    setKanbanTasks(updatedTasks);
+    const updatedTask = updatedTasks.find(t => t.id === id);
+    if (updatedTask) {
+      dataService.saveReminder(updatedTask).catch(err => showToastWithMsg('Erro ao mover lembrete no banco de dados'));
+    }
   };
 
   const deleteKanbanTask = (id: string) => {
     setKanbanTasks(kanbanTasks.filter(t => t.id !== id));
+    dataService.deleteReminder(id).catch(err => showToastWithMsg('Erro ao excluir lembrete do banco de dados'));
   };
 
   // Study Handlers
@@ -1723,7 +1797,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           />
         )}
       </AnimatePresence>
@@ -1732,43 +1806,52 @@ export default function App() {
       <aside 
         className={`
           fixed inset-y-0 left-0 z-50 transition-all duration-300 
-          ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 -translate-x-full md:w-20 md:translate-x-0'}
-          flex flex-col bg-bg-card border-r border-border-dark
+          ${isSidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:w-20'}
+          flex flex-col bg-bg-card border-r border-border-dark overflow-hidden
         `}
       >
-        <div className={`p-6 flex items-center justify-between ${isSidebarOpen ? 'bg-white/5 border-b border-white/5 mb-4' : 'md:justify-center md:px-0'}`}>
-          {isSidebarOpen && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="px-4 py-2 bg-gradient-to-r from-roxo-suave to-rosa-claro rounded-xl shadow-lg shadow-roxo-suave/20"
+        <div className={`p-6 flex items-center justify-between ${isSidebarOpen ? 'bg-white/5 border-b border-white/5 mb-4' : 'lg:justify-center lg:px-0'}`}>
+            {isSidebarOpen && (
+              <div className="flex items-center gap-2">
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="px-4 py-2 bg-gradient-to-r from-roxo-suave to-rosa-claro rounded-xl shadow-lg shadow-roxo-suave/20"
+                >
+                  <h1 className="text-sm font-display font-bold text-white whitespace-nowrap">
+                    Planner Diário Raquel
+                  </h1>
+                </motion.div>
+                {/* Mobile Close Button */}
+                <button 
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="lg:hidden p-2 hover:bg-white/10 rounded-xl transition-colors text-white"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            )}
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="hidden lg:block p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
             >
-              <h1 className="text-sm font-display font-bold text-white whitespace-nowrap">
-                Planner Diário Raquel
-              </h1>
-            </motion.div>
-          )}
-          <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
-          >
-            {isSidebarOpen ? <X size={20} /> : <Menu size={20} className="hidden md:block" />}
-          </button>
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
         </div>
 
-        <nav className={`flex-1 px-3 space-y-2 overflow-y-auto custom-scrollbar ${!isSidebarOpen && 'md:px-2'}`}>
+        <nav className={`flex-1 px-3 pt-4 pb-20 space-y-1.5 overflow-y-auto custom-scrollbar ${!isSidebarOpen && 'lg:px-2'}`}>
           {sidebarItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
                 setActiveTab(item.id as TabType);
-                if (window.innerWidth < 768) setIsSidebarOpen(false);
+                if (window.innerWidth < 1024) setIsSidebarOpen(false);
               }}
-              className={`w-full flex items-center p-3 rounded-xl transition-all group ${
+              className={`w-full flex items-center p-3 sm:p-3.5 rounded-xl transition-all group ${
                 activeTab === item.id 
-                  ? 'bg-roxo-suave/20 text-roxo-suave shadow-inner' 
-                  : 'text-slate-500 hover:bg-border-dark/50'
-              } ${!isSidebarOpen && 'md:justify-center'}`}
+                  ? 'bg-roxo-suave/15 text-roxo-suave' 
+                  : 'text-slate-500 hover:bg-white/5 active:bg-white/10'
+              } ${!isSidebarOpen && 'lg:justify-center'}`}
             >
               <item.icon 
                 size={22} 
@@ -1786,31 +1869,17 @@ export default function App() {
             </button>
           ))}
         </nav>
-
-        <div className="p-4 border-t border-border-dark">
-          <div className={`flex items-center ${isSidebarOpen ? 'px-2' : 'justify-center'}`}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-roxo-suave to-rosa-claro flex items-center justify-center text-white font-bold text-xs">
-              R
-            </div>
-            {isSidebarOpen && (
-              <div className="ml-3">
-                <p className="text-xs font-bold text-slate-200">Raquel © 2026</p>
-                <p className="text-[10px] text-slate-500 uppercase tracking-wider">Premium User</p>
-              </div>
-            )}
-          </div>
-        </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Fixed Header */}
-        <header className="bg-bg-dark/80 backdrop-blur-xl border-b border-border-dark z-20">
-          <div className="p-4 md:p-6 flex justify-between items-center">
+        <header className="bg-bg-dark/80 backdrop-blur-xl border-b border-border-dark z-20 sticky top-0">
+          <div className="px-4 py-3 md:px-6 md:py-5 flex justify-between items-center">
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
+                className="lg:hidden p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
               >
                 <Menu size={24} />
               </button>
@@ -1861,7 +1930,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
+                className="space-y-4 md:space-y-8 p-4 md:p-0 pb-24 md:pb-12"
               >
                 {/* Inspiração do Dia */}
                 <div className="relative overflow-hidden rounded-3xl p-6 md:p-8 bg-gradient-to-r from-indigo-950 to-slate-900 border border-white/10 shadow-2xl">
@@ -2175,11 +2244,11 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-8"
+                className="space-y-4 md:space-y-8 p-4 md:p-0"
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {/* Project Deadlines */}
-                  <div className="glass-card p-6 rounded-3xl">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl">
                     <h4 className="text-lg font-display font-bold text-white mb-6 flex items-center gap-2">
                       <Rocket size={20} className="text-roxo-suave" />
                       Prazos de Projetos
@@ -2211,7 +2280,7 @@ export default function App() {
                   </div>
 
                   {/* Upcoming Events */}
-                  <div className="glass-card p-6 rounded-3xl">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl">
                     <h4 className="text-lg font-display font-bold text-white mb-6 flex items-center gap-2">
                       <Calendar size={20} className="text-amber-500" />
                       Próximos Eventos
@@ -2235,7 +2304,7 @@ export default function App() {
                   </div>
 
                   {/* Financial Dues */}
-                  <div className="glass-card p-6 rounded-3xl">
+                  <div className="glass-card p-5 md:p-6 rounded-3xl">
                     <h4 className="text-lg font-display font-bold text-white mb-6 flex items-center gap-2">
                       <DollarSign size={20} className="text-emerald-500" />
                       Contas a Vencer
