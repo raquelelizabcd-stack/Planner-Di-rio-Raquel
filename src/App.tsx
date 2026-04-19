@@ -1854,20 +1854,21 @@ export default function App() {
     
     if (i === 0) {
       // Month 1: Real Current Data
-      income = transactions.filter(t => t.type === 'income' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
-      expense = transactions.filter(t => t.type === 'expense' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
-      vencer = transactions.filter(t => t.type === 'expense' && (t.status === 'A Vencer' || t.status === 'Pendente')).reduce((sum, t) => sum + t.amount, 0);
+      // We group all income/expenses in their respective categories so the areas are populated
+      income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
+      expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      // We use 'vencer' only for a special highlight or extra projected costs
+      vencer = 0; 
     } else {
       // Projections for Months 2-12
-      // We start with recurring items (like the 330 for Mercado)
+      // Recurring ones are the base Saídas (Pink)
       income = monthlyRecurringIncome;
-      expense = monthlyRecurringExpense;
-      vencer = monthlyRecurringVencer;
+      expense = monthlyRecurringExpense + monthlyRecurringVencer; // All recurring are 'Saídas' in projection
+      vencer = 0; 
 
-      // Add a small buffer of variable expenses/income based on history to make it realistic
-      // but ensure fixed recurring items are the baseline
-      const avgVariableIncome = transactions.filter(t => t.type === 'income' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) * 0.5;
-      const avgVariableExpense = transactions.filter(t => t.type === 'expense' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) * 0.5;
+      // Add actual average of variable items if it exists
+      const avgVariableIncome = transactions.length > 0 ? transactions.filter(t => t.type === 'income' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) : 0;
+      const avgVariableExpense = transactions.length > 0 ? transactions.filter(t => t.type === 'expense' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) : 0;
       
       income += avgVariableIncome;
       // We put variable projection as 'vencer' in future months because they are expected/scheduled
@@ -2736,7 +2737,7 @@ export default function App() {
                           tickFormatter={(value) => `R$ ${value}`}
                         />
                         <RechartsTooltip 
-                          formatter={(value: number) => [`R$ ${value.toFixed(2).replace('.', ',')}`, '']}
+                          formatter={(value: number, name: string) => [`R$ ${value.toFixed(2).replace('.', ',')}`, name]}
                           contentStyle={{ 
                             backgroundColor: 'rgba(30, 30, 30, 0.9)', 
                             border: '1px solid rgba(255,255,255,0.1)',
