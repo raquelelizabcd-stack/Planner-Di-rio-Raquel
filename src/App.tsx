@@ -1841,20 +1841,37 @@ export default function App() {
   const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   const currentMonthIdx = new Date().getMonth();
 
-  const projectedCashFlow = Array.from({ length: 6 }, (_, i) => {
+  const projectedCashFlow = Array.from({ length: 12 }, (_, i) => {
     const monthIdx = (currentMonthIdx + i) % 12;
     const name = monthNames[monthIdx];
     
+    // Get recurring totals
+    const monthlyRecurringIncome = transactions.filter(t => t.type === 'income' && t.recurrence === 'Mensal').reduce((sum, t) => sum + t.amount, 0);
+    const monthlyRecurringExpense = transactions.filter(t => t.type === 'expense' && t.recurrence === 'Mensal' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
+    const monthlyRecurringVencer = transactions.filter(t => t.type === 'expense' && t.recurrence === 'Mensal' && (t.status === 'A Vencer' || t.status === 'Pendente')).reduce((sum, t) => sum + t.amount, 0);
+
     let income, expense, vencer;
+    
     if (i === 0) {
+      // Month 1: Real Current Data
       income = transactions.filter(t => t.type === 'income' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
       expense = transactions.filter(t => t.type === 'expense' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
-      vencer = transactions.filter(t => (t.status === 'A Vencer' || t.status === 'Pendente') && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+      vencer = transactions.filter(t => t.type === 'expense' && (t.status === 'A Vencer' || t.status === 'Pendente')).reduce((sum, t) => sum + t.amount, 0);
     } else {
-      // Simulate data for M2-M6 using some variance around current totals
-      income = Math.max(1000, (totalIncome || 5000) * (0.85 + (Math.sin(i) * 0.15)));
-      expense = Math.max(800, (totalExpenses || 2500) * (0.75 + (Math.cos(i) * 0.15)));
-      vencer = Math.max(150, (totalExpenses * 0.1) + (Math.abs(Math.sin(i * 1.5)) * 400));
+      // Projections for Months 2-12
+      // We start with recurring items (like the 330 for Mercado)
+      income = monthlyRecurringIncome;
+      expense = monthlyRecurringExpense;
+      vencer = monthlyRecurringVencer;
+
+      // Add a small buffer of variable expenses/income based on history to make it realistic
+      // but ensure fixed recurring items are the baseline
+      const avgVariableIncome = transactions.filter(t => t.type === 'income' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) * 0.5;
+      const avgVariableExpense = transactions.filter(t => t.type === 'expense' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) * 0.5;
+      
+      income += avgVariableIncome;
+      // We put variable projection as 'vencer' in future months because they are expected/scheduled
+      vencer += avgVariableExpense;
     }
     
     return { 
@@ -1864,7 +1881,7 @@ export default function App() {
       vencer: Math.round(vencer),
       saldo: Math.round(income - expense - vencer)
     };
-  });
+  }).slice(0, 6); // Keep showing 6 months for UI balance
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
@@ -2646,7 +2663,7 @@ export default function App() {
                   </div>
                   <div className="glass-card p-5 md:p-6 rounded-3xl border-l-4 border-amber-500">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-slate-500 text-xs md:text-sm font-medium">Break-even</span>
+                      <span className="text-slate-500 text-xs md:text-sm font-medium">Custo de Vida</span>
                       <Target className="text-amber-500" size={18} />
                     </div>
                     <div className="flex flex-wrap items-end gap-2">
@@ -2654,7 +2671,7 @@ export default function App() {
                         R$ {totalExpenses.toFixed(2).replace('.', ',')}
                       </h3>
                       <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full mb-1">
-                        Ponto de Equilíbrio
+                        Despesas Totais
                       </span>
                     </div>
                   </div>
@@ -2719,6 +2736,7 @@ export default function App() {
                           tickFormatter={(value) => `R$ ${value}`}
                         />
                         <RechartsTooltip 
+                          formatter={(value: number) => [`R$ ${value.toFixed(2).replace('.', ',')}`, '']}
                           contentStyle={{ 
                             backgroundColor: 'rgba(30, 30, 30, 0.9)', 
                             border: '1px solid rgba(255,255,255,0.1)',
@@ -2730,6 +2748,7 @@ export default function App() {
                         <Area 
                           type="monotone" 
                           dataKey="income" 
+                          name="Entradas"
                           stackId="1" 
                           stroke="#10b981" 
                           strokeWidth={2}
@@ -2739,6 +2758,7 @@ export default function App() {
                         <Area 
                           type="monotone" 
                           dataKey="expense" 
+                          name="Saídas"
                           stackId="1" 
                           stroke="#f8bbd0" 
                           strokeWidth={2}
@@ -2748,6 +2768,7 @@ export default function App() {
                         <Area 
                           type="monotone" 
                           dataKey="vencer" 
+                          name="A Vencer"
                           stackId="1" 
                           stroke="#f59e0b" 
                           strokeWidth={2}
@@ -2757,6 +2778,7 @@ export default function App() {
                         <Line 
                           type="monotone" 
                           dataKey="saldo" 
+                          name="Saldo"
                           stroke="#6a5acd" 
                           strokeWidth={3} 
                           dot={{ r: 4, fill: '#6a5acd', strokeWidth: 2, stroke: '#fff' }}
@@ -5362,7 +5384,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   const [category, setCategory] = useState('Geral');
   const [dueDate, setDueDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro'>('PIX');
-  const [status, setStatus] = useState<'Pendente' | 'Pago' | 'A Vencer'>('Pago');
+  const [status, setStatus] = useState<'Pendente' | 'Pago' | 'A Vencer'>('Pendente');
   const [recurrence, setRecurrence] = useState<'Único' | 'Semanal' | 'Mensal'>('Único');
 
   const handleSubmit = (e: FormEvent) => {
@@ -5386,6 +5408,7 @@ function TransactionForm({ onAdd }: { onAdd: (
           onClick={() => {
             setType('income');
             setCategory('Salário');
+            setStatus('Pago');
           }}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${type === 'income' ? 'bg-emerald-500 text-white' : 'text-slate-500'}`}
         >
@@ -5396,6 +5419,7 @@ function TransactionForm({ onAdd }: { onAdd: (
           onClick={() => {
             setType('expense');
             setCategory('Geral');
+            setStatus('Pendente');
           }}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${type === 'expense' ? 'bg-rosa-claro text-white' : 'text-slate-500'}`}
         >
@@ -5473,9 +5497,9 @@ function TransactionForm({ onAdd }: { onAdd: (
             onChange={(e) => setStatus(e.target.value as any)}
             className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white appearance-none"
           >
-            <option value="Pago">Pago / Recebido</option>
+            <option value="Pago">{type === 'income' ? 'Recebido' : 'Pago'}</option>
             <option value="Pendente">Pendente</option>
-            <option value="A Vencer">A Vencer</option>
+            <option value="A Vencer">{type === 'income' ? 'Programado' : 'A Vencer'}</option>
           </select>
         </div>
         <div className="space-y-1">
