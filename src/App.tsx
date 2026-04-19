@@ -847,7 +847,10 @@ export default function App() {
   const [isEditingTokens, setIsEditingTokens] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    const saved = localStorage.getItem('raquel_projects_dark');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [tokens, setTokens] = useState<TokenState>({
     total: 0,
     flash: 0,
@@ -856,16 +859,32 @@ export default function App() {
     general: 0
   });
   const [notes, setNotes] = useState<string>('');
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    const saved = localStorage.getItem('raquel_transactions_dark');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [editingTransactionAmount, setEditingTransactionAmount] = useState<string>('');
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>(() => {
+    const saved = localStorage.getItem('raquel_events_dark');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [snippets, setSnippets] = useState<CodeSnippet[]>([]);
-  const [logs, setLogs] = useState<LearningLog[]>([]);
+  const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date(2026, 3, 1)); // Default to April 2026
+  const [snippets, setSnippets] = useState<CodeSnippet[]>(() => {
+    const saved = localStorage.getItem('raquel_snippets_dark');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [logs, setLogs] = useState<LearningLog[]>(() => {
+    const saved = localStorage.getItem('raquel_logs_dark');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [moods, setMoods] = useState<MoodEntry[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
-  const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>([]);
+  const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>(() => {
+    const saved = localStorage.getItem('raquel_kanban_dark');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [scratchNotes, setScratchNotes] = useState<ScratchNote[]>([]);
   const [personalNotes, setPersonalNotes] = useState<PersonalNote[]>([]);
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -1478,10 +1497,19 @@ export default function App() {
   const addEvent = (title: string, date: string, type: 'event' | 'deadline', description?: string, projectId?: string) => {
     const newEvent: CalendarEvent = { id: Date.now().toString(), title, date, type, description, projectId };
     setEvents([...events, newEvent]);
+    showToastWithMsg('Evento agendado com sucesso!');
   };
 
   const deleteEvent = (id: string) => {
     setEvents(events.filter(e => e.id !== id));
+  };
+
+  const nextMonth = () => {
+    setCurrentCalendarDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 1));
+  };
+
+  const prevMonth = () => {
+    setCurrentCalendarDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() - 1, 1));
   };
 
   const addSnippet = () => {
@@ -2502,16 +2530,18 @@ export default function App() {
                   <div className="lg:col-span-3 glass-card p-3 md:p-6 rounded-3xl">
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-4 md:mb-6">
-                        <h3 className="text-lg md:text-xl font-display font-bold text-white">Março 2026</h3>
+                        <h3 className="text-lg md:text-xl font-display font-bold text-white">
+                          {currentCalendarDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase())}
+                        </h3>
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => setSelectedDate(null)}
+                            onClick={prevMonth}
                             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400"
                           >
                             <ChevronRight className="rotate-180" size={20} />
                           </button>
                           <button 
-                            onClick={() => setSelectedDate(null)}
+                            onClick={nextMonth}
                             className="p-2 hover:bg-slate-800 rounded-lg text-slate-400"
                           >
                             <ChevronRight size={20} />
@@ -2523,10 +2553,10 @@ export default function App() {
                           <div key={day} className="text-center text-[10px] font-bold text-slate-500 uppercase py-2">{day}</div>
                         ))}
                         {/* Empty cells for start of month */}
-                        {Array.from({ length: 0 }).map((_, i) => <div key={i} />)}
-                        {Array.from({ length: 31 }).map((_, i) => {
+                        {Array.from({ length: new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1).getDay() }).map((_, i) => <div key={i} />)}
+                        {Array.from({ length: new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
                           const day = i + 1;
-                          const dateStr = `2026-03-${day.toString().padStart(2, '0')}`;
+                          const dateStr = `${currentCalendarDate.getFullYear()}-${(currentCalendarDate.getMonth() + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
                           const dayEvents = events.filter(e => e.date === dateStr);
                           const projectDeadlines = projects.filter(p => p.status === 'ongoing' && p.deadline === dateStr);
                           
