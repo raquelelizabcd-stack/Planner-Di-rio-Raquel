@@ -854,6 +854,8 @@ export default function App() {
   });
   const [notes, setNotes] = useState<string>('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  const [editingTransactionAmount, setEditingTransactionAmount] = useState<string>('');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [snippets, setSnippets] = useState<CodeSnippet[]>([]);
@@ -1462,6 +1464,12 @@ export default function App() {
 
   const deleteTransaction = (id: string) => {
     setTransactions(transactions.filter(t => t.id !== id));
+  };
+
+  const updateTransactionAmount = (id: string, newAmount: number) => {
+    setTransactions(transactions.map(t => t.id === id ? { ...t, amount: newAmount } : t));
+    setEditingTransactionId(null);
+    setEditingTransactionAmount('');
   };
 
   const addEvent = (title: string, date: string, type: 'event' | 'deadline', description?: string, projectId?: string) => {
@@ -2773,9 +2781,46 @@ export default function App() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-4">
-                                <span className={`font-display font-bold text-sm md:text-base ${t.type === 'income' ? 'text-emerald-500' : 'text-rosa-claro'}`}>
-                                  {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
-                                </span>
+                                {editingTransactionId === t.id ? (
+                                  <div className="flex items-center gap-2">
+                                    <input 
+                                      type="number"
+                                      step="0.01"
+                                      value={editingTransactionAmount}
+                                      onChange={(e) => setEditingTransactionAmount(e.target.value)}
+                                      className="w-24 bg-white/10 border border-white/20 rounded-lg px-2 py-1 text-sm text-white focus:outline-none focus:border-roxo-suave"
+                                      autoFocus
+                                    />
+                                    <button 
+                                      onClick={() => updateTransactionAmount(t.id, parseFloat(editingTransactionAmount))}
+                                      className="p-1.5 bg-emerald-500/20 text-emerald-500 rounded-lg hover:bg-emerald-500/30 transition-all"
+                                    >
+                                      <Check size={14} />
+                                    </button>
+                                    <button 
+                                      onClick={() => { setEditingTransactionId(null); setEditingTransactionAmount(''); }}
+                                      className="p-1.5 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-all"
+                                    >
+                                      <X size={14} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-3">
+                                    <span className={`font-display font-bold text-sm md:text-base ${t.type === 'income' ? 'text-emerald-500' : 'text-rosa-claro'}`}>
+                                      {t.type === 'income' ? '+' : '-'} R$ {t.amount.toFixed(2).replace('.', ',')}
+                                    </span>
+                                    <button 
+                                      onClick={() => {
+                                        setEditingTransactionId(t.id);
+                                        setEditingTransactionAmount(t.amount.toString());
+                                      }}
+                                      className="p-1.5 text-slate-500 hover:text-roxo-suave opacity-0 group-hover:opacity-100 transition-all"
+                                      title="Editar valor"
+                                    >
+                                      <Edit2 size={14} />
+                                    </button>
+                                  </div>
+                                )}
                                 <button 
                                   onClick={() => deleteTransaction(t.id)}
                                   className="p-2 text-slate-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
