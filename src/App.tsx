@@ -1425,7 +1425,7 @@ export default function App() {
     category: string, 
     dueDate: string | undefined,
     paymentMethod: 'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro' | undefined,
-    status: 'Pendente' | 'Pago',
+    status: 'Pendente' | 'Pago' | 'A Vencer',
     recurrence: 'Único' | 'Semanal' | 'Mensal'
   ) => {
     if (!title || !amount) return;
@@ -2627,7 +2627,7 @@ export default function App() {
                       <h4 className="text-base md:text-lg font-display font-bold text-white">Fluxo de Caixa Projetado</h4>
                       <p className="text-[10px] md:text-xs text-slate-500">Realizado vs Agendado</p>
                     </div>
-                    <div className="flex flex-wrap gap-3 md:gap-4 lg:gap-4">
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4 lg:gap-4">
                       <div className="flex items-center gap-1.5 md:gap-2">
                         <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-emerald-500 rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Entradas</span>
@@ -2636,6 +2636,14 @@ export default function App() {
                         <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-rosa-claro rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saídas</span>
                       </div>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-amber-500 rounded-full" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">A Vencer</span>
+                      </div>
+                      <button className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group">
+                        <Edit2 size={12} className="text-slate-400 group-hover:text-roxo-suave" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 group-hover:text-white uppercase">Editar</span>
+                      </button>
                     </div>
                   </div>
                   <div className="h-48 md:h-64 flex items-end gap-2 md:gap-4 px-2 md:px-4 relative">
@@ -2647,12 +2655,16 @@ export default function App() {
                       <div key={i} className="flex-1 flex flex-col items-center gap-1 md:gap-2 h-full justify-end group relative">
                         <div className="flex gap-0.5 md:gap-1 w-full items-end justify-center">
                           <div 
-                            className={`w-2 md:w-4 bg-emerald-500 rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
+                            className={`w-1.5 md:w-3 bg-emerald-500 rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
                             style={{ height: `${Math.random() * 80 + 20}%` }}
                           />
                           <div 
-                            className={`w-2 md:w-4 bg-rosa-claro rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
+                            className={`w-1.5 md:w-3 bg-rosa-claro rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
                             style={{ height: `${Math.random() * 60 + 10}%` }}
+                          />
+                          <div 
+                            className={`w-1.5 md:w-3 bg-amber-500 rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
+                            style={{ height: `${Math.random() * 40 + 5}%` }}
                           />
                         </div>
                         <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase">M{i}</span>
@@ -2685,7 +2697,7 @@ export default function App() {
                       </h4>
                       <div className="space-y-3">
                         {transactions
-                          .filter(t => t.type === 'expense' && t.status === 'Pendente')
+                          .filter(t => t.type === 'expense' && (t.status === 'Pendente' || t.status === 'A Vencer'))
                           .slice(0, 3)
                           .map(t => (
                             <div key={t.id} className="p-3 bg-red-500/5 rounded-2xl border border-red-500/10 flex justify-between items-center">
@@ -2696,7 +2708,7 @@ export default function App() {
                               <span className="text-sm font-black text-red-500">R$ {t.amount.toFixed(2)}</span>
                             </div>
                           ))}
-                        {transactions.filter(t => t.type === 'expense' && t.status === 'Pendente').length === 0 && (
+                        {transactions.filter(t => t.type === 'expense' && (t.status === 'Pendente' || t.status === 'A Vencer')).length === 0 && (
                           <p className="text-slate-600 text-sm italic">Nenhuma conta crítica pendente.</p>
                         )}
                       </div>
@@ -2734,7 +2746,11 @@ export default function App() {
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                     <p className="text-sm font-bold text-white truncate">{t.title}</p>
-                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${t.status === 'Pago' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-amber-500/20 text-amber-500'}`}>
+                                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                                      t.status === 'Pago' ? 'bg-emerald-500/20 text-emerald-500' : 
+                                      t.status === 'A Vencer' ? 'bg-amber-500/20 text-amber-500' : 
+                                      'bg-rosa-claro/20 text-rosa-claro'
+                                    }`}>
                                       {t.status}
                                     </span>
                                   </div>
@@ -5211,7 +5227,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   category: string, 
   dueDate: string | undefined,
   paymentMethod: 'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro' | undefined,
-  status: 'Pendente' | 'Pago',
+  status: 'Pendente' | 'Pago' | 'A Vencer',
   recurrence: 'Único' | 'Semanal' | 'Mensal'
 ) => void }) {
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -5220,7 +5236,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   const [category, setCategory] = useState('Geral');
   const [dueDate, setDueDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro'>('PIX');
-  const [status, setStatus] = useState<'Pendente' | 'Pago'>('Pago');
+  const [status, setStatus] = useState<'Pendente' | 'Pago' | 'A Vencer'>('Pago');
   const [recurrence, setRecurrence] = useState<'Único' | 'Semanal' | 'Mensal'>('Único');
 
   const handleSubmit = (e: FormEvent) => {
@@ -5333,6 +5349,7 @@ function TransactionForm({ onAdd }: { onAdd: (
           >
             <option value="Pago">Pago / Recebido</option>
             <option value="Pendente">Pendente</option>
+            <option value="A Vencer">A Vencer</option>
           </select>
         </div>
         <div className="space-y-1">

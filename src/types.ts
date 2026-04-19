@@ -31,7 +31,7 @@ export interface Transaction {
   category: string;
   dueDate?: string;
   paymentMethod?: 'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro';
-  status: 'Pendente' | 'Pago';
+  status: 'Pendente' | 'Pago' | 'A Vencer';
   recurrence?: 'Único' | 'Semanal' | 'Mensal';
   createdAt: number;
 }
