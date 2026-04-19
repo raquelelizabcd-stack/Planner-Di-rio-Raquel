@@ -871,6 +871,7 @@ export default function App() {
   const [selectedFeelings, setSelectedFeelings] = useState<string[]>([]);
   const [savedFeedback, setSavedFeedback] = useState<Record<string, boolean>>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   const [userEmail, setUserEmail] = useState('raquelelizabcd@gmail.com');
   const [userPassword, setUserPassword] = useState('********');
   
@@ -1109,8 +1110,11 @@ export default function App() {
       if (session) {
         setIsAuthenticated(true);
         initSupabase();
+        const isGoogle = session.user.identities?.some((id: any) => id.provider === 'google');
+        setIsGoogleConnected(!!isGoogle);
       } else {
         setIsAuthenticated(false);
+        setIsGoogleConnected(false);
       }
     });
 
@@ -1120,6 +1124,8 @@ export default function App() {
       if (session) {
         setIsAuthenticated(true);
         initSupabase();
+        const isGoogle = session.user.identities?.some((id: any) => id.provider === 'google');
+        setIsGoogleConnected(!!isGoogle);
       }
     };
 
@@ -1633,6 +1639,21 @@ export default function App() {
       showToastWithMsg('Erro ao salvar lembrete');
       setDebugNotes(prev => `${new Date().toLocaleTimeString()}: Erro ao salvar lembrete - ${err.message}\n${prev}`);
     });
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar.events',
+          redirectTo: window.location.origin
+        }
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      showToastWithMsg(`Erro ao conectar: ${err.message}`);
+    }
   };
 
   const moveKanbanTask = (id: string, status: KanbanTask['status']) => {
@@ -4987,6 +5008,42 @@ export default function App() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Integrações */}
+                <div className="glass-card p-6 md:p-8 rounded-3xl">
+                  <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
+                    <Globe size={24} className="text-roxo-suave" />
+                    Integrações
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-400">
+                      Conecte sua conta para sincronizar dados e automatizar sua rotina.
+                    </p>
+                    
+                    <button
+                      onClick={handleConnectGoogle}
+                      disabled={isGoogleConnected}
+                      className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all shadow-lg ${
+                        isGoogleConnected 
+                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-default' 
+                          : 'bg-white text-black hover:scale-105 active:scale-95 shadow-white/10'
+                      }`}
+                    >
+                      {isGoogleConnected ? (
+                        <>
+                          <CheckCircle2 size={24} className="text-emerald-400" />
+                          Google Agenda Conectado
+                        </>
+                      ) : (
+                        <>
+                          <Calendar size={24} />
+                          Conectar Google Calendar
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 
