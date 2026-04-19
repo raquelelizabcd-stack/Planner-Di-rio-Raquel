@@ -86,12 +86,15 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { 
-  LineChart, 
-  Line, 
+  ComposedChart,
+  Area, 
+  LineChart,
+  Line,
+  CartesianGrid, 
   ResponsiveContainer, 
   XAxis, 
   YAxis, 
-  Tooltip as RechartsTooltip 
+  Tooltip as RechartsTooltip
 } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from './lib/supabase';
@@ -1834,6 +1837,35 @@ export default function App() {
 
   const balance = totalIncome - totalExpenses;
 
+  // Fluxo de Caixa Projetado Data
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const currentMonthIdx = new Date().getMonth();
+
+  const projectedCashFlow = Array.from({ length: 6 }, (_, i) => {
+    const monthIdx = (currentMonthIdx + i) % 12;
+    const name = monthNames[monthIdx];
+    
+    let income, expense, vencer;
+    if (i === 0) {
+      income = transactions.filter(t => t.type === 'income' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
+      expense = transactions.filter(t => t.type === 'expense' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
+      vencer = transactions.filter(t => (t.status === 'A Vencer' || t.status === 'Pendente') && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+    } else {
+      // Simulate data for M2-M6 using some variance around current totals
+      income = Math.max(1000, (totalIncome || 5000) * (0.85 + (Math.sin(i) * 0.15)));
+      expense = Math.max(800, (totalExpenses || 2500) * (0.75 + (Math.cos(i) * 0.15)));
+      vencer = Math.max(150, (totalExpenses * 0.1) + (Math.abs(Math.sin(i * 1.5)) * 400));
+    }
+    
+    return { 
+      name, 
+      income: Math.round(income), 
+      expense: Math.round(expense), 
+      vencer: Math.round(vencer),
+      saldo: Math.round(income - expense - vencer)
+    };
+  });
+
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
     { id: 'reminders', label: 'Lembretes', icon: Bell, color: 'text-red-400' },
@@ -2633,7 +2665,7 @@ export default function App() {
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
                       <h4 className="text-base md:text-lg font-display font-bold text-white">Fluxo de Caixa Projetado</h4>
-                      <p className="text-[10px] md:text-xs text-slate-500">Realizado vs Agendado</p>
+                      <p className="text-[10px] md:text-xs text-slate-500">Realizado vs Agendado (Mensal)</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 md:gap-4 lg:gap-4">
                       <div className="flex items-center gap-1.5 md:gap-2">
@@ -2648,41 +2680,90 @@ export default function App() {
                         <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-amber-500 rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">A Vencer</span>
                       </div>
-                      <button className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all group">
-                        <Edit2 size={12} className="text-slate-400 group-hover:text-roxo-suave" />
-                        <span className="text-[9px] md:text-[10px] font-bold text-slate-400 group-hover:text-white uppercase">Editar</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 md:gap-2">
+                        <div className="min-w-2 w-2 md:w-3 h-0.5 bg-roxo-suave" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saldo</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="h-48 md:h-64 flex items-end gap-2 md:gap-4 px-2 md:px-4 relative">
-                    {/* Line for Accumulated Balance (Visual representation) */}
-                    <div className="absolute inset-x-0 bottom-1/2 h-0.5 bg-roxo-suave/30 z-0" />
-                    
-                    {/* Bars */}
-                    {[1, 2, 3, 4, 5, 6].map(i => (
-                      <div key={i} className="flex-1 flex flex-col items-center gap-1 md:gap-2 h-full justify-end group relative">
-                        <div className="flex gap-0.5 md:gap-1 w-full items-end justify-center">
-                          <div 
-                            className={`w-1.5 md:w-3 bg-emerald-500 rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
-                            style={{ height: `${Math.random() * 80 + 20}%` }}
-                          />
-                          <div 
-                            className={`w-1.5 md:w-3 bg-rosa-claro rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
-                            style={{ height: `${Math.random() * 60 + 10}%` }}
-                          />
-                          <div 
-                            className={`w-1.5 md:w-3 bg-amber-500 rounded-t md:rounded-t-lg transition-all duration-500 ${i > 4 ? 'opacity-40' : ''}`}
-                            style={{ height: `${Math.random() * 40 + 5}%` }}
-                          />
-                        </div>
-                        <span className="text-[8px] md:text-[10px] font-bold text-slate-500 uppercase">M{i}</span>
-                        {i === 5 && (
-                          <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-roxo-suave text-white text-[8px] px-2 py-1 rounded-full font-bold whitespace-nowrap">
-                            PROJEÇÃO
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                  
+                  <div className="h-64 md:h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={projectedCashFlow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f8bbd0" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#f8bbd0" stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="colorVencer" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                        <XAxis 
+                          dataKey="name" 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                          dy={10}
+                        />
+                        <YAxis 
+                          axisLine={false} 
+                          tickLine={false} 
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                          tickFormatter={(value) => `R$ ${value}`}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(30, 30, 30, 0.9)', 
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            color: '#fff'
+                          }}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="income" 
+                          stackId="1" 
+                          stroke="#10b981" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorIncome)" 
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="expense" 
+                          stackId="1" 
+                          stroke="#f8bbd0" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorExpense)" 
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="vencer" 
+                          stackId="1" 
+                          stroke="#f59e0b" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorVencer)" 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="saldo" 
+                          stroke="#6a5acd" 
+                          strokeWidth={3} 
+                          dot={{ r: 4, fill: '#6a5acd', strokeWidth: 2, stroke: '#fff' }}
+                          activeDot={{ r: 6, strokeWidth: 0 }}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
                   </div>
                 </div>
 
