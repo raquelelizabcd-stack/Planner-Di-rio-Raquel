@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { Project, KanbanTask } from '../types';
+import { Project, KanbanTask, Transaction } from '../types';
 
 export const dataService = {
   // Projects
@@ -72,6 +72,61 @@ export const dataService = {
 
     if (error) {
       console.error('Error deleting reminder:', error);
+      throw error;
+    }
+  },
+
+  // Transactions
+  async fetchTransactions(): Promise<Transaction[]> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('id', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching transactions:', error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async saveTransaction(transaction: any) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Mapeamento exato das colunas conforme solicitado
+    const transactionData = {
+      id: transaction.id.toString(),
+      user_id: user.id,
+      type: transaction.type,
+      title: transaction.title,
+      amount: transaction.amount,
+      category: transaction.category,
+      dueDate: transaction.dueDate || null
+    };
+
+    const { error } = await supabase
+      .from('transactions')
+      .upsert(transactionData);
+
+    if (error) {
+      console.error('Error saving transaction:', error);
+      throw error;
+    }
+  },
+
+  async deleteTransaction(id: string) {
+    const { error } = await supabase
+      .from('transactions')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting transaction:', error);
       throw error;
     }
   }

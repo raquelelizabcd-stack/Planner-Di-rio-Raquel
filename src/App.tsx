@@ -1309,12 +1309,14 @@ export default function App() {
 
     const initSupabase = async () => {
       try {
-        const [supaProjects, supaReminders] = await Promise.all([
+        const [supaProjects, supaReminders, supaTransactions] = await Promise.all([
           dataService.fetchProjects(),
-          dataService.fetchReminders()
+          dataService.fetchReminders(),
+          dataService.fetchTransactions()
         ]);
         if (supaProjects.length > 0) setProjects(supaProjects);
         if (supaReminders.length > 0) setKanbanTasks(supaReminders);
+        if (supaTransactions.length > 0) setTransactions(supaTransactions);
       } catch (err) {
         console.error('Failed to load Supabase data:', err);
       }
@@ -1620,6 +1622,7 @@ export default function App() {
       createdAt: Date.now()
     };
     setTransactions([newTransaction, ...transactions]);
+    dataService.saveTransaction(newTransaction).catch(err => showToastWithMsg('Erro ao salvar transação no banco de dados'));
   };
 
   const exportToAccountant = () => {
@@ -1640,10 +1643,16 @@ export default function App() {
 
   const deleteTransaction = (id: string) => {
     setTransactions(transactions.filter(t => t.id !== id));
+    dataService.deleteTransaction(id).catch(err => showToastWithMsg('Erro ao excluir transação do banco de dados'));
   };
 
   const updateTransactionAmount = (id: string, newAmount: number) => {
-    setTransactions(transactions.map(t => t.id === id ? { ...t, amount: newAmount } : t));
+    const updatedTransactions = transactions.map(t => t.id === id ? { ...t, amount: newAmount } : t);
+    setTransactions(updatedTransactions);
+    const updatedTransaction = updatedTransactions.find(t => t.id === id);
+    if (updatedTransaction) {
+      dataService.saveTransaction(updatedTransaction).catch(err => showToastWithMsg('Erro ao atualizar valor no banco de dados'));
+    }
     setEditingTransactionId(null);
     setEditingTransactionAmount('');
   };
@@ -2038,9 +2047,9 @@ export default function App() {
       // Month 1: Real Current Data
       // We group all income/expenses in their respective categories so the areas are populated
       income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-      expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-      // We use 'vencer' only for a special highlight or extra projected costs
-      vencer = 0; 
+      expense = transactions.filter(t => t.type === 'expense' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
+      // We use 'vencer' for accounts that are not yet paid
+      vencer = transactions.filter(t => t.type === 'expense' && (t.status === 'A Vencer' || t.status === 'Pendente')).reduce((sum, t) => sum + t.amount, 0);
     } else {
       // Projections for Months 2-12
       // Recurring ones are the base Saídas (Pink)
@@ -2947,7 +2956,10 @@ export default function App() {
                           tickFormatter={(value) => `R$ ${value}`}
                         />
                         <RechartsTooltip 
-                          formatter={(value: number, name: string) => [`R$ ${value.toFixed(2).replace('.', ',')}`, name]}
+                          formatter={(value: number, name: string) => {
+                            if (name.includes('Marker')) return null;
+                            return [`R$ ${value.toFixed(2).replace('.', ',')}`, name];
+                          }}
                           contentStyle={{ 
                             backgroundColor: 'rgba(30, 30, 30, 0.9)', 
                             border: '1px solid rgba(255,255,255,0.1)',
@@ -2985,6 +2997,26 @@ export default function App() {
                           strokeWidth={2}
                           fillOpacity={1} 
                           fill="url(#colorVencer)" 
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="income" 
+                          name="Entradas (Marker)"
+                          stroke="#10b981" 
+                          strokeWidth={2} 
+                          dot={{ r: 3, fill: '#10b981', strokeWidth: 1, stroke: '#fff' }}
+                          activeDot={false}
+                          legendType="none"
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="expense" 
+                          name="Saídas (Marker)"
+                          stroke="#f8bbd0" 
+                          strokeWidth={2} 
+                          dot={{ r: 3, fill: '#f8bbd0', strokeWidth: 1, stroke: '#fff' }}
+                          activeDot={false}
+                          legendType="none"
                         />
                         <Line 
                           type="monotone" 
