@@ -78,13 +78,13 @@ export const dataService = {
 
   // Transactions
   async fetchTransactions(): Promise<Transaction[]> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return [];
 
     const { data, error } = await supabase
       .from('transactions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', session.user.id)
       .order('id', { ascending: false });
 
     if (error) {
@@ -94,28 +94,52 @@ export const dataService = {
     return data || [];
   },
 
-  async saveTransaction(transaction: any) {
+  async saveTransaction(transaction: Transaction) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) throw new Error('Not authenticated');
 
-    // Mapeamento exato das colunas e conversão de tipos para evitar erros
-    const transactionData = {
+    // Mapeamento completo baseado na interface Transaction e possíveis colunas no banco
+    const transactionData: any = {
       id: transaction.id,
-      user_id: session.user.id, // user_id vindo explicitamente da sessão
+      user_id: session.user.id,
       type: transaction.type,
       title: transaction.title || 'Sem título',
       amount: Number(transaction.amount),
       category: transaction.category || 'Outros',
-      dueDate: transaction.dueDate || null
+      dueDate: transaction.dueDate || null,
+      status: transaction.status || 'Pendente',
+      paymentMethod: transaction.paymentMethod || null,
+      recurrence: transaction.recurrence || 'Único'
     };
 
-    const { error } = await supabase
+    console.log('Tentando salvar transação completa:', transactionData);
+
+    const { error: fullError } = await supabase
       .from('transactions')
       .upsert(transactionData);
 
-    if (error) {
-      console.error('ERRO COMPLETO SUPABASE:', error);
-      throw error;
+    if (fullError) {
+      console.warn('Falha ao salvar com todas as colunas, tentando apenas as 7 básicas...', fullError);
+      
+      // Mapeamento básico (apenas o que o usuário confirmou existir)
+      const basicData = {
+        id: transaction.id,
+        user_id: session.user.id,
+        type: transaction.type,
+        title: transaction.title || 'Sem título',
+        amount: Number(transaction.amount),
+        category: transaction.category || 'Outros',
+        dueDate: transaction.dueDate || null
+      };
+
+      const { error: basicError } = await supabase
+        .from('transactions')
+        .upsert(basicData);
+
+      if (basicError) {
+        console.error('ERRO FATAL SUPABASE:', basicError);
+        throw basicError;
+      }
     }
   },
 

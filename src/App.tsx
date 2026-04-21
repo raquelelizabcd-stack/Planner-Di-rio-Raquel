@@ -1672,7 +1672,10 @@ export default function App() {
       createdAt: Date.now()
     };
     setTransactions([newTransaction, ...transactions]);
-    dataService.saveTransaction(newTransaction).catch(err => showToastWithMsg('Erro ao salvar transação no banco de dados'));
+    dataService.saveTransaction(newTransaction).catch(err => {
+      console.error('Add Transaction error:', err);
+      showToastWithMsg(`Erro ao salvar: ${err.message || 'Verifique o console'}`);
+    });
   };
 
   const exportToAccountant = () => {
