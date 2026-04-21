@@ -843,91 +843,6 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
-const TokenModal = ({ isOpen, onClose, tokens, tokenCards }: { isOpen: boolean, onClose: () => void, tokens: TokenState, tokenCards: any[] }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div 
-        initial={{ opacity: 0 }} 
-        animate={{ opacity: 1 }} 
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-      />
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="glass-card w-full max-w-4xl rounded-[40px] p-8 md:p-12 relative overflow-hidden shadow-2xl border border-white/10 z-10"
-      >
-        <button 
-          onClick={onClose}
-          className="absolute top-8 right-8 p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl transition-all z-20"
-        >
-          <X size={20} />
-        </button>
-
-        <div className="text-center mb-16 relative z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-roxo-suave/10 rounded-full text-[10px] font-bold text-roxo-suave uppercase tracking-widest mb-4">
-            <Activity size={12} />
-            Visão Consolidada
-          </div>
-          <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-2 italic">Relatório de Consumo IA</h2>
-          <p className="text-slate-500 font-medium tracking-widest uppercase text-xs">Métricas de Performance da Área do Programador</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
-          <div className="flex flex-col items-center justify-center space-y-8">
-            <div className="relative group">
-              <div className="absolute inset-0 bg-roxo-suave/20 blur-[60px] rounded-full scale-150 opacity-50 group-hover:opacity-80 transition-opacity" />
-              <Gauge 
-                value={tokens.total} 
-                max={5000} 
-                color="#6a5acd" 
-                size={280} 
-                strokeWidth={18} 
-                label="Tokens Ativos"
-              />
-            </div>
-            <div className="text-center">
-              <p className="text-6xl font-display font-black text-white tracking-tighter">{tokens.total.toLocaleString()}</p>
-              <p className="text-slate-500 text-sm font-bold uppercase tracking-[0.2em] mt-3">Capacidade Total 5K</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            {tokenCards.map(card => (
-              <div key={card.id} className="glass-card p-8 rounded-[32px] border-l-4 transition-all hover:scale-105" style={{ borderLeftColor: card.color }}>
-                 <div className="flex justify-between items-start mb-6">
-                   <div className="p-3 bg-white/5 rounded-2xl">
-                      <card.icon size={28} style={{ color: card.color }} />
-                   </div>
-                   <Gauge 
-                      value={tokens[card.id as keyof TokenState]} 
-                      max={2000} 
-                      color={card.color} 
-                      size={50} 
-                      strokeWidth={5} 
-                    />
-                 </div>
-                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{card.label}</p>
-                 <p className="text-4xl font-display font-black text-white truncate">
-                    {tokens[card.id as keyof TokenState].toLocaleString()}
-                 </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Decorative elements */}
-        <div className="absolute -top-24 -left-24 w-64 h-64 bg-roxo-suave/5 blur-[100px] rounded-full" />
-        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-indigo-600/5 blur-[100px] rounded-full" />
-      </motion.div>
-    </div>
-  );
-};
-
 const ProjectModal = ({ project, isOpen, onClose }: { project: Project | null, isOpen: boolean, onClose: () => void }) => {
   if (!isOpen || !project) return null;
 
@@ -1083,7 +998,6 @@ const ProjectModal = ({ project, isOpen, onClose }: { project: Project | null, i
 
 export default function App() {
   const [isEditingTokens, setIsEditingTokens] = useState(false);
-  const [showTokenModal, setShowTokenModal] = useState(false);
   const [selectedProjectForView, setSelectedProjectForView] = useState<Project | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
@@ -2215,14 +2129,6 @@ export default function App() {
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
       {/* Modals e Overlays Globais */}
       <AnimatePresence>
-        {showTokenModal && (
-          <TokenModal 
-            isOpen={showTokenModal} 
-            onClose={() => setShowTokenModal(false)} 
-            tokens={tokens} 
-            tokenCards={tokenCards} 
-          />
-        )}
         {selectedProjectForView && (
           <ProjectModal 
             project={selectedProjectForView} 
@@ -3279,90 +3185,6 @@ export default function App() {
                       <RotateCcw size={16} />
                       Limpar
                     </button>
-                  </div>
-                </div>
-
-                {/* Token Radar Panel */}
-                <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
-                  {/* Main Radar */}
-                  <div className="lg:col-span-2 glass-card p-6 rounded-3xl flex flex-col items-center justify-center relative overflow-hidden group">
-                    <div className="absolute inset-0 bg-gradient-to-br from-roxo-suave/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <Gauge 
-                      value={tokens.total} 
-                      max={5000} 
-                      color="#6a5acd" 
-                      size={140} 
-                      strokeWidth={8} 
-                      label="Tokens"
-                    />
-                    <div className="mt-4 text-center">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500 font-bold mb-1">Status de Performance</p>
-                      <h4 className="text-sm font-display font-bold text-white">Radar Principal</h4>
-                    </div>
-                  </div>
-
-                  {/* AI Cards Column */}
-                  <div className="lg:col-span-4 flex flex-col gap-4">
-                    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-4">
-                      {tokenCards.map(card => (
-                        <motion.button
-                          key={card.id}
-                          whileHover={{ y: -4, backgroundColor: 'rgba(255,255,255,0.05)' }}
-                          whileTap={{ scale: 0.98 }}
-                          onClick={() => {
-                            if (isEditingTokens) {
-                              const val = prompt(`Novo valor para ${card.label}:`, tokens[card.id as keyof TokenState].toString());
-                              if (val !== null && !isNaN(parseInt(val))) {
-                                setTokenValue(card.id as keyof Omit<TokenState, 'total'>, parseInt(val));
-                              }
-                            } else {
-                              incrementToken(card.id as keyof Omit<TokenState, 'total'>)
-                            }
-                          }}
-                          className={`glass-card p-5 rounded-2xl flex items-center justify-between group border-l-4 transition-all ${isEditingTokens ? 'ring-2 ring-roxo-suave/50' : ''}`}
-                          style={{ borderLeftColor: card.color }}
-                        >
-                          <div className="text-left">
-                            <div className="p-2 mb-3 bg-white/5 rounded-xl w-fit group-hover:scale-110 transition-transform">
-                              <card.icon size={18} style={{ color: card.color }} />
-                            </div>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{card.label}</p>
-                            <p className="text-xl font-display font-black text-white">{tokens[card.id as keyof TokenState]}</p>
-                          </div>
-                          <div className="relative">
-                            <Gauge 
-                              value={tokens[card.id as keyof TokenState]} 
-                              max={2000} 
-                              color={card.color} 
-                              size={50} 
-                              strokeWidth={5} 
-                            />
-                          </div>
-                        </motion.button>
-                      ))}
-                    </div>
-                    
-                    {/* Botão de Editar e Ver solicitado no screenshot */}
-                    <div className="flex justify-start gap-3">
-                      <button 
-                        onClick={() => setIsEditingTokens(!isEditingTokens)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
-                          isEditingTokens 
-                            ? 'bg-roxo-suave text-white border-roxo-suave shadow-lg shadow-roxo-suave/20' 
-                            : 'bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border-white/5'
-                        }`}
-                      >
-                        <Edit2 size={14} />
-                        {isEditingTokens ? 'Concluir' : 'Editar'}
-                      </button>
-                      <button 
-                        onClick={() => setShowTokenModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 rounded-xl text-xs font-bold transition-all group"
-                      >
-                        <Eye size={14} className="group-hover:scale-110 transition-transform" />
-                        Ver
-                      </button>
-                    </div>
                   </div>
                 </div>
 
