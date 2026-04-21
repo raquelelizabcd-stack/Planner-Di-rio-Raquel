@@ -95,13 +95,13 @@ export const dataService = {
   },
 
   async saveTransaction(transaction: any) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) throw new Error('Not authenticated');
 
     // Mapeamento exato das colunas e conversão de tipos para evitar erros
     const transactionData = {
       id: transaction.id,
-      user_id: user.id,
+      user_id: session.user.id, // user_id vindo explicitamente da sessão
       type: transaction.type,
       title: transaction.title || 'Sem título',
       amount: Number(transaction.amount),
@@ -114,7 +114,7 @@ export const dataService = {
       .upsert(transactionData);
 
     if (error) {
-      console.error('ERRO COMPLETO SUPABASE:', error); // Log completo conforme solicitado
+      console.error('ERRO COMPLETO SUPABASE:', error);
       throw error;
     }
   },
