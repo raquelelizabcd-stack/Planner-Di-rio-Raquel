@@ -2279,7 +2279,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
-                className="space-y-4 md:space-y-8 p-4 md:p-0 pb-24 md:pb-12"
+                className="space-y-4 md:space-y-8 pb-32 md:pb-12"
               >
                 {/* Inspiração do Dia */}
                 <div className="relative overflow-hidden rounded-3xl p-6 md:p-8 bg-gradient-to-r from-indigo-950 to-slate-900 border border-white/10 shadow-2xl">
@@ -3170,17 +3170,17 @@ export default function App() {
                       Dashboard Premium Dark Mode
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
                     <button 
                       onClick={saveNotes}
-                      className="flex items-center gap-2 px-6 py-2.5 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-roxo-suave/20 group"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2.5 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-roxo-suave/20 group"
                     >
                       <Save size={16} className="group-hover:scale-110 transition-transform" />
                       Salvar Progresso
                     </button>
                     <button 
                       onClick={resetTokens}
-                      className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all border border-border-dark"
+                      className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-bold transition-all border border-border-dark"
                     >
                       <RotateCcw size={16} />
                       Limpar
@@ -3192,9 +3192,9 @@ export default function App() {
                   {/* Left Column: Projects, Kanban, Snippets */}
                   <div className="lg:col-span-2 space-y-8">
                     {/* Galeria de Projetos */}
-                    <div className="glass-card p-6 rounded-3xl">
-                      <div className="flex justify-between items-center mb-6">
-                        <h4 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                    <div className="glass-card p-4 sm:p-6 rounded-3xl">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <h4 className="text-base sm:text-lg font-display font-bold text-white flex items-center gap-2">
                           <FolderOpen size={20} className="text-pink-500" />
                           Galeria de Projetos
                         </h4>
@@ -3214,7 +3214,7 @@ export default function App() {
                             setNewProjectDevLocation('');
                             setShowAddProject(true);
                           }}
-                          className="flex items-center gap-2 px-4 py-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-500 rounded-xl transition-all font-bold text-xs"
+                          className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-pink-500/10 hover:bg-pink-500/20 text-pink-500 rounded-xl transition-all font-bold text-xs"
                           title="Adicionar Novo Projeto"
                         >
                           <Plus size={18} />
@@ -3361,7 +3361,7 @@ export default function App() {
 
                       <div className="grid grid-cols-1 gap-6">
                         {filteredProjects.map(project => (
-                          <div key={project.id} className="p-6 bg-white/5 rounded-2xl border border-border-dark flex flex-col group hover:bg-white/10 transition-all relative overflow-hidden">
+                          <div key={project.id} className="p-4 sm:p-6 bg-white/5 rounded-2xl border border-border-dark flex flex-col group hover:bg-white/10 transition-all relative overflow-hidden">
                             <div className={`absolute top-0 left-0 w-1 h-full ${project.status === 'ongoing' ? 'bg-roxo-suave' : 'bg-emerald-500'}`} />
                             
                             <div className="flex justify-between items-start mb-4">
@@ -3397,23 +3397,23 @@ export default function App() {
                             </div>
 
                             {project.description && (
-                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-4 leading-relaxed pl-11">
+                              <p className="text-[11px] text-slate-500 line-clamp-2 mb-4 leading-relaxed md:pl-11">
                                 {project.description}
                               </p>
                             )}
 
                             {project.devLocation && (
-                              <div className="flex items-center gap-2 pl-11 mb-4 text-roxo-suave/80">
+                              <div className="flex items-center gap-2 md:pl-11 mb-4 text-roxo-suave/80">
                                 <Monitor size={12} />
                                 <span className="text-[10px] font-bold uppercase tracking-wider">Dev: {project.devLocation}</span>
                               </div>
                             )}
 
                             {/* Connection Lines */}
-                            <div className="space-y-3 pl-11 mb-6">
+                            <div className="space-y-4 md:space-y-3 md:pl-11 mb-6">
                               {/* Row 1: Projeto */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-4">
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-2 items-center">
+                                <div className="md:col-span-4">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Projeto</label>
                                   <input 
                                     type="text" 
@@ -3422,17 +3422,25 @@ export default function App() {
                                     className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
                                   />
                                 </div>
-                                <div className="col-span-7">
+                                <div className="md:col-span-7">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">URL Repositório/Deploy</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.projectUrl || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'projectUrl', e.target.value)}
-                                    placeholder="https://..."
-                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="text" 
+                                      value={project.projectUrl || ''}
+                                      onChange={(e) => updateProjectField(project.id, 'projectUrl', e.target.value)}
+                                      placeholder="https://..."
+                                      className="flex-1 bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                    />
+                                    <button 
+                                      onClick={() => project.projectUrl && window.open(project.projectUrl, '_blank')}
+                                      className="md:hidden p-1.5 bg-roxo-suave/10 text-roxo-suave rounded-lg"
+                                    >
+                                      <ExternalLink size={12} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="col-span-1 flex justify-end">
+                                <div className="hidden md:col-span-1 md:flex justify-end">
                                   <button 
                                     onClick={() => project.projectUrl && window.open(project.projectUrl, '_blank')}
                                     className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
@@ -3444,8 +3452,8 @@ export default function App() {
                               </div>
 
                               {/* Row 2: GitHub */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-4">
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-2 items-center">
+                                <div className="md:col-span-4">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">GitHub (E-mail)</label>
                                   <input 
                                     type="text" 
@@ -3455,17 +3463,25 @@ export default function App() {
                                     className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
                                   />
                                 </div>
-                                <div className="col-span-7">
+                                <div className="md:col-span-7">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Link Perfil/Repo</label>
-                                  <input 
-                                    type="text" 
-                                    value={project.githubUrl || ''}
-                                    onChange={(e) => updateProjectField(project.id, 'githubUrl', e.target.value)}
-                                    placeholder="https://github.com/..."
-                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
-                                  />
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="text" 
+                                      value={project.githubUrl || ''}
+                                      onChange={(e) => updateProjectField(project.id, 'githubUrl', e.target.value)}
+                                      placeholder="https://github.com/..."
+                                      className="flex-1 bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
+                                    />
+                                    <button 
+                                      onClick={() => project.githubUrl && window.open(project.githubUrl, '_blank')}
+                                      className="md:hidden p-1.5 bg-roxo-suave/10 text-roxo-suave rounded-lg"
+                                    >
+                                      <ExternalLink size={12} />
+                                    </button>
+                                  </div>
                                 </div>
-                                <div className="col-span-1 flex justify-end">
+                                <div className="hidden md:col-span-1 md:flex justify-end">
                                   <button 
                                     onClick={() => project.githubUrl && window.open(project.githubUrl, '_blank')}
                                     className="p-1.5 bg-roxo-suave/10 hover:bg-roxo-suave/20 text-roxo-suave rounded-lg transition-all"
@@ -3477,8 +3493,8 @@ export default function App() {
                               </div>
 
                               {/* Row 3: Dev Location */}
-                              <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-4">
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-2 items-center">
+                                <div className="md:col-span-4">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Local Dev</label>
                                   <input 
                                     type="text" 
@@ -3488,13 +3504,10 @@ export default function App() {
                                     className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-roxo-suave text-white"
                                   />
                                 </div>
-                                <div className="col-span-8">
-                                  {/* Empty space for alignment or future fields */}
-                                </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center justify-between mt-auto pl-11">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-auto md:pl-11 gap-4">
                               <div className="flex gap-2">
                                 {project.deadline && (
                                   <span className="text-[9px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -3503,24 +3516,24 @@ export default function App() {
                                   </span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-3">
+                              <div className="grid grid-cols-2 lg:flex lg:items-center gap-2 sm:gap-3">
                                 <button 
                                   onClick={() => setSelectedProjectForView(project)}
-                                  className="bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all border border-white/5 group"
+                                  className="bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 text-[10px] font-bold transition-all border border-white/5 group"
                                   title="Ver Detalhes em Tela Cheia"
                                 >
                                   <Eye size={12} className="group-hover:scale-110 transition-transform" /> Ver
                                 </button>
                                 <button 
                                   onClick={() => startEditingProject(project)}
-                                  className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all"
+                                  className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 text-[10px] font-bold transition-all"
                                   title="Editar Detalhes"
                                 >
                                   <Edit2 size={12} /> Editar
                                 </button>
                                 <button 
                                   onClick={() => handleSaveProject(project.id)}
-                                  className={`p-1.5 rounded-lg transition-all flex items-center gap-1 text-[10px] font-bold ${
+                                  className={`p-1.5 rounded-lg transition-all flex items-center justify-center gap-1 text-[10px] font-bold ${
                                     projectSaved[project.id]
                                       ? 'bg-emerald-500 text-white'
                                       : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500'
@@ -3538,7 +3551,7 @@ export default function App() {
                                       showToastWithMsg('URL do projeto não definida');
                                     }
                                   }}
-                                  className="bg-roxo-suave hover:bg-roxo-suave/80 text-white px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all"
+                                  className="bg-roxo-suave hover:bg-roxo-suave/80 text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1 text-[10px] font-bold transition-all col-span-2 lg:col-auto"
                                 >
                                   Abrir Projeto <ExternalLink size={12} />
                                 </button>
