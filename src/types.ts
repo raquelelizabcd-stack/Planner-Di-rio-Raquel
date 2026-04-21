@@ -41,7 +41,7 @@ export interface CalendarEvent {
   title: string;
   description?: string;
   date: string;
-  type: 'event' | 'deadline';
+  type: 'evento' | 'aniversario' | 'reuniao' | 'importante' | 'feriado' | 'outro';
   projectId?: string;
 }
 

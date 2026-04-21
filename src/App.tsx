@@ -843,8 +843,248 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
+const TokenModal = ({ isOpen, onClose, tokens, tokenCards }: { isOpen: boolean, onClose: () => void, tokens: TokenState, tokenCards: any[] }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-md"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="glass-card w-full max-w-4xl rounded-[40px] p-8 md:p-12 relative overflow-hidden shadow-2xl border border-white/10 z-10"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-8 right-8 p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl transition-all z-20"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="text-center mb-16 relative z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-roxo-suave/10 rounded-full text-[10px] font-bold text-roxo-suave uppercase tracking-widest mb-4">
+            <Activity size={12} />
+            Visão Consolidada
+          </div>
+          <h2 className="text-4xl md:text-5xl font-display font-black text-white mb-2 italic">Relatório de Consumo IA</h2>
+          <p className="text-slate-500 font-medium tracking-widest uppercase text-xs">Métricas de Performance da Área do Programador</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
+          <div className="flex flex-col items-center justify-center space-y-8">
+            <div className="relative group">
+              <div className="absolute inset-0 bg-roxo-suave/20 blur-[60px] rounded-full scale-150 opacity-50 group-hover:opacity-80 transition-opacity" />
+              <Gauge 
+                value={tokens.total} 
+                max={5000} 
+                color="#6a5acd" 
+                size={280} 
+                strokeWidth={18} 
+                label="Tokens Ativos"
+              />
+            </div>
+            <div className="text-center">
+              <p className="text-6xl font-display font-black text-white tracking-tighter">{tokens.total.toLocaleString()}</p>
+              <p className="text-slate-500 text-sm font-bold uppercase tracking-[0.2em] mt-3">Capacidade Total 5K</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6">
+            {tokenCards.map(card => (
+              <div key={card.id} className="glass-card p-8 rounded-[32px] border-l-4 transition-all hover:scale-105" style={{ borderLeftColor: card.color }}>
+                 <div className="flex justify-between items-start mb-6">
+                   <div className="p-3 bg-white/5 rounded-2xl">
+                      <card.icon size={28} style={{ color: card.color }} />
+                   </div>
+                   <Gauge 
+                      value={tokens[card.id as keyof TokenState]} 
+                      max={2000} 
+                      color={card.color} 
+                      size={50} 
+                      strokeWidth={5} 
+                    />
+                 </div>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{card.label}</p>
+                 <p className="text-4xl font-display font-black text-white truncate">
+                    {tokens[card.id as keyof TokenState].toLocaleString()}
+                 </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute -top-24 -left-24 w-64 h-64 bg-roxo-suave/5 blur-[100px] rounded-full" />
+        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-indigo-600/5 blur-[100px] rounded-full" />
+      </motion.div>
+    </div>
+  );
+};
+
+const ProjectModal = ({ project, isOpen, onClose }: { project: Project | null, isOpen: boolean, onClose: () => void }) => {
+  if (!isOpen || !project) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+      />
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 30 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 30 }}
+        className="glass-card w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-[40px] p-8 md:p-12 relative shadow-2xl border border-white/10 z-10 custom-scrollbar"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-8 right-8 p-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl transition-all z-20"
+        >
+          <X size={24} />
+        </button>
+
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`p-3 rounded-2xl ${project.status === 'ongoing' ? 'bg-roxo-suave/20 text-roxo-suave' : 'bg-emerald-500/20 text-emerald-500'}`}>
+              {project.status === 'ongoing' ? <Clock size={24} /> : <CheckCircle2 size={24} />}
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{project.status === 'ongoing' ? 'Em Desenvolvimento' : 'Concluído'}</p>
+              <h2 className="text-4xl md:text-5xl font-display font-black text-white tracking-tight">{project.title}</h2>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-4 mt-6">
+            {project.startDate && (
+              <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2">
+                <Calendar size={14} className="text-roxo-suave" />
+                <span className="text-xs font-bold text-slate-300">Início: {new Date(project.startDate).toLocaleDateString('pt-BR')}</span>
+              </div>
+            )}
+            {project.deadline && (
+              <div className="bg-amber-500/10 border border-amber-500/20 px-4 py-2 rounded-2xl flex items-center gap-2">
+                <Calendar size={14} className="text-amber-500" />
+                <span className="text-xs font-bold text-amber-500">Prazo: {new Date(project.deadline).toLocaleDateString('pt-BR')}</span>
+              </div>
+            )}
+            {project.devLocation && (
+              <div className="bg-blue-500/10 border border-blue-500/20 px-4 py-2 rounded-2xl flex items-center gap-2">
+                <Monitor size={14} className="text-blue-400" />
+                <span className="text-xs font-bold text-blue-400">Plataforma: {project.devLocation}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="lg:col-span-2 space-y-10">
+            <section>
+              <h4 className="text-lg font-display font-bold text-white mb-4 border-b border-white/5 pb-2">Sobre o Projeto</h4>
+              <p className="text-slate-400 leading-relaxed text-sm whitespace-pre-wrap">
+                {project.description || 'Sem descrição detalhada.'}
+              </p>
+            </section>
+
+            {project.techStack && project.techStack.length > 0 && (
+              <section>
+                <h4 className="text-lg font-display font-bold text-white mb-4 border-b border-white/5 pb-2">Tech Stack</h4>
+                <div className="flex flex-wrap gap-2">
+                  {project.techStack.map((tech, i) => (
+                    <span key={i} className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-xs font-bold text-slate-300 hover:bg-roxo-suave/10 hover:border-roxo-suave/30 transition-all">
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <section className="glass-card p-6 rounded-[32px] border border-white/5 bg-white/[0.02]">
+              <h4 className="text-sm font-display font-bold text-white mb-6 uppercase tracking-wider">Conexões & Links</h4>
+              
+              <div className="space-y-4">
+                {project.projectUrl && (
+                  <button 
+                    onClick={() => window.open(project.projectUrl, '_blank')}
+                    className="w-full flex items-center justify-between p-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-2xl group transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <ExternalLink size={18} className="text-emerald-500" />
+                      <div className="text-left">
+                        <p className="text-[10px] font-bold text-emerald-500 uppercase">Deploy / Live</p>
+                        <p className="text-xs font-bold text-white truncate w-40">Ver online</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+
+                {project.githubUrl && (
+                  <button 
+                    onClick={() => window.open(project.githubUrl, '_blank')}
+                    className="w-full flex items-center justify-between p-4 bg-slate-800/50 hover:bg-slate-700/50 border border-white/10 rounded-2xl group transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Github size={18} className="text-slate-400" />
+                      <div className="text-left">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Repositório</p>
+                        <p className="text-xs font-bold text-white truncate w-40">GitHub Source</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+
+                {(project.githubEmail || project.supabaseEmail) && (
+                  <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-3">Credenciais de Acesso</p>
+                    <div className="space-y-2">
+                      {project.githubEmail && (
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-400">GitHub:</span>
+                          <span className="text-white font-medium">{project.githubEmail}</span>
+                        </div>
+                      )}
+                      {project.supabaseEmail && (
+                        <div className="flex justify-between text-[11px]">
+                          <span className="text-slate-400">Supabase:</span>
+                          <span className="text-white font-medium">{project.supabaseEmail}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <div className="p-6 bg-roxo-suave/5 rounded-[32px] border border-roxo-suave/10">
+              <h5 className="text-xs font-bold text-white mb-2 italic">Dica de Produtividade</h5>
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                Mantenha seu Tech Stack atualizado para facilitar o onboarding de novos colaboradores e a manutenção futura.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export default function App() {
   const [isEditingTokens, setIsEditingTokens] = useState(false);
+  const [showTokenModal, setShowTokenModal] = useState(false);
+  const [selectedProjectForView, setSelectedProjectForView] = useState<Project | null>(null);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [projects, setProjects] = useState<Project[]>(() => {
@@ -1494,7 +1734,7 @@ export default function App() {
     setEditingTransactionAmount('');
   };
 
-  const addEvent = (title: string, date: string, type: 'event' | 'deadline', description?: string, projectId?: string) => {
+  const addEvent = (title: string, date: string, type: CalendarEvent['type'], description?: string, projectId?: string) => {
     const newEvent: CalendarEvent = { id: Date.now().toString(), title, date, type, description, projectId };
     setEvents([...events, newEvent]);
     showToastWithMsg('Evento agendado com sucesso!');
@@ -1973,6 +2213,25 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
+      {/* Modals e Overlays Globais */}
+      <AnimatePresence>
+        {showTokenModal && (
+          <TokenModal 
+            isOpen={showTokenModal} 
+            onClose={() => setShowTokenModal(false)} 
+            tokens={tokens} 
+            tokenCards={tokenCards} 
+          />
+        )}
+        {selectedProjectForView && (
+          <ProjectModal 
+            project={selectedProjectForView} 
+            isOpen={!!selectedProjectForView} 
+            onClose={() => setSelectedProjectForView(null)} 
+          />
+        )}
+      </AnimatePresence>
+
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -2227,7 +2486,13 @@ export default function App() {
                             <p className="text-sm font-bold text-white">{event.title}</p>
                             <p className="text-xs text-slate-500">{new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                           </div>
-                          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${event.type === 'deadline' ? 'bg-red-500/10 text-red-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
+                            event.type === 'aniversario' ? 'bg-pink-500/10 text-pink-400' : 
+                            event.type === 'reuniao' ? 'bg-blue-500/10 text-blue-400' :
+                            event.type === 'importante' ? 'bg-red-500/10 text-red-400' :
+                            event.type === 'feriado' ? 'bg-emerald-500/10 text-emerald-400' :
+                            'bg-roxo-suave/10 text-roxo-suave'
+                          }`}>
                             {event.type}
                           </div>
                         </div>
@@ -2572,11 +2837,20 @@ export default function App() {
                             >
                               <span className={`text-xs font-bold transition-colors ${selectedDate === dateStr ? 'text-white' : 'text-slate-500 group-hover:text-white'}`}>{day}</span>
                               <div className="flex-1 overflow-y-auto space-y-1 mt-1">
-                                {dayEvents.map(e => (
-                                  <div key={e.id} className={`text-[8px] p-1 rounded ${e.type === 'event' ? 'bg-roxo-suave/20 text-roxo-suave' : 'bg-rosa-claro/20 text-rosa-claro'} truncate`}>
-                                    {e.title}
-                                  </div>
-                                ))}
+                                {dayEvents.map(e => {
+                                  let typeClasses = 'bg-roxo-suave/20 text-roxo-suave';
+                                  if (e.type === 'aniversario') typeClasses = 'bg-pink-500/20 text-pink-500';
+                                  if (e.type === 'reuniao') typeClasses = 'bg-blue-500/20 text-blue-500';
+                                  if (e.type === 'importante') typeClasses = 'bg-red-500/20 text-red-500';
+                                  if (e.type === 'feriado') typeClasses = 'bg-emerald-500/20 text-emerald-500';
+                                  if (e.type === 'outro') typeClasses = 'bg-slate-500/20 text-slate-500';
+
+                                  return (
+                                    <div key={e.id} className={`text-[8px] p-1 rounded ${typeClasses} truncate`}>
+                                      {e.type === 'aniversario' ? '🎂 ' : ''}{e.title}
+                                    </div>
+                                  );
+                                })}
                                 {projectDeadlines.map(p => (
                                   <div key={p.id} className="text-[8px] p-1 rounded bg-amber-500/20 text-amber-500 truncate font-bold">
                                     🏁 {p.title}
@@ -3068,8 +3342,8 @@ export default function App() {
                       ))}
                     </div>
                     
-                    {/* Botão de Editar solicitado no screenshot */}
-                    <div className="flex justify-start">
+                    {/* Botão de Editar e Ver solicitado no screenshot */}
+                    <div className="flex justify-start gap-3">
                       <button 
                         onClick={() => setIsEditingTokens(!isEditingTokens)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
@@ -3080,6 +3354,13 @@ export default function App() {
                       >
                         <Edit2 size={14} />
                         {isEditingTokens ? 'Concluir' : 'Editar'}
+                      </button>
+                      <button 
+                        onClick={() => setShowTokenModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white border border-white/5 rounded-xl text-xs font-bold transition-all group"
+                      >
+                        <Eye size={14} className="group-hover:scale-110 transition-transform" />
+                        Ver
                       </button>
                     </div>
                   </div>
@@ -3401,6 +3682,13 @@ export default function App() {
                                 )}
                               </div>
                               <div className="flex items-center gap-3">
+                                <button 
+                                  onClick={() => setSelectedProjectForView(project)}
+                                  className="bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all border border-white/5 group"
+                                  title="Ver Detalhes em Tela Cheia"
+                                >
+                                  <Eye size={12} className="group-hover:scale-110 transition-transform" /> Ver
+                                </button>
                                 <button 
                                   onClick={() => startEditingProject(project)}
                                   className="bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 px-3 py-1.5 rounded-lg flex items-center gap-1 text-[10px] font-bold transition-all"
@@ -5557,11 +5845,11 @@ function TransactionForm({ onAdd }: { onAdd: (
   );
 }
 
-function EventForm({ onAdd, projects, selectedDate }: { onAdd: (title: string, date: string, type: 'event' | 'deadline', description?: string, projectId?: string) => void, projects: Project[], selectedDate: string | null }) {
+function EventForm({ onAdd, projects, selectedDate }: { onAdd: (title: string, date: string, type: CalendarEvent['type'], description?: string, projectId?: string) => void, projects: Project[], selectedDate: string | null }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
-  const [type, setType] = useState<'event' | 'deadline'>('event');
+  const [type, setType] = useState<CalendarEvent['type']>('evento');
   const [projectId, setProjectId] = useState('');
 
   useEffect(() => {
@@ -5617,11 +5905,15 @@ function EventForm({ onAdd, projects, selectedDate }: { onAdd: (title: string, d
           <label className="text-[10px] uppercase tracking-widest text-slate-500 font-bold ml-1">Tipo</label>
           <select 
             value={type}
-            onChange={(e) => setType(e.target.value as 'event' | 'deadline')}
+            onChange={(e) => setType(e.target.value as CalendarEvent['type'])}
             className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-amber-500 text-white appearance-none"
           >
-            <option value="event">Evento</option>
-            <option value="deadline">Deadline</option>
+            <option value="evento">Evento</option>
+            <option value="aniversario">Aniversário</option>
+            <option value="reuniao">Reunião</option>
+            <option value="importante">Importante</option>
+            <option value="feriado">Feriado</option>
+            <option value="outro">Outro</option>
           </select>
         </div>
         <div className="space-y-1">
