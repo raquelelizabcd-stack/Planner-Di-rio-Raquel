@@ -48,6 +48,7 @@ import {
   User,
   Lock,
   Shield,
+  ShieldAlert,
   Edit2,
   ListChecks,
   Palette,
@@ -1660,7 +1661,7 @@ export default function App() {
   ) => {
     if (!title || !amount) return;
     const newTransaction: Transaction = {
-      id: Date.now().toString(),
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
       type,
       title,
       amount,
@@ -2284,6 +2285,30 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+        {/* Global Debug Bar */}
+        <div className="bg-roxo-suave text-white px-4 py-2 flex items-center justify-between text-[11px] font-bold z-50">
+          <div className="flex items-center gap-3">
+            <span className="bg-white/20 px-2 py-0.5 rounded uppercase">Status Banco</span>
+            <span className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
+              SISTEMA INTEGRADO v2.5.0
+            </span>
+          </div>
+          <button 
+            onClick={async () => {
+              const result = await dataService.testConnection();
+              if (result.success) {
+                alert(`CONEXÃO OK!\n\nSeu banco de dados respondeu corretamente.\nRegistros na tabela 'transactions': ${result.count}`);
+              } else {
+                alert(`ERRO DE CONEXÃO!\n\nO Supabase disse:\n${result.error}\n\nVerifique se a tabela 'transactions' existe e se o RLS está liberado.`);
+              }
+            }}
+            className="bg-white text-roxo-suave px-3 py-1 rounded-lg hover:bg-slate-100 transition-all flex items-center gap-1.5"
+          >
+            <ShieldAlert size={14} />
+            CLIQUE PARA TESTAR CONEXÃO AGORA
+          </button>
+        </div>
         {/* Fixed Header */}
         <header className="bg-bg-dark/80 backdrop-blur-xl border-b border-border-dark z-20 sticky top-0">
           <div className="px-4 py-3 md:px-6 md:py-5 flex justify-between items-center">
@@ -2890,6 +2915,26 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4 md:space-y-8 p-4 md:p-0 pb-24 md:pb-12"
               >
+                {/* Alerta de Diagnóstico se necessário */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={async () => {
+                      showToastWithMsg('Testando conexão...');
+                      const result = await dataService.testConnection();
+                      if (result.success) {
+                        showToastWithMsg(`Conexão OK! Registros encontrados: ${result.count}`);
+                      } else {
+                        alert(`Falha na conexão:\n${result.error}`);
+                        showToastWithMsg('Falha no teste do banco.');
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-800 border border-border-dark rounded-xl text-[10px] font-bold text-slate-400 hover:text-white transition-all hover:bg-slate-700"
+                  >
+                    <ShieldAlert size={14} />
+                    DIAGNÓSTICO DE BANCO
+                  </button>
+                </div>
+
                 {/* Financial Summary Cards - CFO KPIs */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                   <div className="glass-card p-5 md:p-6 rounded-3xl border-l-4 border-emerald-500">
@@ -5418,35 +5463,58 @@ export default function App() {
                 <div className="glass-card p-6 md:p-8 rounded-3xl">
                   <h3 className="text-xl font-display font-bold text-white mb-6 flex items-center gap-2">
                     <Globe size={24} className="text-roxo-suave" />
-                    Integrações
+                    Integrações e Diagnóstico
                   </h3>
                   
-                  <div className="space-y-4">
-                    <p className="text-sm text-slate-400">
-                      Conecte sua conta para sincronizar dados e automatizar sua rotina.
-                    </p>
-                    
-                    <button
-                      onClick={handleConnectGoogle}
-                      disabled={isGoogleConnected}
-                      className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all shadow-lg ${
-                        isGoogleConnected 
-                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-default' 
-                          : 'bg-white text-black hover:scale-105 active:scale-95 shadow-white/10'
-                      }`}
-                    >
-                      {isGoogleConnected ? (
-                        <>
-                          <CheckCircle2 size={24} className="text-emerald-400" />
-                          Google Agenda Conectado
-                        </>
-                      ) : (
-                        <>
-                          <Calendar size={24} />
-                          Conectar Google Calendar
-                        </>
-                      )}
-                    </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <p className="text-sm text-slate-400">
+                        Sincronização de agenda e serviços externos.
+                      </p>
+                      <button
+                        onClick={handleConnectGoogle}
+                        disabled={isGoogleConnected}
+                        className={`w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all shadow-lg ${
+                          isGoogleConnected 
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-default' 
+                            : 'bg-white text-black hover:scale-105 active:scale-95 shadow-white/10'
+                        }`}
+                      >
+                        {isGoogleConnected ? (
+                          <>
+                            <CheckCircle2 size={24} className="text-emerald-400" />
+                            Google Agenda Conectado
+                          </>
+                        ) : (
+                          <>
+                            <Calendar size={24} />
+                            Conectar Google Calendar
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-sm text-slate-400">
+                        Verifique se a conexão com o banco de dados está ativa.
+                      </p>
+                      <button
+                        onClick={async () => {
+                          showToastWithMsg('Testando conexão...');
+                          const result = await dataService.testConnection();
+                          if (result.success) {
+                            showToastWithMsg(`Conexão OK! Registros encontrados: ${result.count}`);
+                          } else {
+                            alert(`Falha na conexão:\n${result.error}`);
+                            showToastWithMsg('Falha no teste do banco.');
+                          }
+                        }}
+                        className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-roxo-suave/20 text-roxo-suave border border-roxo-suave/30 rounded-2xl font-bold hover:bg-roxo-suave/30 transition-all active:scale-95"
+                      >
+                        <ShieldAlert size={24} />
+                        Testar Conexão Supabase
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -5458,9 +5526,9 @@ export default function App() {
                   </h3>
                   
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                    <div className="p-4 bg-white/5 rounded-2xl border border-border-dark">
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Versão</p>
-                      <p className="text-lg font-display font-bold text-white">v2.4.0-stable</p>
+                    <div className="p-4 bg-roxo-suave/10 rounded-2xl border border-roxo-suave/30">
+                      <p className="text-[10px] font-bold text-roxo-suave uppercase tracking-widest mb-1">Versão</p>
+                      <p className="text-lg font-display font-bold text-white">v2.5.0-supabase-fix</p>
                     </div>
                     <div className="p-4 bg-white/5 rounded-2xl border border-border-dark">
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Banco de Dados</p>

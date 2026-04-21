@@ -94,6 +94,28 @@ export const dataService = {
     return data || [];
   },
 
+  async testConnection() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Test Connection - Session:', session ? 'Active' : 'None');
+      
+      const { data, error, count } = await supabase
+        .from('transactions')
+        .select('*', { count: 'exact', head: true });
+        
+      if (error) {
+        console.error('Test Connection - Error:', error);
+        return { success: false, error: error.message };
+      }
+      
+      console.log('Test Connection - Success. Row count:', count);
+      return { success: true, count };
+    } catch (err: any) {
+      console.error('Test Connection - Fatal Error:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
   async saveTransaction(transaction: Transaction) {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) throw new Error('Not authenticated');
