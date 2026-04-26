@@ -147,9 +147,9 @@ export const dataService = {
       .upsert(transactionData);
 
     if (fullError) {
-      console.warn('Falha ao salvar com todas as colunas, tentando apenas as 7 básicas...', fullError);
+      console.warn('Falha ao salvar transação completa. Verifique se as colunas "status", "recurrence" e "paymentMethod" existem no Supabase.', fullError);
       
-      // Mapeamento básico (apenas o que o usuário confirmou existir)
+      // Tentativa de salvamento simplificado apenas com campos essenciais se as novas colunas não existirem
       const basicData = {
         id: transaction.id,
         user_id: session.user.id,
@@ -157,7 +157,10 @@ export const dataService = {
         title: transaction.title || 'Sem título',
         amount: Number(transaction.amount),
         category: transaction.category || 'Outros',
-        dueDate: transaction.dueDate || null
+        dueDate: transaction.dueDate || null,
+        // Adicionando status e recurrence aqui também - se falhar, o erro será lançado
+        status: transaction.status || 'Pendente',
+        recurrence: transaction.recurrence || 'Único'
       };
 
       const { error: basicError } = await supabase
@@ -165,8 +168,8 @@ export const dataService = {
         .upsert(basicData);
 
       if (basicError) {
-        console.error('ERRO FATAL SUPABASE:', basicError);
-        throw basicError;
+        console.error('ERRO AO SALVAR NO SUPABASE (Mesmo com campos básicos):', basicError);
+        throw new Error('Falha ao salvar no banco de dados. Verifique a conexão e as colunas da tabela.');
       }
     }
   },

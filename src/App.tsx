@@ -2087,10 +2087,11 @@ export default function App() {
   const currentMonthIdx = new Date().getMonth();
 
   const projectedCashFlow = Array.from({ length: 12 }, (_, i) => {
-    const targetDate = new Date();
-    targetDate.setMonth(currentMonthIdx + i);
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const targetMonth = targetDate.getMonth();
     const targetYear = targetDate.getFullYear();
+    const targetValue = targetYear * 12 + targetMonth;
     const name = monthNames[targetMonth];
     
     let income = 0;
@@ -2098,43 +2099,61 @@ export default function App() {
     let vencer = 0;
 
     transactions.forEach(t => {
-      const tDate = t.dueDate ? new Date(t.dueDate + 'T00:00:00') : new Date(t.createdAt);
+      // Usar a melhor data disponível para a transação
+      let tDate: Date;
+      if (t.dueDate) {
+        // Garantir que a string ISO seja interpretada como local ou converter de YYYY-MM-DD
+        const [y, m, d_val] = t.dueDate.split('-').map(Number);
+        tDate = new Date(y, m - 1, d_val);
+      } else {
+        tDate = new Date(t.createdAt);
+      }
+
       const tMonth = tDate.getMonth();
       const tYear = tDate.getFullYear();
+      const tValue = tYear * 12 + tMonth;
 
       let applies = false;
       let multiplier = 1;
 
-      if (t.recurrence === 'Mensal') {
-        // Aplica para o mês inicial e todos os subsequentes
-        if (targetYear > tYear || (targetYear === tYear && targetMonth >= tMonth)) {
+      // Normalizar o texto de recorrência e validar contra todas as possibilidades
+      const rec = (t.recurrence || 'Único').trim().toLowerCase();
+
+      if (rec === 'mensal' || rec.includes('mensal')) {
+        // Mensal: a partir do mês da transação, se aplica a todos os meses futuros
+        if (targetValue >= tValue) {
           applies = true;
         }
-      } else if (t.recurrence === 'Semanal') {
-        // Aplica para o mês inicial e todos os subsequentes, multiplicado por 4 (média mensal)
-        if (targetYear > tYear || (targetYear === tYear && targetMonth >= tMonth)) {
+      } else if (rec === 'semanal' || rec.includes('semanal')) {
+        // Semanal: aplica multiplicador médio (4 semanas)
+        if (targetValue >= tValue) {
           applies = true;
           multiplier = 4;
         }
       } else {
-        // Único: apenas no mês e ano específicos
-        if (targetMonth === tMonth && targetYear === tYear) {
+        // Único: apenas no mês exato
+        if (targetValue === tValue) {
           applies = true;
         }
       }
 
       if (applies) {
-        const val = t.amount * multiplier;
+        const amount = Number(t.amount) || 0;
+        const val = amount * multiplier;
+        
         if (t.type === 'income') {
           income += val;
         } else {
-          // No mês atual, respeitamos o status real
-          // Nos meses futuros, recorrências são projetadas como 'A Vencer/Pendente'
-          if (i > 0 && (t.recurrence === 'Mensal' || t.recurrence === 'Semanal')) {
+          // No mês atual (i=0), usamos o status real da transação
+          // Em meses futuros, projetamos despesas como 'vencer' pois ainda não foram pagas
+          if (i > 0) {
             vencer += val;
           } else {
-            if (t.status === 'Pago') expense += val;
-            else vencer += val;
+            if (t.status === 'Pago') {
+              expense += val;
+            } else {
+              vencer += val;
+            }
           }
         }
       }
@@ -2145,7 +2164,7 @@ export default function App() {
       income: Math.round(income), 
       expense: Math.round(expense), 
       vencer: Math.round(vencer),
-      saldo: Math.round(income - expense - vencer)
+      saldo: Math.round(income - (expense + vencer))
     };
   }).slice(0, 6);
 
@@ -2218,7 +2237,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/10 overflow-hidden max-w-[300px]">
             <div className={`w-2 h-2 rounded-full shrink-0 ${diagResult?.includes('OK') ? 'bg-emerald-400' : diagResult ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
-            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v2.6'}</span>
+            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v2.8'}</span>
           </div>
         </div>
         
@@ -3253,10 +3272,10 @@ export default function App() {
                                     <span className="opacity-50 hidden md:inline">•</span>
                                     <span className="hidden md:inline">{t.paymentMethod || 'PIX'}</span>
                                     {t.recurrence && t.recurrence !== 'Único' && (
-                                      <>
-                                        <span className="opacity-50">•</span>
-                                        <span className="text-roxo-suave">{t.recurrence}</span>
-                                      </>
+                                      <div className="flex items-center gap-1 ml-1 px-1.5 py-0.5 bg-roxo-suave/10 rounded border border-roxo-suave/20">
+                                        <RefreshCw size={8} className="text-roxo-suave" />
+                                        <span className="text-[8px] text-roxo-suave font-bold">{t.recurrence.toUpperCase()}</span>
+                                      </div>
                                     )}
                                     {t.dueDate && (
                                       <span className="flex items-center gap-1">
