@@ -2087,38 +2087,58 @@ export default function App() {
   const currentMonthIdx = new Date().getMonth();
 
   const projectedCashFlow = Array.from({ length: 12 }, (_, i) => {
-    const monthIdx = (currentMonthIdx + i) % 12;
-    const name = monthNames[monthIdx];
+    const targetDate = new Date();
+    targetDate.setMonth(currentMonthIdx + i);
+    const targetMonth = targetDate.getMonth();
+    const targetYear = targetDate.getFullYear();
+    const name = monthNames[targetMonth];
     
-    // Get recurring totals
-    const monthlyRecurringIncome = transactions.filter(t => t.type === 'income' && t.recurrence === 'Mensal').reduce((sum, t) => sum + t.amount, 0);
-    const monthlyRecurringExpense = transactions.filter(t => t.type === 'expense' && t.recurrence === 'Mensal' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
-    const monthlyRecurringVencer = transactions.filter(t => t.type === 'expense' && t.recurrence === 'Mensal' && (t.status === 'A Vencer' || t.status === 'Pendente')).reduce((sum, t) => sum + t.amount, 0);
+    let income = 0;
+    let expense = 0;
+    let vencer = 0;
 
-    let income, expense, vencer;
-    
-    if (i === 0) {
-      // Month 1: Real Current Data
-      // We group all income/expenses in their respective categories so the areas are populated
-      income = transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
-      expense = transactions.filter(t => t.type === 'expense' && t.status === 'Pago').reduce((sum, t) => sum + t.amount, 0);
-      // We use 'vencer' for accounts that are not yet paid
-      vencer = transactions.filter(t => t.type === 'expense' && (t.status === 'A Vencer' || t.status === 'Pendente')).reduce((sum, t) => sum + t.amount, 0);
-    } else {
-      // Projections for Months 2-12
-      // Recurring ones are the base Saídas (Pink)
-      income = monthlyRecurringIncome;
-      expense = monthlyRecurringExpense + monthlyRecurringVencer; // All recurring are 'Saídas' in projection
-      vencer = 0; 
+    transactions.forEach(t => {
+      const tDate = t.dueDate ? new Date(t.dueDate + 'T00:00:00') : new Date(t.createdAt);
+      const tMonth = tDate.getMonth();
+      const tYear = tDate.getFullYear();
 
-      // Add actual average of variable items if it exists
-      const avgVariableIncome = transactions.length > 0 ? transactions.filter(t => t.type === 'income' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) : 0;
-      const avgVariableExpense = transactions.length > 0 ? transactions.filter(t => t.type === 'expense' && t.recurrence === 'Único').reduce((sum, t) => sum + t.amount, 0) : 0;
-      
-      income += avgVariableIncome;
-      // We put variable projection as 'vencer' in future months because they are expected/scheduled
-      vencer += avgVariableExpense;
-    }
+      let applies = false;
+      let multiplier = 1;
+
+      if (t.recurrence === 'Mensal') {
+        // Aplica para o mês inicial e todos os subsequentes
+        if (targetYear > tYear || (targetYear === tYear && targetMonth >= tMonth)) {
+          applies = true;
+        }
+      } else if (t.recurrence === 'Semanal') {
+        // Aplica para o mês inicial e todos os subsequentes, multiplicado por 4 (média mensal)
+        if (targetYear > tYear || (targetYear === tYear && targetMonth >= tMonth)) {
+          applies = true;
+          multiplier = 4;
+        }
+      } else {
+        // Único: apenas no mês e ano específicos
+        if (targetMonth === tMonth && targetYear === tYear) {
+          applies = true;
+        }
+      }
+
+      if (applies) {
+        const val = t.amount * multiplier;
+        if (t.type === 'income') {
+          income += val;
+        } else {
+          // No mês atual, respeitamos o status real
+          // Nos meses futuros, recorrências são projetadas como 'A Vencer/Pendente'
+          if (i > 0 && (t.recurrence === 'Mensal' || t.recurrence === 'Semanal')) {
+            vencer += val;
+          } else {
+            if (t.status === 'Pago') expense += val;
+            else vencer += val;
+          }
+        }
+      }
+    });
     
     return { 
       name, 
@@ -2127,7 +2147,7 @@ export default function App() {
       vencer: Math.round(vencer),
       saldo: Math.round(income - expense - vencer)
     };
-  }).slice(0, 6); // Keep showing 6 months for UI balance
+  }).slice(0, 6);
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
@@ -2184,12 +2204,58 @@ export default function App() {
   const todayStudySessionsCount = studySessions.filter(s => s.startTime >= todayTimestamp && s.type === 'work').length;
   const pendingStudyTopics = studyTopics.filter(t => !t.completed).slice(0, 3);
 
+  const [diagResult, setDiagResult] = useState<string | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
   if (!isAuthenticated) {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
 
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
+      {/* Barra de Diagnóstico de Emergência - MEGA VISÍVEL */}
+      <div className="fixed top-0 left-0 w-full bg-indigo-600 text-white px-4 py-2 flex items-center justify-between text-[11px] font-bold z-[10000] shadow-2xl border-b border-white/20">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/10 overflow-hidden max-w-[300px]">
+            <div className={`w-2 h-2 rounded-full shrink-0 ${diagResult?.includes('OK') ? 'bg-emerald-400' : diagResult ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
+            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v2.6'}</span>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={async () => {
+              setDiagLoading(true);
+              setDiagResult('Processando...');
+              console.log('BOTÃO DIAGNÓSTICO: Clicado');
+              
+              try {
+                const result = await dataService.testConnection();
+                console.log('BOTÃO DIAGNÓSTICO: Resultado:', result);
+                
+                if (result.success) {
+                  setDiagResult(`CONEXÃO OK! (${result.count} registros)`);
+                } else {
+                  setDiagResult(`ERRO: ${result.error}`);
+                  // Se o erro for longo, tenta alert como backup
+                  if (result.error.length > 30) alert(`ERRO DETALHADO:\n${result.error}`);
+                }
+              } catch (err: any) {
+                console.error('BOTÃO DIAGNÓSTICO: Crash:', err);
+                setDiagResult(`CRASH: ${err.message}`);
+              } finally {
+                setDiagLoading(false);
+              }
+            }}
+            disabled={diagLoading}
+            className={`px-4 py-1.5 rounded-lg transition-all flex items-center gap-2 active:scale-95 ${diagLoading ? 'bg-slate-400 cursor-wait' : 'bg-white text-indigo-600 hover:bg-slate-100 shadow-lg'}`}
+          >
+            <ShieldAlert size={14} />
+            {diagLoading ? 'TESTANDO...' : 'TESTAR CONEXÃO AGORA'}
+          </button>
+        </div>
+      </div>
+
       {/* Modals e Overlays Globais */}
       <AnimatePresence>
         {selectedProjectForView && (
@@ -2284,31 +2350,7 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
-        {/* Global Debug Bar */}
-        <div className="bg-roxo-suave text-white px-4 py-2 flex items-center justify-between text-[11px] font-bold z-50">
-          <div className="flex items-center gap-3">
-            <span className="bg-white/20 px-2 py-0.5 rounded uppercase">Status Banco</span>
-            <span className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
-              SISTEMA INTEGRADO v2.5.0
-            </span>
-          </div>
-          <button 
-            onClick={async () => {
-              const result = await dataService.testConnection();
-              if (result.success) {
-                alert(`CONEXÃO OK!\n\nSeu banco de dados respondeu corretamente.\nRegistros na tabela 'transactions': ${result.count}`);
-              } else {
-                alert(`ERRO DE CONEXÃO!\n\nO Supabase disse:\n${result.error}\n\nVerifique se a tabela 'transactions' existe e se o RLS está liberado.`);
-              }
-            }}
-            className="bg-white text-roxo-suave px-3 py-1 rounded-lg hover:bg-slate-100 transition-all flex items-center gap-1.5"
-          >
-            <ShieldAlert size={14} />
-            CLIQUE PARA TESTAR CONEXÃO AGORA
-          </button>
-        </div>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 pt-8 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         {/* Fixed Header */}
         <header className="bg-bg-dark/80 backdrop-blur-xl border-b border-border-dark z-20 sticky top-0">
           <div className="px-4 py-3 md:px-6 md:py-5 flex justify-between items-center">

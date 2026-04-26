@@ -96,23 +96,29 @@ export const dataService = {
 
   async testConnection() {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log('Test Connection - Session:', session ? 'Active' : 'None');
+      console.log('DIAGNÓSTICO: Iniciando...');
       
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('DIAGNÓSTICO: Sessão ->', session ? 'Logado' : 'Sem Sessão');
+      
+      console.log('DIAGNÓSTICO: Testando leitura da tabela "transactions"...');
       const { data, error, count } = await supabase
         .from('transactions')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .limit(1);
         
       if (error) {
-        console.error('Test Connection - Error:', error);
+        console.error('DIAGNÓSTICO: Erro do Supabase ->', error);
+        // Se o erro for "JWT expired", o usuário precisa logar de novo
+        if (error.message.includes('JWT')) return { success: false, error: 'Sua sessão expirou. Por favor, saia do sistema e entre novamente com Google.' };
         return { success: false, error: error.message };
       }
       
-      console.log('Test Connection - Success. Row count:', count);
-      return { success: true, count };
+      console.log('DIAGNÓSTICO: Sucesso! Total de linhas:', count);
+      return { success: true, count: count || 0 };
     } catch (err: any) {
-      console.error('Test Connection - Fatal Error:', err);
-      return { success: false, error: err.message };
+      console.error('DIAGNÓSTICO: Erro Fatal ->', err);
+      return { success: false, error: 'Erro de Conexão: ' + err.message };
     }
   },
 

@@ -17,4 +17,8 @@ const getSupabaseConfig = () => {
 
 const { url, key } = getSupabaseConfig();
 console.log('Supabase carregado com URL:', url);
+if (typeof window !== 'undefined') {
+  (window as any).__SUPABASE_URL = url;
+  (window as any).__SUPABASE_KEY_SET = !!key;
+}
 export const supabase = createClient(url, key);
