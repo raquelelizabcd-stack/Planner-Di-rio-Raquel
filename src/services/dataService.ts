@@ -124,53 +124,32 @@ export const dataService = {
 
   async saveTransaction(transaction: Transaction) {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) throw new Error('Not authenticated');
+    if (!session?.user) throw new Error('Acesso negado. Faça login novamente.');
 
-    // Mapeamento completo baseado na interface Transaction e possíveis colunas no banco
-    const transactionData: any = {
+    // Mapeamento direto com as colunas confirmadas via imagem do usuário
+    const transactionData = {
       id: transaction.id,
       user_id: session.user.id,
-      type: transaction.type,
+      type: transaction.type, // 'income' ou 'expense'
       title: transaction.title || 'Sem título',
       amount: Number(transaction.amount),
       category: transaction.category || 'Outros',
       dueDate: transaction.dueDate || null,
       status: transaction.status || 'Pendente',
-      paymentMethod: transaction.paymentMethod || null,
-      recurrence: transaction.recurrence || 'Único'
+      paymentMethod: transaction.paymentMethod || 'PIX',
+      recurrence: transaction.recurrence || 'Único',
+      updatedAt: new Date().toISOString()
     };
 
-    console.log('Tentando salvar transação completa:', transactionData);
+    console.log('Sincronizando com Supabase:', transactionData);
 
-    const { error: fullError } = await supabase
+    const { error } = await supabase
       .from('transactions')
       .upsert(transactionData);
 
-    if (fullError) {
-      console.warn('Falha ao salvar transação completa. Verifique se as colunas "status", "recurrence" e "paymentMethod" existem no Supabase.', fullError);
-      
-      // Tentativa de salvamento simplificado apenas com campos essenciais se as novas colunas não existirem
-      const basicData = {
-        id: transaction.id,
-        user_id: session.user.id,
-        type: transaction.type,
-        title: transaction.title || 'Sem título',
-        amount: Number(transaction.amount),
-        category: transaction.category || 'Outros',
-        dueDate: transaction.dueDate || null,
-        // Adicionando status e recurrence aqui também - se falhar, o erro será lançado
-        status: transaction.status || 'Pendente',
-        recurrence: transaction.recurrence || 'Único'
-      };
-
-      const { error: basicError } = await supabase
-        .from('transactions')
-        .upsert(basicData);
-
-      if (basicError) {
-        console.error('ERRO AO SALVAR NO SUPABASE (Mesmo com campos básicos):', basicError);
-        throw new Error('Falha ao salvar no banco de dados. Verifique a conexão e as colunas da tabela.');
-      }
+    if (error) {
+      console.error('Erro Supabase:', error);
+      throw new Error(`Erro no banco de dados (${error.code}): ${error.message}`);
     }
   },
 

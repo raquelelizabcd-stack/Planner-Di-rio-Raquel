@@ -1392,6 +1392,26 @@ export default function App() {
     localStorage.setItem('raquel_transactions_dark', JSON.stringify(transactions));
   }, [transactions]);
 
+  // Auto-ajuste para transações existentes de Salário (para que apareçam no fluxo projetado)
+  useEffect(() => {
+    if (transactions.length > 0) {
+      const needsFix = transactions.some(t => t.category === 'Salário' && (!t.recurrence || t.recurrence === 'Único'));
+      if (needsFix) {
+        console.log('Detectadas transações de Salário sem recorrência. Ajustando para Mensal...');
+        const updatedTransactions = transactions.map(t => {
+          if (t.category === 'Salário' && (!t.recurrence || t.recurrence === 'Único')) {
+            const fixed: Transaction = { ...t, recurrence: 'Mensal' };
+            // Tentar salvar no Supabase também
+            dataService.saveTransaction(fixed).catch(err => console.error('Erro ao auto-fixar salário no Supabase:', err));
+            return fixed;
+          }
+          return t;
+        });
+        setTransactions(updatedTransactions);
+      }
+    }
+  }, [transactions.length]);
+
   useEffect(() => {
     localStorage.setItem('raquel_events_dark', JSON.stringify(events));
   }, [events]);
@@ -2084,8 +2104,7 @@ export default function App() {
 
   // Fluxo de Caixa Projetado Data
   const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  const currentMonthIdx = new Date().getMonth();
-
+  
   const projectedCashFlow = Array.from({ length: 12 }, (_, i) => {
     const now = new Date();
     const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
@@ -2102,7 +2121,6 @@ export default function App() {
       // Usar a melhor data disponível para a transação
       let tDate: Date;
       if (t.dueDate) {
-        // Garantir que a string ISO seja interpretada como local ou converter de YYYY-MM-DD
         const [y, m, d_val] = t.dueDate.split('-').map(Number);
         tDate = new Date(y, m - 1, d_val);
       } else {
@@ -2111,7 +2129,7 @@ export default function App() {
 
       const tMonth = tDate.getMonth();
       const tYear = tDate.getFullYear();
-      const tValue = tYear * 12 + tMonth;
+      const tValue = (tYear * 12) + tMonth;
 
       let applies = false;
       let multiplier = 1;
@@ -2119,18 +2137,23 @@ export default function App() {
       // Normalizar o texto de recorrência e validar contra todas as possibilidades
       const rec = (t.recurrence || 'Único').trim().toLowerCase();
 
-      if (rec === 'mensal' || rec.includes('mensal')) {
+      // MENSAL ou MÊS
+      if (rec.includes('mens') || rec.includes('mes')) {
         // Mensal: a partir do mês da transação, se aplica a todos os meses futuros
         if (targetValue >= tValue) {
           applies = true;
         }
-      } else if (rec === 'semanal' || rec.includes('semanal')) {
-        // Semanal: aplica multiplicador médio (4 semanas)
+      } 
+      // SEMANAL
+      else if (rec.includes('seman')) {
+        // Semanal: aplica multiplicador médio (4.33 semanas por mês)
         if (targetValue >= tValue) {
           applies = true;
-          multiplier = 4;
+          multiplier = 4.33;
         }
-      } else {
+      } 
+      // ÚNICO ou PADRÃO
+      else {
         // Único: apenas no mês exato
         if (targetValue === tValue) {
           applies = true;
@@ -2164,7 +2187,21 @@ export default function App() {
       income: Math.round(income), 
       expense: Math.round(expense), 
       vencer: Math.round(vencer),
-      saldo: Math.round(income - (expense + vencer))
+      totalOut: Math.round(expense + vencer)
+    };
+  });
+
+  // Calcular saldo acumulado
+  let runningBalance = balance; // Iniciar com o saldo atual do sistema
+  const finalProjectedData = projectedCashFlow.map((month, idx) => {
+    // Para o mês atual (idx=0), o saldo já é o saldo do sistema
+    // Para meses futuros (idx > 0), somamos a projeção (income - totalOut)
+    if (idx > 0) {
+      runningBalance += (month.income - month.totalOut);
+    }
+    return {
+      ...month,
+      saldo: Math.round(runningBalance)
     };
   }).slice(0, 6);
 
@@ -2237,7 +2274,7 @@ export default function App() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/10 overflow-hidden max-w-[300px]">
             <div className={`w-2 h-2 rounded-full shrink-0 ${diagResult?.includes('OK') ? 'bg-emerald-400' : diagResult ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
-            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v2.8'}</span>
+            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v3.1'}</span>
           </div>
         </div>
         
@@ -3085,7 +3122,7 @@ export default function App() {
                   
                   <div className="h-64 md:h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={projectedCashFlow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <ComposedChart data={finalProjectedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
@@ -5777,6 +5814,7 @@ function TransactionForm({ onAdd }: { onAdd: (
             setType('income');
             setCategory('Salário');
             setStatus('Pago');
+            setRecurrence('Mensal');
           }}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${type === 'income' ? 'bg-emerald-500 text-white' : 'text-slate-500'}`}
         >
