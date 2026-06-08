@@ -30,7 +30,7 @@ export interface Transaction {
   amount: number;
   category: string;
   dueDate?: string;
-  paymentMethod?: 'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro';
+  paymentMethod?: 'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito';
   status: 'Pendente' | 'Pago' | 'A Vencer';
   recurrence?: 'Único' | 'Semanal' | 'Mensal';
   createdAt: number;
@@ -163,4 +163,98 @@ export interface StudyProgress {
 
 export type StudyTabType = 'general' | 'notes' | 'topics' | 'focus' | 'planning';
 
-export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies';
+export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies' | 'marketing';
+
+// Central de Marketing Types
+export interface MarketingProject {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt?: string;
+}
+
+export interface MarketingContent {
+  id: string;
+  title: string;
+  project: string;
+  socialNetwork: string;
+  objective?: string;
+  targetAudience?: string;
+  theme?: string;
+  generatedContent?: {
+    instagramFeed?: string;
+    instagramCarousel?: string;
+    instagramReels?: string;
+    instagramStories?: string;
+    linkedinPost?: string;
+    blogSEO?: string;
+    emailCampaign?: string;
+  };
+  createdAt?: string;
+}
+
+export interface MarketingCalendarEvent {
+  id: string;
+  title: string;
+  projectId: string;
+  socialNetwork: string; // instagram, facebook, linkedin, etc.
+  scheduledDate: string; // YYYY-MM-DD
+  status: 'Ideia' | 'Em Produção' | 'Agendado' | 'Publicado';
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface MarketingLead {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  projectId: string;
+  origin?: string;
+  status: 'Novo Lead' | 'Contato Realizado' | 'Em Negociação' | 'Cliente';
+  createdAt?: string;
+}
+
+export interface MarketingCampaign {
+  id: string;
+  name: string;
+  subject: string;
+  content: string;
+  contactsList?: string;
+  status: 'Draft' | 'Sent' | 'Scheduled';
+  scheduledAt?: string;
+  createdAt?: string;
+}
+
+export interface MarketingSocialAccount {
+  id: string;
+  platform: 'instagram' | 'facebook' | 'linkedin' | 'tiktok' | 'youtube';
+  status: 'Conectado' | 'Não conectado';
+  handle?: string;
+  followers?: number;
+  createdAt?: string;
+}
+
+export interface MarketingIdea {
+  id: string;
+  title: string;
+  category: string;
+  projectId: string;
+  priority: 'High' | 'Medium' | 'Low';
+  notes?: string;
+  createdAt?: string;
+}
+
+export interface MarketingAnalytics {
+  id: string;
+  month: string; // e.g. "Janeiro", "Fevereiro"
+  visitors: number;
+  sessions: number;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  followersGrowth: number;
+  projectId: string;
+  createdAt?: string;
+}
+

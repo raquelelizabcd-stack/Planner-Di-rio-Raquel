@@ -82,7 +82,8 @@ import {
   FolderPlus,
   FilePlus,
   Filter,
-  ArrowRight
+  ArrowRight,
+  Megaphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -122,6 +123,8 @@ import {
   StudySession,
   StudyTabType
 } from './types';
+
+import CentralMarketing from './components/CentralMarketing';
 
 // Gauge Component using Canvas and Math.PI
 const Gauge = ({ 
@@ -748,8 +751,8 @@ const ChatWidget = ({
 };
 
 const LoginView = ({ onLogin }: { onLogin: () => void }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('raquelduartesimoes@gmail.com');
+  const [password, setPassword] = useState('21226900');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -875,7 +878,7 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
 
         <div className="mt-8 pt-6 border-t border-border-dark text-center">
           <p className="text-xs text-slate-600 italic">
-            Acesso exclusivo para: <span className="text-roxo-suave">raquelelizabcd@gmail.com</span>
+            Acesso exclusivo para: <span className="text-roxo-suave">raquelduartesimoes@gmail.com</span>
           </p>
         </div>
       </motion.div>
@@ -1001,6 +1004,22 @@ const ProjectModal = ({ project, isOpen, onClose }: { project: Project | null, i
                   </button>
                 )}
 
+                {project.supabaseUrl && (
+                  <button 
+                    onClick={() => window.open(project.supabaseUrl, '_blank')}
+                    className="w-full flex items-center justify-between p-4 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-2xl group transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Database size={18} className="text-blue-400" />
+                      <div className="text-left">
+                        <p className="text-[10px] font-bold text-blue-400 uppercase">Banco de Dados</p>
+                        <p className="text-xs font-bold text-white truncate w-40">Supabase Dashboard</p>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-blue-400 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                )}
+
                 {(project.githubEmail || project.supabaseEmail) && (
                   <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-3">Credenciais de Acesso</p>
@@ -1090,7 +1109,7 @@ export default function App() {
   const [savedFeedback, setSavedFeedback] = useState<Record<string, boolean>>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const [userEmail, setUserEmail] = useState('raquelelizabcd@gmail.com');
+  const [userEmail, setUserEmail] = useState('raquelduartesimoes@gmail.com');
   const [userPassword, setUserPassword] = useState('********');
   
   // Study State
@@ -1273,6 +1292,7 @@ export default function App() {
   const [newSnippetTitle, setNewSnippetTitle] = useState('');
   const [newSnippetLang, setNewSnippetLang] = useState('');
   const [newSnippetCode, setNewSnippetCode] = useState('');
+  const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
 
   // New goal form state
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -1326,7 +1346,8 @@ export default function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
-        if (session.user.email !== 'raquelelizabcd@gmail.com') {
+        const email = session.user.email;
+        if (email !== 'raquelelizabcd@gmail.com' && email !== 'raquelduartesimoes@gmail.com') {
           await supabase.auth.signOut();
           alert('Acesso negado: Este sistema é exclusivo para Raquel.');
           setIsAuthenticated(false);
@@ -1346,7 +1367,8 @@ export default function App() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        if (session.user.email !== 'raquelelizabcd@gmail.com') {
+        const email = session.user.email;
+        if (email !== 'raquelelizabcd@gmail.com' && email !== 'raquelduartesimoes@gmail.com') {
           await supabase.auth.signOut();
           setIsAuthenticated(false);
           return;
@@ -1360,14 +1382,16 @@ export default function App() {
 
     const initSupabase = async () => {
       try {
-        const [supaProjects, supaReminders, supaTransactions] = await Promise.all([
+        const [supaProjects, supaReminders, supaTransactions, supaSnippets] = await Promise.all([
           dataService.fetchProjects(),
           dataService.fetchReminders(),
-          dataService.fetchTransactions()
+          dataService.fetchTransactions(),
+          dataService.fetchSnippets()
         ]);
         if (supaProjects.length > 0) setProjects(supaProjects);
         if (supaReminders.length > 0) setKanbanTasks(supaReminders);
         if (supaTransactions.length > 0) setTransactions(supaTransactions);
+        if (supaSnippets && supaSnippets.length > 0) setSnippets(supaSnippets);
       } catch (err) {
         console.error('Failed to load Supabase data:', err);
       }
@@ -1675,7 +1699,7 @@ export default function App() {
     amount: number, 
     category: string, 
     dueDate: string | undefined,
-    paymentMethod: 'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro' | undefined,
+    paymentMethod: 'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito' | undefined,
     status: 'Pendente' | 'Pago' | 'A Vencer',
     recurrence: 'Único' | 'Semanal' | 'Mensal'
   ) => {
@@ -1751,13 +1775,34 @@ export default function App() {
 
   const addSnippet = () => {
     if (!newSnippetTitle || !newSnippetLang || !newSnippetCode) return;
-    const newSnippet: CodeSnippet = { 
-      id: Date.now().toString(), 
-      title: newSnippetTitle, 
-      language: newSnippetLang, 
-      code: newSnippetCode 
-    };
-    setSnippets([newSnippet, ...snippets]);
+    
+    if (editingSnippetId) {
+      const updatedSnippet: CodeSnippet = {
+        id: editingSnippetId,
+        title: newSnippetTitle,
+        language: newSnippetLang,
+        code: newSnippetCode
+      };
+      setSnippets(snippets.map(s => s.id === editingSnippetId ? updatedSnippet : s));
+      dataService.saveSnippet(updatedSnippet).catch(err => {
+        console.error('Erro ao editar snippet no Supabase:', err);
+        showToastWithMsg('Erro ao atualizar snippet no banco de dados / Supabase');
+      });
+      setEditingSnippetId(null);
+    } else {
+      const newSnippet: CodeSnippet = { 
+        id: Date.now().toString(), 
+        title: newSnippetTitle, 
+        language: newSnippetLang, 
+        code: newSnippetCode 
+      };
+      setSnippets([newSnippet, ...snippets]);
+      dataService.saveSnippet(newSnippet).catch(err => {
+        console.error('Erro ao salvar snippet no Supabase:', err);
+        showToastWithMsg('Erro ao salvar snippet no banco de dados / Supabase');
+      });
+    }
+    
     setNewSnippetTitle('');
     setNewSnippetLang('');
     setNewSnippetCode('');
@@ -1766,6 +1811,10 @@ export default function App() {
 
   const deleteSnippet = (id: string) => {
     setSnippets(snippets.filter(s => s.id !== id));
+    dataService.deleteSnippet(id).catch(err => {
+      console.error('Erro ao deletar snippet no Supabase:', err);
+      showToastWithMsg('Erro ao excluir snippet do banco de dados / Supabase');
+    });
   };
 
   const addLog = (topic: string, notes: string) => {
@@ -2213,6 +2262,7 @@ export default function App() {
     { id: 'programmer', label: 'Projetos', icon: Code, color: 'text-blue-500' },
     { id: 'studies', label: 'Estudos', icon: BookOpen, color: 'text-indigo-400' },
     { id: 'diary', label: 'Diário Pessoal', icon: Smile, color: 'text-pink-400' },
+    { id: 'marketing', label: 'Central de Marketing', icon: Megaphone, color: 'text-orange-400' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'text-slate-400' },
   ];
 
@@ -2270,11 +2320,11 @@ export default function App() {
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
       {/* Barra de Diagnóstico de Emergência - MEGA VISÍVEL */}
-      <div className="fixed top-0 left-0 w-full bg-indigo-600 text-white px-4 py-2 flex items-center justify-between text-[11px] font-bold z-[10000] shadow-2xl border-b border-white/20">
+      <div className="fixed top-0 left-0 w-full bg-indigo-700 text-white px-4 py-2 flex items-center justify-between text-[11px] font-bold z-[10000] shadow-2xl border-b border-white/20">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-black/20 px-3 py-1 rounded-full border border-white/10 overflow-hidden max-w-[300px]">
-            <div className={`w-2 h-2 rounded-full shrink-0 ${diagResult?.includes('OK') ? 'bg-emerald-400' : diagResult ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
-            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v3.1'}</span>
+          <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/20 overflow-hidden max-w-[300px]">
+            <div className={`w-2 h-2 rounded-full shrink-0 ${diagResult?.includes('OK') ? 'bg-emerald-400' : diagResult ? 'bg-red-400' : 'bg-blue-400 animate-pulse'}`} />
+            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v3.6 (BOTÕES VISÍVEIS)'}</span>
           </div>
         </div>
         
@@ -3307,7 +3357,7 @@ export default function App() {
                                   <div className="flex flex-wrap items-center gap-x-2 text-[9px] md:text-[10px] text-slate-500 uppercase tracking-wider font-bold mt-0.5 uppercase">
                                     <span>{t.category}</span>
                                     <span className="opacity-50 hidden md:inline">•</span>
-                                    <span className="hidden md:inline">{t.paymentMethod || 'PIX'}</span>
+                                    <span className="hidden md:inline">{t.paymentMethod || 'Pix'}</span>
                                     {t.recurrence && t.recurrence !== 'Único' && (
                                       <div className="flex items-center gap-1 ml-1 px-1.5 py-0.5 bg-roxo-suave/10 rounded border border-roxo-suave/20">
                                         <RefreshCw size={8} className="text-roxo-suave" />
@@ -3720,7 +3770,48 @@ export default function App() {
                                 </div>
                               </div>
 
-                              {/* Row 3: Dev Location */}
+                              {/* Row 3: Supabase - ENHANCED VISIBILITY */}
+                              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-2 items-center bg-blue-500/5 p-2 rounded-xl border border-blue-500/10">
+                                <div className="md:col-span-4">
+                                  <label className="text-[9px] font-bold text-blue-400 uppercase tracking-widest block mb-1">Supabase (E-mail)</label>
+                                  <input 
+                                    type="text" 
+                                    value={project.supabaseEmail || ''}
+                                    onChange={(e) => updateProjectField(project.id, 'supabaseEmail', e.target.value)}
+                                    placeholder="E-mail"
+                                    className="w-full bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-blue-500 text-white"
+                                  />
+                                </div>
+                                <div className="md:col-span-7">
+                                  <label className="text-[9px] font-bold text-blue-400 uppercase tracking-widest block mb-1">Supabase (Dashboard Link)</label>
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="text" 
+                                      value={project.supabaseUrl || ''}
+                                      onChange={(e) => updateProjectField(project.id, 'supabaseUrl', e.target.value)}
+                                      placeholder="https://supabase.com/dashboard/..."
+                                      className="flex-1 bg-slate-100/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] focus:outline-none focus:border-blue-500 text-white"
+                                    />
+                                    <button 
+                                      onClick={() => project.supabaseUrl && window.open(project.supabaseUrl, '_blank')}
+                                      className="md:hidden p-1.5 bg-blue-500/10 text-blue-400 rounded-lg"
+                                    >
+                                      <ExternalLink size={12} />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="hidden md:col-span-1 md:flex justify-end">
+                                  <button 
+                                    onClick={() => project.supabaseUrl && window.open(project.supabaseUrl, '_blank')}
+                                    className="p-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 rounded-lg transition-all"
+                                    title="Abrir Supabase"
+                                  >
+                                    <Database size={12} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Row 4: Dev Location */}
                               <div className="grid grid-cols-1 md:grid-cols-12 gap-3 md:gap-2 items-center">
                                 <div className="md:col-span-4">
                                   <label className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Local Dev</label>
@@ -3862,7 +3953,15 @@ export default function App() {
                           Code Snippets
                         </h4>
                         <button 
-                          onClick={() => setShowAddSnippet(!showAddSnippet)}
+                          onClick={() => {
+                            if (showAddSnippet) {
+                              setEditingSnippetId(null);
+                              setNewSnippetTitle('');
+                              setNewSnippetLang('');
+                              setNewSnippetCode('');
+                            }
+                            setShowAddSnippet(!showAddSnippet);
+                          }}
                           className={`p-2 rounded-xl transition-all ${showAddSnippet ? 'bg-red-500/10 text-red-500' : 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-500'}`}
                         >
                           {showAddSnippet ? <X size={18} /> : <Plus size={18} />}
@@ -3878,6 +3977,11 @@ export default function App() {
                             className="overflow-hidden mb-6"
                           >
                             <div className="p-4 bg-white/5 rounded-2xl border border-border-dark space-y-4">
+                              {editingSnippetId && (
+                                <div className="text-xs font-bold text-blue-400 uppercase tracking-wider bg-blue-500/10 px-3 py-1 rounded-lg w-max">
+                                  Editando Snippet
+                                </div>
+                              )}
                               <div className="grid grid-cols-2 gap-4">
                                 <input 
                                   type="text" 
@@ -3900,12 +4004,28 @@ export default function App() {
                                 value={newSnippetCode}
                                 onChange={(e) => setNewSnippetCode(e.target.value)}
                               />
-                              <button 
-                                onClick={addSnippet}
-                                className="w-full bg-blue-500 text-white py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-colors"
-                              >
-                                Salvar Snippet
-                              </button>
+                              <div className="flex gap-2">
+                                {editingSnippetId && (
+                                  <button 
+                                    onClick={() => {
+                                      setEditingSnippetId(null);
+                                      setNewSnippetTitle('');
+                                      setNewSnippetLang('');
+                                      setNewSnippetCode('');
+                                      setShowAddSnippet(false);
+                                    }}
+                                    className="flex-1 bg-slate-700 text-slate-300 py-2 rounded-xl text-sm font-bold hover:bg-slate-600 transition-colors"
+                                  >
+                                    Cancelar
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={addSnippet}
+                                  className="flex-1 bg-blue-500 text-white py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-colors"
+                                >
+                                  {editingSnippetId ? 'Salvar Alterações' : 'Salvar Snippet'}
+                                </button>
+                              </div>
                             </div>
                           </motion.div>
                         )}
@@ -3916,7 +4036,28 @@ export default function App() {
                           <div key={s.id} className="bg-slate-800/50 p-4 rounded-2xl border border-border-dark group relative">
                             <div className="flex justify-between items-start mb-2">
                               <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{s.language}</span>
-                              <button onClick={() => deleteSnippet(s.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
+                              <div className="flex items-center gap-3">
+                                <button 
+                                  onClick={() => {
+                                    setEditingSnippetId(s.id);
+                                    setNewSnippetTitle(s.title);
+                                    setNewSnippetLang(s.language);
+                                    setNewSnippetCode(s.code);
+                                    setShowAddSnippet(true);
+                                  }} 
+                                  className="text-slate-400 hover:text-blue-400 bg-white/5 hover:bg-white/10 p-1.5 rounded-lg transition-all"
+                                  title="Editar"
+                                >
+                                  <Edit2 size={13} />
+                                </button>
+                                <button 
+                                  onClick={() => deleteSnippet(s.id)} 
+                                  className="text-slate-400 hover:text-red-400 bg-white/5 hover:bg-white/10 p-1.5 rounded-lg transition-all"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
                             </div>
                             <h5 className="text-sm font-bold text-white mb-2">{s.title}</h5>
                             <pre className="text-[10px] bg-bg-dark p-2 rounded-lg text-slate-400 overflow-x-auto"><code>{s.code}</code></pre>
@@ -5392,6 +5533,18 @@ export default function App() {
               </motion.div>
             )}
 
+            {activeTab === 'marketing' && (
+              <motion.div
+                key="marketing"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-7xl mx-auto space-y-8"
+              >
+                <CentralMarketing accentColor={accentColor} borderRadius={borderRadius} />
+              </motion.div>
+            )}
+
             {activeTab === 'settings' && (
               <motion.div
                 key="settings"
@@ -5779,7 +5932,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   amount: number, 
   category: string, 
   dueDate: string | undefined,
-  paymentMethod: 'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro' | undefined,
+  paymentMethod: 'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito' | undefined,
   status: 'Pendente' | 'Pago' | 'A Vencer',
   recurrence: 'Único' | 'Semanal' | 'Mensal'
 ) => void }) {
@@ -5788,7 +5941,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Geral');
   const [dueDate, setDueDate] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'Cartão' | 'PIX' | 'Boleto' | 'Dinheiro'>('PIX');
+  const [paymentMethod, setPaymentMethod] = useState<'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito'>('Pix');
   const [status, setStatus] = useState<'Pendente' | 'Pago' | 'A Vencer'>('Pendente');
   const [recurrence, setRecurrence] = useState<'Único' | 'Semanal' | 'Mensal'>('Único');
 
@@ -5887,8 +6040,9 @@ function TransactionForm({ onAdd }: { onAdd: (
             onChange={(e) => setPaymentMethod(e.target.value as any)}
             className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white appearance-none"
           >
-            <option value="PIX">PIX</option>
-            <option value="Cartão">Cartão</option>
+            <option value="Pix">Pix</option>
+            <option value="Cartão de Crédito">Cartão de Crédito</option>
+            <option value="Cartão de Débito">Cartão de Débito</option>
             <option value="Boleto">Boleto</option>
             <option value="Dinheiro">Dinheiro</option>
           </select>
