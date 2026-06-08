@@ -434,7 +434,7 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
   };
 
   // --- MOCK CONNECTION NETWORKS ---
-  const handleToggleConnection = async (id: string) => {
+  const handleLoginConnection = async (id: string) => {
     const target = socialAccounts.find(s => s.id === id);
     if (!target) return;
 
@@ -1942,7 +1942,7 @@ Chaves obrigatórias no JSON:
                       }`}>{net.status}</span>
 
                       <button
-                        onClick={() => handleToggleConnection(net.id)}
+                        onClick={() => handleLoginConnection(net.id)}
                         className={`w-full text-[10px] font-semibold py-2 rounded-xl transition-all cursor-pointer ${
                           net.status === 'Conectado' 
                             ? 'bg-slate-700 text-white hover:bg-slate-600' 
