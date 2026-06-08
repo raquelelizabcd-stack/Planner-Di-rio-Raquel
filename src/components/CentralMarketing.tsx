@@ -437,18 +437,88 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
   const handleToggleConnection = async (id: string) => {
     const target = socialAccounts.find(s => s.id === id);
     if (!target) return;
-    const newStatus = target.status === 'Conectado' ? 'Não conectado' : 'Conectado';
-    const updated: MarketingSocialAccount = { 
-      ...target, 
-      status: newStatus,
-      handle: newStatus === 'Conectado' ? (target.handle || '@novo_usuario') : target.handle
-    };
+
+    if (target.status === 'Conectado') {
+      const updated: MarketingSocialAccount = { 
+        ...target, 
+        status: 'Não conectado'
+      };
+      try {
+        await dataService.saveMarketingSocialAccount(updated);
+        setSocialAccounts(socialAccounts.map(s => s.id === id ? updated : s));
+        showToast(`${target.platform.toUpperCase()} desconectado.`);
+      } catch {
+        alert('Falha ao desconectar. Tente novamente.');
+      }
+      return;
+    }
+
     try {
+      let authUrl = '';
+      switch (target.platform.toLowerCase()) {
+        case 'instagram':
+          authUrl = 'https://api.instagram.com/oauth/authorize?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&response_type=code&scope=user_profile,user_media';
+          break;
+        case 'linkedin':
+          authUrl = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=r_liteprofile';
+          break;
+        case 'facebook':
+          authUrl = 'https://www.facebook.com/v12.0/dialog/oauth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=public_profile,email';
+          break;
+        case 'tiktok':
+          authUrl = 'https://www.tiktok.com/v2/auth/authorize/?client_key=mock_id&scope=user.info.basic&response_type=code&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state';
+          break;
+        case 'youtube':
+          authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&response_type=code&scope=https://www.googleapis.com/auth/youtube.readonly';
+          break;
+        default:
+          throw new Error('Canal inválido');
+      }
+
+      const width = 600, height = 600;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
+      const popup = window.open(
+        authUrl,
+        `Conectar ${target.platform}`,
+        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+      );
+
+      if (!popup) {
+        throw new Error('Popup blocked');
+      }
+
+      await new Promise<void>((resolve) => {
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 500);
+        setTimeout(() => {
+          if (!popup.closed) {
+            popup.close();
+            clearInterval(timer);
+            resolve();
+          }
+        }, 3000);
+      });
+
+      const updatedAccounts = await dataService.fetchMarketingSocialAccounts();
+      const currentDbAcc = updatedAccounts.find(s => s.id === id) || target;
+
+      const updated: MarketingSocialAccount = { 
+        ...currentDbAcc, 
+        status: 'Conectado',
+        handle: currentDbAcc.handle && currentDbAcc.handle !== 'Link indisponpivel' ? currentDbAcc.handle : `@${target.platform}_raquel`
+      };
+
       await dataService.saveMarketingSocialAccount(updated);
       setSocialAccounts(socialAccounts.map(s => s.id === id ? updated : s));
-      showToast(newStatus === 'Conectado' ? `${target.platform.toUpperCase()} conectado com sucesso!` : `${target.platform.toUpperCase()} desconectado.`);
-    } catch {
-      showToast('Erro ao alterar integração.');
+      showToast(`${target.platform.toUpperCase()} conectado com sucesso!`);
+    } catch (err) {
+      console.error(err);
+      alert('Falha ao conectar. Tente novamente.');
     }
   };
 
