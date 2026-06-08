@@ -174,7 +174,18 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         setEvents(dbEvents);
         setLeads(dbLeads);
         setCampaigns(dbCampaigns);
-        setSocialAccounts(dbSocial);
+        const defaultSocialAccounts: MarketingSocialAccount[] = [
+          { id: 'acc-insta', platform: 'instagram', status: 'Não conectado', handle: '@raquelduarte.mkt', followers: 1540 },
+          { id: 'acc-linked', platform: 'linkedin', status: 'Não conectado', handle: 'in/raquelduartemkt', followers: 2310 },
+          { id: 'acc-fb', platform: 'facebook', status: 'Não conectado', handle: '/raquelduartemkt', followers: 480 },
+          { id: 'acc-tiktok', platform: 'tiktok', status: 'Não conectado', handle: '@raquelduarte.mkt', followers: 120 },
+          { id: 'acc-yt', platform: 'youtube', status: 'Não conectado', handle: 'c/RaquelDuarteEducacao', followers: 890 }
+        ];
+        const mergedSocial = defaultSocialAccounts.map(defAcc => {
+          const dbAcc = dbSocial.find((s: any) => s.platform.toLowerCase() === defAcc.platform.toLowerCase() || s.id === defAcc.id);
+          return dbAcc ? dbAcc : defAcc;
+        });
+        setSocialAccounts(mergedSocial);
         setIdeas(dbIdeas);
         setAnalytics(dbAnalytics);
       } catch (err) {
