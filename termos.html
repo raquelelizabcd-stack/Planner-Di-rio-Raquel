@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Termos de Serviço - Planner Diário Raquel</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS (Vite injection handles it, but we use standard inline styles/classes aligned with tailwind) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'sans-serif'],
+              display: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+              'bg-dark': '#0b0f19',
+              'bg-card': '#111827',
+              'border-dark': '#1f2937',
+              'roxo-suave': '#6366f1',
+              'rosa-claro': '#ec4899',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      .glass-card {
+        background: rgba(17, 24, 39, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 9999px;
+      }
+    </style>
+  </head>
+  <body class="bg-[#090d16] text-slate-300 font-sans min-h-screen flex flex-col justify-between selection:bg-indigo-500/30 selection:text-white">
+    
+    <!-- Background Decor -->
+    <div class="fixed top-0 right-0 w-96 h-96 bg-roxo-suave/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+    <div class="fixed bottom-0 left-0 w-96 h-96 bg-rosa-claro/5 blur-[120px] rounded-full translate-y-1/3 -translate-x-1/3 pointer-events-none"></div>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-6 py-12 md:py-20 relative z-10 flex-1 w-full">
+      
+      <!-- Back Link -->
+      <a href="/" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest mb-8">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Voltar para o App
+      </a>
+
+      <!-- Header -->
+      <div class="flex items-center gap-4 mb-10">
+        <div class="p-3.5 bg-gradient-to-br from-indigo-500 to-pink-500 rounded-2xl shadow-lg shadow-indigo-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-display font-black text-white tracking-tight leading-none">Termos de Serviço</h1>
+          <p class="text-xs text-slate-400 mt-2">Termos e Condições de Uso do Planner Diário Raquel</p>
+        </div>
+      </div>
+
+      <!-- Content Card -->
+      <div class="glass-card p-6 md:p-10 rounded-3xl space-y-8 shadow-2xl border border-white/5 custom-scrollbar max-h-[70vh] overflow-y-auto">
+        
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            1. Aceitação dos Termos
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Ao acessar e utilizar o aplicativo <strong>Planner Diário Raquel</strong>, você concorda expressamente em cumprir e estar vinculado a estes Termos de Serviço. Este aplicativo é uma ferramenta de uso pessoal e de apoio analítico, com recursos avançados de inteligência artificial e controle de metas.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            2. Uso de Serviços de Terceiros e APIs
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            O aplicativo se integra a provedores externos para funcionamento de determinadas abas, especificamente:
+          </p>
+          <ul class="list-disc pl-5 text-sm text-slate-400 space-y-2 leading-relaxed">
+            <li><strong>Google GenAI (Gemini API)</strong>: Utilizado para geração de ideias e redação de conteúdos automatizados. O usuário é responsável por prover chaves de API válidas e pelo uso adequado dos tokens de IA.</li>
+            <li><strong>Supabase Database</strong>: Usado para persistência segura de dados locais, histórico financeiro, tarefas e integrações.</li>
+            <li><strong>APIs de Redes Sociais</strong> (Instagram Basic Display, Facebook Graph, LinkedIn Developer, TikTok Login): Conectadas de forma opcional para leitura de dados de engajamento e exibição de métricas unificadas.</li>
+          </ul>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            3. Segurança de Dados e Credenciais
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Todas as chaves de API e credenciais inseridas na seção de configurações são salvas de maneira restrita e utilizadas apenas para comunicação direta cliente-servidor com os respectivos provedores. Nós não vendemos nem compartilhamos chaves privadas ou dados gerados no diário pessoal.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            4. Limitação de Responsabilidade
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            O Planner Diário Raquel é disponibilizado "como está". Não garantimos que a plataforma estará livre de interrupções causadas por instabilidade nos servidores externos do Supabase, da Vercel ou das APIs de terceiros.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            5. Alterações dos Termos
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Reservamo-nos o direito de revisar estes termos a qualquer momento para refletir novas atualizações do aplicativo. O uso continuado após alterações constitui aceitação dos novos termos.
+          </p>
+        </section>
+
+      </div>
+
+      <!-- Footer Info inside Main -->
+      <div class="mt-8 text-center text-xs text-slate-600">
+        Última atualização: Junho de 2026.
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-6 bg-black/20 text-center text-xs text-slate-500 relative z-10 w-full">
+      <div class="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span>© 2026 Planner Diário Raquel. Todos os direitos reservados.</span>
+        <div class="flex gap-4">
+          <a href="/termos.html" class="hover:text-white transition-colors">Termos de Serviço</a>
+        </div>
+      </div>
+    </footer>
+
+  </body>
+</html>
