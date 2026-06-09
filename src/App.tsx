@@ -880,6 +880,11 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
           <p className="text-xs text-slate-600 italic">
             Acesso exclusivo para: <span className="text-roxo-suave">raquelduartesimoes@gmail.com</span>
           </p>
+          <div className="mt-4 flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            <a href="/termos.html" className="hover:text-white transition-colors">Termos de Uso</a>
+            <span className="text-slate-700">•</span>
+            <a href="/privacidade.html" className="hover:text-white transition-colors">Privacidade</a>
+          </div>
         </div>
       </motion.div>
     </div>

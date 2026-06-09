@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Política de Privacidade - Planner Diário Raquel</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'sans-serif'],
+              display: ['Outfit', 'sans-serif'],
+            },
+            colors: {
+              'bg-dark': '#0b0f19',
+              'bg-card': '#111827',
+              'border-dark': '#1f2937',
+              'roxo-suave': '#6366f1',
+              'rosa-claro': '#ec4899',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      .glass-card {
+        background: rgba(17, 24, 39, 0.7);
+        backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 9999px;
+      }
+    </style>
+  </head>
+  <body class="bg-[#090d16] text-slate-300 font-sans min-h-screen flex flex-col justify-between selection:bg-indigo-500/30 selection:text-white">
+    
+    <!-- Background Decor -->
+    <div class="fixed top-0 right-0 w-96 h-96 bg-roxo-suave/10 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+    <div class="fixed bottom-0 left-0 w-96 h-96 bg-rosa-claro/5 blur-[120px] rounded-full translate-y-1/3 -translate-x-1/3 pointer-events-none"></div>
+
+    <!-- Main Container -->
+    <main class="max-w-4xl mx-auto px-6 py-12 md:py-20 relative z-10 flex-1 w-full">
+      
+      <!-- Back Link -->
+      <a href="/" class="inline-flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest mb-8">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Voltar para o App
+      </a>
+
+      <!-- Header -->
+      <div class="flex items-center gap-4 mb-10">
+        <div class="p-3.5 bg-gradient-to-br from-indigo-500 to-pink-500 rounded-2xl shadow-lg shadow-indigo-500/20">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        </div>
+        <div>
+          <h1 class="text-3xl font-display font-black text-white tracking-tight leading-none">Política de Privacidade</h1>
+          <p class="text-xs text-slate-400 mt-2">Segurança e Proteção de Dados no Planner Diário Raquel</p>
+        </div>
+      </div>
+
+      <!-- Content Card -->
+      <div class="glass-card p-6 md:p-10 rounded-3xl space-y-8 shadow-2xl border border-white/5 custom-scrollbar max-h-[70vh] overflow-y-auto">
+        
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+            1. Informações que Coletamos
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            O aplicativo <strong>Planner Diário Raquel</strong> funciona de maneira isolada e direta no seu navegador. Os dados coletados limitam-se ao seu endereço de e-mail e identificadores básicos de conta providos no ato de login pelo Supabase Auth (com e-mail/senha ou integração Google OAuth).
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+            2. Uso de Dados Pessoais
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Os dados de planejamento, metas, transações financeiras, anotações de diário e logs de estudos inseridos no aplicativo são salvos de forma estritamente pessoal. A comunicação é criptografada e feita diretamente com as tabelas do seu projeto no **Supabase**. Não realizamos análise comercial nem compartilhamento destas informações com terceiros.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+            3. Armazenamento e Exclusão de Informações
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            O armazenamento dos seus dados ocorre de forma híbrida: em cache local no navegador (usando o `localStorage` do HTML5) e na nuvem segura através dos servidores do Supabase. Você possui controle total sobre suas informações e pode solicitar ou realizar a exclusão de registros a qualquer momento pelo painel do aplicativo.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+            4. Integrações de Terceiros (Redes Sociais e IA)
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Ao conectar canais de redes sociais ou utilizar chaves do Gemini AI (Google Cloud), os tokens e chaves são mantidos apenas no escopo de execução do seu usuário. Nenhuma credencial privada de API é coletada por nós ou mantida em servidores intermediários de terceiros.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg font-display font-bold text-white flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-pink-500"></span>
+            5. Contato e Dúvidas
+          </h2>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Para dúvidas relativas a esta política ou solicitações sobre o tratamento de seus dados na aplicação, entre em contato direto pelo painel administrativo ou pelo e-mail de suporte associado à sua conta.
+          </p>
+        </section>
+
+      </div>
+
+      <!-- Footer Info inside Main -->
+      <div class="mt-8 text-center text-xs text-slate-600">
+        Última atualização: Junho de 2026.
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-6 bg-black/20 text-center text-xs text-slate-500 relative z-10 w-full">
+      <div class="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <span>© 2026 Planner Diário Raquel. Todos os direitos reservados.</span>
+        <div class="flex gap-4">
+          <a href="/termos.html" class="hover:text-white transition-colors">Termos de Serviço</a>
+          <a href="/privacidade.html" class="hover:text-white transition-colors">Política de Privacidade</a>
+        </div>
+      </div>
+    </footer>
+
+  </body>
+</html>
