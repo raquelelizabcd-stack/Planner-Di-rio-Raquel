@@ -446,7 +446,7 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
 
   // --- MOCK CONNECTION NETWORKS ---
   const handleLoginConnection = async (id: string) => {
-    const target = socialAccounts.find(s => s.id === id);
+    const target = socialAccounts.find(s => s.id === id || s.platform.toLowerCase() === id.toLowerCase());
     if (!target) return;
 
     if (target.status === 'Conectado') {
@@ -456,7 +456,7 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
       };
       try {
         await dataService.saveMarketingSocialAccount(updated);
-        setSocialAccounts(socialAccounts.map(s => s.id === id ? updated : s));
+        setSocialAccounts(socialAccounts.map(s => s.id === target.id ? updated : s));
         showToast(`${target.platform.toUpperCase()} desconectado.`);
       } catch {
         alert('Falha ao desconectar. Tente novamente.');
@@ -466,24 +466,27 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
 
     try {
       let authUrl = '';
-      switch (target.platform.toLowerCase()) {
-        case 'instagram':
-          authUrl = 'https://api.instagram.com/oauth/authorize?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&response_type=code&scope=user_profile,user_media';
-          break;
-        case 'linkedin':
-          authUrl = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=r_liteprofile';
-          break;
-        case 'facebook':
-          authUrl = 'https://www.facebook.com/v12.0/dialog/oauth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=public_profile,email';
-          break;
-        case 'tiktok':
-          authUrl = 'https://www.tiktok.com/v2/auth/authorize/?client_key=mock_id&scope=user.info.basic&response_type=code&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state';
-          break;
-        case 'youtube':
-          authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&response_type=code&scope=https://www.googleapis.com/auth/youtube.readonly';
-          break;
-        default:
-          throw new Error('Canal inválido');
+      if (target.platform.toLowerCase() === 'instagram') {
+        const clientId = (import.meta as any).env.VITE_INSTAGRAM_CLIENT_ID || 'SEU_CLIENT_ID';
+        const redirectUri = (import.meta as any).env.VITE_INSTAGRAM_REDIRECT_URI || window.location.origin + '/';
+        authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user_profile,user_media&response_type=code`;
+      } else {
+        switch (target.platform.toLowerCase()) {
+          case 'linkedin':
+            authUrl = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=r_liteprofile';
+            break;
+          case 'facebook':
+            authUrl = 'https://www.facebook.com/v12.0/dialog/oauth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=public_profile,email';
+            break;
+          case 'tiktok':
+            authUrl = 'https://www.tiktok.com/v2/auth/authorize/?client_key=mock_id&scope=user.info.basic&response_type=code&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state';
+            break;
+          case 'youtube':
+            authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&response_type=code&scope=https://www.googleapis.com/auth/youtube.readonly';
+            break;
+          default:
+            throw new Error('Canal inválido');
+        }
       }
 
       const width = 600, height = 600;
@@ -499,33 +502,80 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         throw new Error('Popup blocked');
       }
 
-      await new Promise<void>((resolve) => {
+      const code = await new Promise<string>((resolve) => {
         const timer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(timer);
-            resolve();
+          try {
+            if (popup.closed) {
+              clearInterval(timer);
+              resolve('mock_code');
+              return;
+            }
+            if (popup.location.origin === window.location.origin) {
+              const urlParams = new URLSearchParams(popup.location.search);
+              const authCode = urlParams.get('code');
+              if (authCode) {
+                clearInterval(timer);
+                popup.close();
+                resolve(authCode);
+              }
+            }
+          } catch (e) {
+            // Ignorar Cross-Origin
           }
         }, 500);
         setTimeout(() => {
+          clearInterval(timer);
           if (!popup.closed) {
             popup.close();
-            clearInterval(timer);
-            resolve();
           }
-        }, 3000);
+          resolve('mock_code');
+        }, 4000);
       });
 
+      if (!code) {
+        throw new Error('Falha ao obter código');
+      }
+
+      let accessToken = 'mock_access_token';
+      if (target.platform.toLowerCase() === 'instagram' && code !== 'mock_code') {
+        try {
+          const clientSecret = (import.meta as any).env.VITE_INSTAGRAM_CLIENT_SECRET;
+          if (clientSecret) {
+            const clientId = (import.meta as any).env.VITE_INSTAGRAM_CLIENT_ID || 'SEU_CLIENT_ID';
+            const redirectUri = (import.meta as any).env.VITE_INSTAGRAM_REDIRECT_URI || window.location.origin + '/';
+            const formData = new FormData();
+            formData.append('client_id', clientId);
+            formData.append('client_secret', clientSecret);
+            formData.append('grant_type', 'authorization_code');
+            formData.append('redirect_uri', redirectUri);
+            formData.append('code', code);
+
+            const res = await fetch('https://api.instagram.com/oauth/access_token', {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
+            if (data.access_token) {
+              accessToken = data.access_token;
+            }
+          }
+        } catch (e) {
+          console.warn(e);
+        }
+      }
+
       const updatedAccounts = await dataService.fetchMarketingSocialAccounts();
-      const currentDbAcc = updatedAccounts.find(s => s.id === id) || target;
+      const currentDbAcc = updatedAccounts.find(s => s.id === target.id) || target;
 
       const updated: MarketingSocialAccount = { 
         ...currentDbAcc, 
         status: 'Conectado',
-        handle: currentDbAcc.handle && currentDbAcc.handle !== 'Link indisponpivel' ? currentDbAcc.handle : `@${target.platform}_raquel`
+        handle: currentDbAcc.handle && currentDbAcc.handle !== 'Link indisponpivel' ? currentDbAcc.handle : `@${target.platform}_raquel`,
+        followers: currentDbAcc.followers || target.followers || 1540
       };
 
       await dataService.saveMarketingSocialAccount(updated);
-      setSocialAccounts(socialAccounts.map(s => s.id === id ? updated : s));
+      setSocialAccounts(socialAccounts.map(s => s.id === target.id ? updated : s));
       showToast(`${target.platform.toUpperCase()} conectado com sucesso!`);
     } catch (err) {
       console.error(err);
