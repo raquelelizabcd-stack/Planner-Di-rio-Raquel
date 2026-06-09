@@ -29,6 +29,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from '@google/genai';
 import { dataService } from '../services/dataService';
+import { supabase } from '../lib/supabase';
 import { 
   MarketingProject, 
   MarketingContent, 
@@ -155,7 +156,6 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
           dbEvents,
           dbLeads,
           dbCampaigns,
-          dbSocial,
           dbIdeas,
           dbAnalytics
         ] = await Promise.all([
@@ -164,10 +164,16 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
           dataService.fetchMarketingCalendarEvents(),
           dataService.fetchMarketingLeads(),
           dataService.fetchMarketingCampaigns(),
-          dataService.fetchMarketingSocialAccounts(),
           dataService.fetchMarketingIdeas(),
           dataService.fetchMarketingAnalytics()
         ]);
+
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id;
+        const { data: dbSocial } = await supabase
+          .from("marketing_social_accounts")
+          .select("platform, handle, followers, status, createdAt")
+          .eq("user_id", userId);
 
         setProjects(dbProjects);
         setContents(dbContents);
@@ -182,8 +188,8 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
           { id: 'acc-yt', platform: 'youtube', status: 'Não conectado', handle: 'c/RaquelDuarteEducacao', followers: 890 }
         ];
         const mergedSocial = defaultSocialAccounts.map(defAcc => {
-          const dbAcc = dbSocial.find((s: any) => s.platform.toLowerCase() === defAcc.platform.toLowerCase() || s.id === defAcc.id);
-          return dbAcc ? dbAcc : defAcc;
+          const dbAcc = (dbSocial || []).find((s: any) => s.platform.toLowerCase() === defAcc.platform.toLowerCase());
+          return dbAcc ? { ...defAcc, ...dbAcc } : defAcc;
         });
         setSocialAccounts(mergedSocial);
         setIdeas(dbIdeas);
@@ -195,6 +201,27 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
       }
     }
     loadAllMarketingData();
+  }, []);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("social_updates")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "marketing_social_accounts" },
+        (payload) => {
+          setSocialAccounts(prev =>
+            prev.map(acc =>
+              acc.platform === payload.new.platform ? { ...acc, ...payload.new } : acc
+            )
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // --- CRUD IDEAS ---
@@ -2001,6 +2028,12 @@ Chaves obrigatórias no JSON:
                       <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full inline-block ${
                         net.status === 'Conectado' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-700/30 text-slate-400'
                       }`}>{net.status}</span>
+
+                      {net.createdAt && (
+                        <p className="text-[9px] text-slate-500 block">
+                          Atualizado em: {new Date(net.createdAt).toLocaleString()}
+                        </p>
+                      )}
 
                       <button
                         onClick={() => handleLoginConnection(net.id)}
