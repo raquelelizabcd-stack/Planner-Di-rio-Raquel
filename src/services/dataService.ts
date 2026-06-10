@@ -448,5 +448,121 @@ export const dataService = {
       { id: 'an-5', month: 'Maio', visitors: 2800, sessions: 3400, clicks: 920, conversions: 89, revenue: 4450, followersGrowth: 260, projectId: '1' }
     ];
     return dataService.safeFetch<MarketingAnalytics>('marketing_analytics', 'mkt_analytics', initialAnalytics);
+  },
+
+  async getMetaAccessToken(): Promise<string> {
+    try {
+      const { data, error } = await supabase
+        .from('auth_tokens')
+        .select('token')
+        .eq('id', 'meta_marketing_api')
+        .single();
+      
+      if (error || !data) {
+        return 'EAAwh3noXha0BRkUPZCsTpbW42K7XZBzyQgPGO747GHS5bkd4JM2UZBI0sY8ZCkXLLC9pneo4DLQgNtthJAk8LiGOorZCSpVgp3lI3nZAZAAyWS3snbX1Gmj2vSRUmuOAKBiXpMBXhzABUZBzmY5aSGpZBlzZBULffBETDTXOXZAoZBzpzYKZBhGbiZAFZBxYoXwkLxMr5o44LDXM3aXIoUAVZBsi1T4Kv2Y2P8IXw7bAHLqKzYUZAB0QHtVZAA0QYBglrstP1bN983aRWIuP24c8sF284GfzQ1ktI8fwZDZD';
+      }
+      return data.token;
+    } catch {
+      return 'EAAwh3noXha0BRkUPZCsTpbW42K7XZBzyQgPGO747GHS5bkd4JM2UZBI0sY8ZCkXLLC9pneo4DLQgNtthJAk8LiGOorZCSpVgp3lI3nZAZAAyWS3snbX1Gmj2vSRUmuOAKBiXpMBXhzABUZBzmY5aSGpZBlzZBULffBETDTXOXZAoZBzpzYKZBhGbiZAFZBxYoXwkLxMr5o44LDXM3aXIoUAVZBsi1T4Kv2Y2P8IXw7bAHLqKzYUZAB0QHtVZAA0QYBglrstP1bN983aRWIuP24c8sF284GfzQ1ktI8fwZDZD';
+    }
+  },
+
+  async saveMetaAccessToken(token: string, expiresInSeconds: number = 5184000) {
+    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000).toISOString();
+    const { error } = await supabase
+      .from('auth_tokens')
+      .upsert({
+        id: 'meta_marketing_api',
+        token,
+        expires_at: expiresAt
+      });
+    if (error) {
+      console.error('Error saving meta token to Supabase:', error);
+      throw error;
+    }
+  },
+
+  async callMetaGraphAPI(endpoint: string, options: RequestInit = {}): Promise<any> {
+    let token = await this.getMetaAccessToken();
+    const url = endpoint.includes('?') ? `${endpoint}&access_token=${token}` : `${endpoint}?access_token=${token}`;
+    
+    try {
+      const res = await fetch(url, options);
+      const data = await res.json();
+      
+      if (data.error && data.error.type === 'OAuthException') {
+        console.warn('OAuthException detectada, iniciando renovação de token...');
+        
+        const clientId = (import.meta as any).env.VITE_META_CLIENT_ID;
+        const clientSecret = (import.meta as any).env.VITE_META_CLIENT_SECRET;
+        
+        if (clientId && clientSecret) {
+          const refreshUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${token}`;
+          const refreshRes = await fetch(refreshUrl);
+          const refreshData = await refreshRes.json();
+          
+          if (refreshData.access_token) {
+            token = refreshData.access_token;
+            await this.saveMetaAccessToken(token, refreshData.expires_in || 5184000);
+            
+            const retryUrl = endpoint.includes('?') ? `${endpoint}&access_token=${token}` : `${endpoint}?access_token=${token}`;
+            const retryRes = await fetch(retryUrl, options);
+            return await retryRes.json();
+          }
+        }
+        
+        const redirectUri = window.location.origin + '/';
+        const metaAuthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${clientId || 'mock_client_id'}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=ads_management,ads_read,business_management&response_type=token`;
+        
+        const width = 600, height = 600;
+        const left = window.screen.width / 2 - width / 2;
+        const top = window.screen.height / 2 - height / 2;
+        const popup = window.open(metaAuthUrl, 'Autenticar Meta', `width=${width},height=${height},top=${top},left=${left}`);
+        
+        if (popup) {
+          const newToken = await new Promise<string>((resolve, reject) => {
+            const timer = setInterval(() => {
+              try {
+                if (popup.closed) {
+                  clearInterval(timer);
+                  reject(new Error('Popup closed by user'));
+                  return;
+                }
+                if (popup.location.origin === window.location.origin) {
+                  const hashParams = new URLSearchParams(popup.location.hash.substring(1));
+                  const accessToken = hashParams.get('access_token');
+                  if (accessToken) {
+                    clearInterval(timer);
+                    popup.close();
+                    resolve(accessToken);
+                  }
+                }
+              } catch (e) {
+                // Cross-Origin
+              }
+            }, 500);
+            
+            setTimeout(() => {
+              clearInterval(timer);
+              if (!popup.closed) popup.close();
+              reject(new Error('OAuth Timeout'));
+            }, 60000);
+          });
+          
+          if (newToken) {
+            await this.saveMetaAccessToken(newToken);
+            const retryUrl = endpoint.includes('?') ? `${endpoint}&access_token=${newToken}` : `${endpoint}?access_token=${newToken}`;
+            const retryRes = await fetch(retryUrl, options);
+            return await retryRes.json();
+          }
+        }
+        
+        throw new Error('OAuthException: Token expirado ou inválido. Realize o login novamente.');
+      }
+      return data;
+    } catch (err) {
+      console.error('Meta Graph API call error:', err);
+      throw err;
+    }
   }
 };
