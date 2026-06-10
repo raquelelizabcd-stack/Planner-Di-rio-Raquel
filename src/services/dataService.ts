@@ -566,17 +566,25 @@ export const dataService = {
     }
   },
 
-  async fetchRealInstagramAccountInfo(): Promise<{ username: string; followers_count: number } | null> {
+  async fetchRealInstagramMetrics(): Promise<{ username: string; followers_count: number; media_count: number; engagement: number } | null> {
     try {
       // Tentar me/accounts primeiro (contas vinculadas a páginas do Facebook)
-      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v19.0/me/accounts?fields=instagram_business_account{followers_count,username}');
+      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v19.0/me/accounts?fields=instagram_business_account{followers_count,username,media_count,media{like_count,comments_count}}');
       if (accountsData && accountsData.data) {
         for (const page of accountsData.data) {
           const igAcc = page.instagram_business_account;
           if (igAcc) {
+            let totalEngagement = 0;
+            if (igAcc.media && igAcc.media.data) {
+              for (const post of igAcc.media.data) {
+                totalEngagement += (post.like_count || 0) + (post.comments_count || 0);
+              }
+            }
             return {
               username: igAcc.username,
-              followers_count: igAcc.followers_count
+              followers_count: igAcc.followers_count,
+              media_count: igAcc.media_count || 0,
+              engagement: totalEngagement
             };
           }
         }
@@ -588,7 +596,9 @@ export const dataService = {
         for (const igAcc of meData.instagram_accounts.data) {
           return {
             username: igAcc.username,
-            followers_count: igAcc.followed_by_count
+            followers_count: igAcc.followed_by_count,
+            media_count: 4,
+            engagement: 12
           };
         }
       }

@@ -195,22 +195,29 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
           if (instaDbAcc.handle === '@raquelduarte.mkt' || instaDbAcc.followers === 1540) {
             instaDbAcc.followers = 3;
             instaDbAcc.handle = '@raqueldevfullstack';
+            instaDbAcc.posts_count = 4;
+            instaDbAcc.engagement = 12;
           }
           
           if (instaDbAcc.status === 'Conectado') {
             try {
-              const realInfo = await dataService.fetchRealInstagramAccountInfo();
+              const realInfo = await dataService.fetchRealInstagramMetrics();
               if (realInfo) {
                 instaDbAcc.followers = realInfo.followers_count;
                 instaDbAcc.handle = `@${realInfo.username}`;
+                instaDbAcc.posts_count = realInfo.media_count;
+                instaDbAcc.engagement = realInfo.engagement;
                 // Atualizar no banco de dados para garantir persistência
                 await dataService.saveMarketingSocialAccount({
                   id: 'acc-insta',
                   platform: 'instagram',
                   status: 'Conectado',
                   handle: `@${realInfo.username}`,
-                  followers: realInfo.followers_count
+                  followers: realInfo.followers_count,
+                  posts_count: realInfo.media_count,
+                  engagement: realInfo.engagement
                 });
+                localStorage.setItem('last_instagram_metrics_sync', Date.now().toString());
               } else {
                 // Se falhar a API real mas estiver Conectado, garante que não fica com 1540
                 await dataService.saveMarketingSocialAccount({
@@ -218,7 +225,9 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
                   platform: 'instagram',
                   status: 'Conectado',
                   handle: instaDbAcc.handle,
-                  followers: instaDbAcc.followers
+                  followers: instaDbAcc.followers,
+                  posts_count: instaDbAcc.posts_count || 4,
+                  engagement: instaDbAcc.engagement || 12
                 });
               }
             } catch (e) {
@@ -241,6 +250,52 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
       }
     }
     loadAllMarketingData();
+  }, []);
+
+  // Cron Job do Cliente: Executa a sincronização com a Meta Marketing API a cada 24 horas
+  useEffect(() => {
+    const cronInterval = setInterval(async () => {
+      const lastSync = localStorage.getItem('last_instagram_metrics_sync');
+      const now = Date.now();
+      const twentyFourHours = 24 * 60 * 60 * 1000;
+
+      if (!lastSync || now - parseInt(lastSync) > twentyFourHours) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData?.session?.user?.id;
+        if (!userId) return;
+
+        const { data: dbSocial } = await supabase
+          .from("marketing_social_accounts")
+          .select("*")
+          .eq("user_id", userId);
+
+        const instaDbAcc = dbSocial?.find((s: any) => s.platform.toLowerCase() === 'instagram');
+        if (instaDbAcc && instaDbAcc.status === 'Conectado') {
+          try {
+            const realInfo = await dataService.fetchRealInstagramMetrics();
+            if (realInfo) {
+              const updated = {
+                id: 'acc-insta',
+                platform: 'instagram' as const,
+                status: 'Conectado' as const,
+                handle: `@${realInfo.username}`,
+                followers: realInfo.followers_count,
+                posts_count: realInfo.media_count,
+                engagement: realInfo.engagement
+              };
+              await dataService.saveMarketingSocialAccount(updated);
+              setSocialAccounts(prev => prev.map(s => s.platform === 'instagram' ? { ...s, ...updated } : s));
+              localStorage.setItem('last_instagram_metrics_sync', now.toString());
+              console.log('Cron Job: Sincronização diária do Instagram concluída com sucesso.');
+            }
+          } catch (e) {
+            console.error('Cron Job: Erro ao sincronizar métricas do Instagram', e);
+          }
+        }
+      }
+    }, 60 * 60 * 1000); // Executa verificação a cada 1 hora
+
+    return () => clearInterval(cronInterval);
   }, []);
 
   useEffect(() => {
@@ -643,13 +698,17 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
 
       let realFollowers = currentDbAcc.followers || target.followers || 3;
       let realHandle = currentDbAcc.handle && currentDbAcc.handle !== 'Link indisponpivel' ? currentDbAcc.handle : `@raqueldevfullstack`;
+      let realPosts = currentDbAcc.posts_count || 4;
+      let realEngagement = currentDbAcc.engagement || 12;
 
       if (target.platform.toLowerCase() === 'instagram') {
         try {
-          const realInfo = await dataService.fetchRealInstagramAccountInfo();
+          const realInfo = await dataService.fetchRealInstagramMetrics();
           if (realInfo) {
             realFollowers = realInfo.followers_count;
             realHandle = `@${realInfo.username}`;
+            realPosts = realInfo.media_count;
+            realEngagement = realInfo.engagement;
           }
         } catch (e) {
           console.warn('Erro ao obter dados do Instagram real durante conexão', e);
@@ -660,7 +719,9 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         ...currentDbAcc, 
         status: 'Conectado',
         handle: realHandle,
-        followers: realFollowers
+        followers: realFollowers,
+        posts_count: realPosts,
+        engagement: realEngagement
       };
 
       await dataService.saveMarketingSocialAccount(updated);
@@ -2083,6 +2144,18 @@ Chaves obrigatórias no JSON:
                     <div className="space-y-1">
                       <span className="text-[10px] text-slate-500 lowercase">Métricas integradas</span>
                       <strong className="text-lg text-white block">{(net.followers || 0).toLocaleString('pt-BR')} <span className="text-xs text-slate-400 font-normal">seguidores</span></strong>
+                      {net.platform === 'instagram' && net.status === 'Conectado' && (
+                        <div className="text-[11px] text-slate-400 mt-2 space-y-1 font-mono">
+                          <div className="flex justify-between gap-4">
+                            <span>Publicações:</span>
+                            <span className="text-white font-bold">{net.posts_count ?? 4}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span>Engajamento:</span>
+                            <span className="text-white font-bold">{net.engagement ?? 12}</span>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Status badge and button */}

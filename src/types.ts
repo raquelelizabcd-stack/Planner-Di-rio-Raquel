@@ -232,6 +232,8 @@ export interface MarketingSocialAccount {
   status: 'Conectado' | 'Não conectado';
   handle?: string;
   followers?: number;
+  engagement?: number;
+  posts_count?: number;
   createdAt?: string;
 }
 
