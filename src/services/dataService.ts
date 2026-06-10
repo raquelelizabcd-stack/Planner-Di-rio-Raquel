@@ -405,7 +405,7 @@ export const dataService = {
 
   async fetchMarketingSocialAccounts(): Promise<MarketingSocialAccount[]> {
     const initialAccounts: MarketingSocialAccount[] = [
-      { id: 'acc-insta', platform: 'instagram', status: 'Não conectado', handle: '@raquelduarte.mkt', followers: 1540 },
+      { id: 'acc-insta', platform: 'instagram', status: 'Não conectado', handle: '@raqueldevfullstack', followers: 3 },
       { id: 'acc-linked', platform: 'linkedin', status: 'Não conectado', handle: 'in/raquelduartemkt', followers: 2310 },
       { id: 'acc-fb', platform: 'facebook', status: 'Não conectado', handle: '/raquelduartemkt', followers: 480 },
       { id: 'acc-tiktok', platform: 'tiktok', status: 'Não conectado', handle: '@raquelduarte.mkt', followers: 120 },
@@ -563,6 +563,39 @@ export const dataService = {
     } catch (err) {
       console.error('Meta Graph API call error:', err);
       throw err;
+    }
+  },
+
+  async fetchRealInstagramAccountInfo(): Promise<{ username: string; followers_count: number } | null> {
+    try {
+      // Tentar me/accounts primeiro (contas vinculadas a páginas do Facebook)
+      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v19.0/me/accounts?fields=instagram_business_account{followers_count,username}');
+      if (accountsData && accountsData.data) {
+        for (const page of accountsData.data) {
+          const igAcc = page.instagram_business_account;
+          if (igAcc) {
+            return {
+              username: igAcc.username,
+              followers_count: igAcc.followers_count
+            };
+          }
+        }
+      }
+      
+      // Fallback: tentar instagram_accounts diretamente da conta atual
+      const meData = await this.callMetaGraphAPI('https://graph.facebook.com/v19.0/me?fields=instagram_accounts{followed_by_count,username}');
+      if (meData && meData.instagram_accounts && meData.instagram_accounts.data) {
+        for (const igAcc of meData.instagram_accounts.data) {
+          return {
+            username: igAcc.username,
+            followers_count: igAcc.followed_by_count
+          };
+        }
+      }
+      return null;
+    } catch (err) {
+      console.error('Erro ao buscar dados reais do Instagram:', err);
+      return null;
     }
   }
 };
