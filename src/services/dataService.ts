@@ -288,6 +288,10 @@ export const dataService = {
       if (session?.user?.id) {
         dbPayload.user_id = session.user.id;
       }
+      if (tableName === 'marketing_social_accounts') {
+        delete dbPayload.engagement;
+        delete dbPayload.posts_count;
+      }
       const { error } = await supabase.from(tableName).upsert(dbPayload);
       if (error) {
         console.warn(`Upsert on ${tableName} failed. Saving to localStorage.`, error);
@@ -482,7 +486,7 @@ export const dataService = {
     }
   },
 
-  async callMetaGraphAPI(endpoint: string, options: RequestInit = {}): Promise<any> {
+  async callMetaGraphAPI(endpoint: string, options: RequestInit = {}, allowPopup = true): Promise<any> {
     let token = await this.getMetaAccessToken();
     const url = endpoint.includes('?') ? `${endpoint}&access_token=${token}` : `${endpoint}?access_token=${token}`;
     
@@ -511,6 +515,10 @@ export const dataService = {
           }
         }
         
+        if (!allowPopup) {
+          throw new Error('OAuthException: Token expirado ou inválido (Popup desabilitado).');
+        }
+
         const redirectUri = window.location.origin + '/';
         const metaAuthUrl = `https://www.facebook.com/v17.0/dialog/oauth?client_id=${clientId || 'mock_client_id'}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_basic,instagram_manage_insights,pages_show_list&response_type=token`;
         
@@ -587,7 +595,7 @@ export const dataService = {
       }
 
       // Se falhar o /me direto, tenta o fluxo de contas vinculadas a páginas do Facebook
-      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v17.0/me/accounts?fields=instagram_business_account{followers_count,username,media_count,media{like_count,comments_count}}');
+      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v17.0/me/accounts?fields=instagram_business_account{followers_count,username,media_count,media{like_count,comments_count}}', {}, false);
       if (accountsData && accountsData.data) {
         for (const page of accountsData.data) {
           const igAcc = page.instagram_business_account;
@@ -609,7 +617,7 @@ export const dataService = {
       }
       
       // Fallback secundário
-      const meData = await this.callMetaGraphAPI('https://graph.facebook.com/v17.0/me?fields=instagram_accounts{followed_by_count,username}');
+      const meData = await this.callMetaGraphAPI('https://graph.facebook.com/v17.0/me?fields=instagram_accounts{followed_by_count,username}', {}, false);
       if (meData && meData.instagram_accounts && meData.instagram_accounts.data) {
         for (const igAcc of meData.instagram_accounts.data) {
           return {
