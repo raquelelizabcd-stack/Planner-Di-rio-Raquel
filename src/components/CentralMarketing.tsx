@@ -2137,7 +2137,7 @@ Chaves obrigatórias no JSON:
 
                     <div className="space-y-1">
                       <span className="text-[10px] text-slate-500 lowercase">Métricas integradas</span>
-                      <strong className="text-lg text-white block">{(net.followers || 0).toLocaleString('pt-BR')} <span className="text-xs text-slate-400 font-normal">seguidores</span></strong>
+                      <strong className="text-lg text-white block">{net.status === 'Conectado' ? (net.followers || 0).toLocaleString('pt-BR') : '--'} <span className="text-xs text-slate-400 font-normal">seguidores</span></strong>
                       {net.platform === 'instagram' && net.status === 'Conectado' && (
                         <div className="text-[11px] text-slate-400 mt-2 space-y-1 font-mono">
                           <div className="flex justify-between gap-4">
