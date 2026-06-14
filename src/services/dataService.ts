@@ -512,7 +512,7 @@ export const dataService = {
         }
         
         const redirectUri = window.location.origin + '/';
-        const metaAuthUrl = `https://www.facebook.com/v19.0/dialog/oauth?client_id=${clientId || 'mock_client_id'}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=ads_management,ads_read,business_management&response_type=token`;
+        const metaAuthUrl = `https://www.facebook.com/v17.0/dialog/oauth?client_id=${clientId || 'mock_client_id'}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_basic,instagram_manage_insights,pages_show_list&response_type=token`;
         
         const width = 600, height = 600;
         const left = window.screen.width / 2 - width / 2;
