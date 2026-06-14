@@ -845,7 +845,11 @@ Chaves obrigatórias no JSON:
   };
 
   // Helper selectors
-  const totalFollowers = socialAccounts.reduce((acc, current) => acc + (current.followers || 0), 0);
+  const totalFollowers = socialAccounts.reduce((acc, current) => acc + (current.status === 'Conectado' ? (current.followers || 0) : 0), 0);
+  const connectedAccounts = socialAccounts.filter(s => s.status === 'Conectado');
+  const totalEngagement = connectedAccounts.reduce((acc, curr) => acc + (curr.engagement || 0), 0);
+  const engagementRate = totalFollowers > 0 ? ((totalEngagement / totalFollowers) * 100).toFixed(2) + '%' : '0.00%';
+  const totalPublished = events.filter(e => e.status === 'Publicado').length + connectedAccounts.reduce((acc, curr) => acc + (curr.posts_count || 0), 0);
 
   // Search/Filters lists
   const filteredIdeas = ideas.filter(idea => {
@@ -972,10 +976,10 @@ Chaves obrigatórias no JSON:
               <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                 {[
                   { title: 'Conteúdos Planejados', value: events.length + ideas.length, icon: Calendar, color: 'text-blue-400', bg: 'from-blue-500/10 to-blue-500/5' },
-                  { title: 'Conteúdos Publicados', value: events.filter(e => e.status === 'Publicado').length + 12, icon: CheckCircle, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
+                  { title: 'Conteúdos Publicados', value: totalPublished, icon: CheckCircle, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
                   { title: 'Leads Captados', value: leads.length, icon: Users, color: 'text-pink-400', bg: 'from-pink-500/10 to-pink-500/5' },
                   { title: 'Seguidores Totais', value: totalFollowers.toLocaleString('pt-BR'), icon: Globe, color: 'text-purple-400', bg: 'from-purple-500/10 to-purple-500/5' },
-                  { title: 'Taxa Engajamento', value: '4.85%', icon: TrendingUp, color: 'text-yellow-400', bg: 'from-yellow-500/10 to-yellow-500/5' },
+                  { title: 'Taxa Engajamento', value: engagementRate, icon: TrendingUp, color: 'text-yellow-400', bg: 'from-yellow-500/10 to-yellow-500/5' },
                   { title: 'Campanhas Ativas', value: campaigns.length || 3, icon: Mail, color: 'text-indigo-400', bg: 'from-indigo-500/10 to-indigo-500/5' }
                 ].map((card, i) => {
                   const Icon = card.icon;
