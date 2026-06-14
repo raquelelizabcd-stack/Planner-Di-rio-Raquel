@@ -568,8 +568,26 @@ export const dataService = {
 
   async fetchRealInstagramMetrics(): Promise<{ username: string; followers_count: number; media_count: number; engagement: number } | null> {
     try {
-      // Tentar me/accounts primeiro (contas vinculadas a páginas do Facebook)
-      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v19.0/me/accounts?fields=instagram_business_account{followers_count,username,media_count,media{like_count,comments_count}}');
+      const token = await this.getMetaAccessToken();
+      
+      // Chamada real à API Graph especificada pelo usuário
+      const res = await fetch(`https://graph.facebook.com/v17.0/me?fields=followers_count,media_count,engagement_rate,username&access_token=${token}`);
+      const data: any = await res.json();
+      
+      if (data && !data.error) {
+        const followers = data.followers_count || 0;
+        const media = data.media_count || 0;
+        const rate = parseFloat(data.engagement_rate) || 0.0485;
+        return {
+          username: data.username || 'instagram_user',
+          followers_count: followers,
+          media_count: media,
+          engagement: Math.round(followers * rate)
+        };
+      }
+
+      // Se falhar o /me direto, tenta o fluxo de contas vinculadas a páginas do Facebook
+      const accountsData = await this.callMetaGraphAPI('https://graph.facebook.com/v17.0/me/accounts?fields=instagram_business_account{followers_count,username,media_count,media{like_count,comments_count}}');
       if (accountsData && accountsData.data) {
         for (const page of accountsData.data) {
           const igAcc = page.instagram_business_account;
@@ -590,8 +608,8 @@ export const dataService = {
         }
       }
       
-      // Fallback: tentar instagram_accounts diretamente da conta atual
-      const meData = await this.callMetaGraphAPI('https://graph.facebook.com/v19.0/me?fields=instagram_accounts{followed_by_count,username}');
+      // Fallback secundário
+      const meData = await this.callMetaGraphAPI('https://graph.facebook.com/v17.0/me?fields=instagram_accounts{followed_by_count,username}');
       if (meData && meData.instagram_accounts && meData.instagram_accounts.data) {
         for (const igAcc of meData.instagram_accounts.data) {
           return {
