@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "mkt-mcp": "tsx mcp-server.ts"
+    "mkt-mcp": "vercel dev --port 3001"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
