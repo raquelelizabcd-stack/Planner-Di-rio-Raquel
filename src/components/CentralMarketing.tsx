@@ -172,7 +172,7 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         const userId = sessionData?.session?.user?.id;
         const { data: dbSocial } = await supabase
           .from("marketing_social_accounts")
-          .select("platform, handle, followers, status, createdAt")
+          .select("*")
           .eq("user_id", userId);
 
         setProjects(dbProjects);
