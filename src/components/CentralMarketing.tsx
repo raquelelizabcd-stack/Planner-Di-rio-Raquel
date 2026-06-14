@@ -191,14 +191,7 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         let finalDbSocial = dbSocial || [];
         const instaDbAcc = finalDbSocial.find((s: any) => s.platform.toLowerCase() === 'instagram');
         if (instaDbAcc) {
-          // Se for o mock antigo com 1540 seguidores ou handle antigo, força para o correto
-          if (instaDbAcc.handle === '@raquelduarte.mkt' || instaDbAcc.followers === 1540) {
-            instaDbAcc.followers = 3;
-            instaDbAcc.handle = '@raqueldevfullstack';
-            instaDbAcc.posts_count = 4;
-            instaDbAcc.engagement = 12;
-          }
-          
+
           if (instaDbAcc.status === 'Conectado') {
             try {
               const realInfo = await dataService.fetchRealInstagramMetrics();
