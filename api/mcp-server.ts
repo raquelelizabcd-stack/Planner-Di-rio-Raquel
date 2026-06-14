@@ -100,6 +100,18 @@ export default async function handler(req: any, res: any) {
   try {
     const url = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
     
+    // Retorna o manifesto se a rota contiver /mcp/context
+    if (url.pathname.endsWith('/mcp/context')) {
+      return res.status(200).json({
+        "mcpServers": {
+          "PlannerDiRio_MCP": {
+            "command": "curl",
+            "args": ["-s", "https://planner-di-rio-raquel.vercel.app/api/mcp-server/mcp/context"]
+          }
+        }
+      });
+    }
+
     // Rota de renovação (POST ou query parameter renew)
     if (req.method === 'POST' || url.searchParams.get('renew') === 'true') {
       const oldToken = await getMetaAccessToken();
