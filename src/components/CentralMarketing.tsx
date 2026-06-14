@@ -571,6 +571,9 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
     const target = socialAccounts.find(s => s.id === id || s.platform.toLowerCase() === id.toLowerCase());
     if (!target) return;
 
+    const clientId = (import.meta as any).env.VITE_META_CLIENT_ID || (typeof process !== 'undefined' ? (process.env as any).VITE_META_CLIENT_ID : '') || '3414939135346093';
+    const clientSecret = (import.meta as any).env.VITE_META_CLIENT_SECRET || (typeof process !== 'undefined' ? (process.env as any).VITE_META_CLIENT_SECRET : '') || 'ea7532fde3b76e904e6cab7fd3ee2c00';
+
     if (target.status === 'Conectado') {
       const updated: MarketingSocialAccount = { 
         ...target, 
@@ -588,17 +591,13 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
 
     try {
       let authUrl = '';
-      if (target.platform.toLowerCase() === 'instagram') {
-        const clientId = (import.meta as any).env.VITE_INSTAGRAM_CLIENT_ID || 'SEU_CLIENT_ID';
-        const redirectUri = (import.meta as any).env.VITE_INSTAGRAM_REDIRECT_URI || window.location.origin + '/';
-        authUrl = `https://api.instagram.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=user_profile,user_media&response_type=code`;
+      if (target.platform.toLowerCase() === 'instagram' || target.platform.toLowerCase() === 'facebook') {
+        const redirectUri = window.location.origin + '/';
+        authUrl = `https://www.facebook.com/v17.0/dialog/oauth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=instagram_basic,instagram_manage_insights,pages_show_list&response_type=token`;
       } else {
         switch (target.platform.toLowerCase()) {
           case 'linkedin':
             authUrl = 'https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=r_liteprofile';
-            break;
-          case 'facebook':
-            authUrl = 'https://www.facebook.com/v12.0/dialog/oauth?client_id=mock_id&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state&scope=public_profile,email';
             break;
           case 'tiktok':
             authUrl = 'https://www.tiktok.com/v2/auth/authorize/?client_key=mock_id&scope=user.info.basic&response_type=code&redirect_uri=' + encodeURIComponent(window.location.origin) + '&state=mock_state';
@@ -612,9 +611,8 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
       }
 
       let code = 'mock_code';
-      const clientId = (import.meta as any).env.VITE_INSTAGRAM_CLIENT_ID || 'SEU_CLIENT_ID';
 
-      if (target.platform.toLowerCase() === 'instagram' && clientId === 'SEU_CLIENT_ID') {
+      if ((target.platform.toLowerCase() === 'instagram' || target.platform.toLowerCase() === 'facebook') && (!clientId || clientId === 'SEU_CLIENT_ID')) {
         // Ignora abertura de popup que daria erro por falta de client_id e faz login direto
         showToast("Conectando via integração Meta Marketing API...");
       } else {
@@ -668,9 +666,8 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         let accessToken = 'mock_access_token';
         if (target.platform.toLowerCase() === 'instagram' && code !== 'mock_code') {
           try {
-            const clientSecret = (import.meta as any).env.VITE_INSTAGRAM_CLIENT_SECRET;
             if (clientSecret) {
-              const redirectUri = (import.meta as any).env.VITE_INSTAGRAM_REDIRECT_URI || window.location.origin + '/';
+              const redirectUri = window.location.origin + '/';
               const formData = new FormData();
               formData.append('client_id', clientId);
               formData.append('client_secret', clientSecret);
