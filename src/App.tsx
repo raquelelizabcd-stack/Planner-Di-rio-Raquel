@@ -1323,7 +1323,17 @@ export default function App() {
     if (savedProjects) setProjects(JSON.parse(savedProjects));
     if (savedTokens) setTokens(JSON.parse(savedTokens));
     if (savedNotes) setNotes(savedNotes);
-    if (savedTransactions) setTransactions(JSON.parse(savedTransactions));
+    if (savedTransactions) {
+      const parsed = JSON.parse(savedTransactions);
+      const sanitized = parsed.map((t: any) => {
+        let status = (t.status || 'A Vencer').trim();
+        if (status === 'Pendente' || (status !== 'Pago' && status !== 'Vencido' && status !== 'A Vencer')) {
+          status = 'A Vencer';
+        }
+        return { ...t, status };
+      });
+      setTransactions(sanitized);
+    }
     if (savedEvents) setEvents(JSON.parse(savedEvents));
     if (savedSnippets) setSnippets(JSON.parse(savedSnippets));
     if (savedLogs) setLogs(JSON.parse(savedLogs));
@@ -1395,7 +1405,16 @@ export default function App() {
         ]);
         if (supaProjects.length > 0) setProjects(supaProjects);
         if (supaReminders.length > 0) setKanbanTasks(supaReminders);
-        if (supaTransactions.length > 0) setTransactions(supaTransactions);
+        if (supaTransactions.length > 0) {
+          const sanitized = supaTransactions.map((t: any) => {
+            let status = (t.status || 'A Vencer').trim();
+            if (status === 'Pendente' || (status !== 'Pago' && status !== 'Vencido' && status !== 'A Vencer')) {
+              status = 'A Vencer';
+            }
+            return { ...t, status };
+          });
+          setTransactions(sanitized);
+        }
         if (supaSnippets && supaSnippets.length > 0) setSnippets(supaSnippets);
       } catch (err) {
         console.error('Failed to load Supabase data:', err);
@@ -1705,10 +1724,19 @@ export default function App() {
     category: string, 
     dueDate: string | undefined,
     paymentMethod: 'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito' | undefined,
-    status: 'Pendente' | 'Pago' | 'A Vencer',
+    status: 'A Vencer' | 'Pago' | 'Vencido',
     recurrence: 'Único' | 'Semanal' | 'Mensal'
   ) => {
     if (!title || !amount) return;
+
+    // Higienizar e aplicar valor padrão 'Pendente' se não fornecido
+    const sanitizedStatus = (status || 'Pendente').trim() as any;
+    const allowedStatuses = ['A Vencer', 'Pago', 'Vencido'];
+    if (!allowedStatuses.includes(sanitizedStatus)) {
+      showToastWithMsg("Status inválido. Escolha entre: A Vencer, Pago ou Vencido.");
+      return;
+    }
+
     const newTransaction: Transaction = {
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
       type,
@@ -1717,7 +1745,7 @@ export default function App() {
       category,
       dueDate,
       paymentMethod,
-      status,
+      status: sanitizedStatus,
       recurrence,
       createdAt: Date.now()
     };
@@ -2221,17 +2249,12 @@ export default function App() {
         if (t.type === 'income') {
           income += val;
         } else {
-          // No mês atual (i=0), usamos o status real da transação
-          // Em meses futuros, projetamos despesas como 'vencer' pois ainda não foram pagas
-          if (i > 0) {
-            vencer += val;
-          } else {
-            if (t.status === 'Pago') {
-              expense += val;
-            } else {
-              vencer += val;
-            }
-          }
+          expense += val;
+        }
+
+        // A Vencer: somar registros com status = 'A Vencer'
+        if (t.status === 'A Vencer') {
+          vencer += val;
         }
       }
     });
@@ -2240,19 +2263,14 @@ export default function App() {
       name, 
       income: Math.round(income), 
       expense: Math.round(expense), 
-      vencer: Math.round(vencer),
-      totalOut: Math.round(expense + vencer)
+      vencer: Math.round(vencer)
     };
   });
 
   // Calcular saldo acumulado
-  let runningBalance = balance; // Iniciar com o saldo atual do sistema
-  const finalProjectedData = projectedCashFlow.map((month, idx) => {
-    // Para o mês atual (idx=0), o saldo já é o saldo do sistema
-    // Para meses futuros (idx > 0), somamos a projeção (income - totalOut)
-    if (idx > 0) {
-      runningBalance += (month.income - month.totalOut);
-    }
+  let runningBalance = 0;
+  const finalProjectedData = projectedCashFlow.map((month) => {
+    runningBalance += (month.income - month.expense);
     return {
       ...month,
       saldo: Math.round(runningBalance)
@@ -2267,7 +2285,7 @@ export default function App() {
     { id: 'programmer', label: 'Projetos', icon: Code, color: 'text-blue-500' },
     { id: 'studies', label: 'Estudos', icon: BookOpen, color: 'text-indigo-400' },
     { id: 'diary', label: 'Diário Pessoal', icon: Smile, color: 'text-pink-400' },
-    { id: 'marketing', label: 'Central de Marketing', icon: Megaphone, color: 'text-orange-400' },
+    { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-orange-400' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'text-slate-400' },
   ];
 
@@ -3157,19 +3175,19 @@ export default function App() {
                     </div>
                     <div className="flex flex-wrap items-center gap-3 md:gap-4 lg:gap-4">
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-emerald-500 rounded-full" />
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#4CAF50] rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Entradas</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-rosa-claro rounded-full" />
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#FF4D4D] rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saídas</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-amber-500 rounded-full" />
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#FFC107] rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">A Vencer</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-0.5 bg-roxo-suave" />
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#2196F3] rounded-full" />
                         <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saldo</span>
                       </div>
                     </div>
@@ -3178,20 +3196,6 @@ export default function App() {
                   <div className="h-64 md:h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart data={finalProjectedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <defs>
-                          <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f8bbd0" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="#f8bbd0" stopOpacity={0}/>
-                          </linearGradient>
-                          <linearGradient id="colorVencer" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
                         <XAxis 
                           dataKey="name" 
@@ -3208,7 +3212,6 @@ export default function App() {
                         />
                         <RechartsTooltip 
                           formatter={(value: number, name: string) => {
-                            if (name.includes('Marker')) return null;
                             return [`R$ ${value.toFixed(2).replace('.', ',')}`, name];
                           }}
                           contentStyle={{ 
@@ -3219,63 +3222,37 @@ export default function App() {
                             color: '#fff'
                           }}
                         />
-                        <Area 
+                        <Line 
                           type="monotone" 
                           dataKey="income" 
                           name="Entradas"
-                          stackId="1" 
-                          stroke="#10b981" 
-                          strokeWidth={2}
-                          fillOpacity={1} 
-                          fill="url(#colorIncome)" 
+                          stroke="#4CAF50" 
+                          strokeWidth={2} 
+                          dot={{ r: 3, fill: '#4CAF50', strokeWidth: 1, stroke: '#fff' }}
                         />
-                        <Area 
+                        <Line 
                           type="monotone" 
                           dataKey="expense" 
                           name="Saídas"
-                          stackId="1" 
-                          stroke="#f8bbd0" 
-                          strokeWidth={2}
-                          fillOpacity={1} 
-                          fill="url(#colorExpense)" 
+                          stroke="#FF4D4D" 
+                          strokeWidth={2} 
+                          dot={{ r: 3, fill: '#FF4D4D', strokeWidth: 1, stroke: '#fff' }}
                         />
-                        <Area 
+                        <Line 
                           type="monotone" 
                           dataKey="vencer" 
                           name="A Vencer"
-                          stackId="1" 
-                          stroke="#f59e0b" 
-                          strokeWidth={2}
-                          fillOpacity={1} 
-                          fill="url(#colorVencer)" 
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="income" 
-                          name="Entradas (Marker)"
-                          stroke="#10b981" 
+                          stroke="#FFC107" 
                           strokeWidth={2} 
-                          dot={{ r: 3, fill: '#10b981', strokeWidth: 1, stroke: '#fff' }}
-                          activeDot={false}
-                          legendType="none"
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="expense" 
-                          name="Saídas (Marker)"
-                          stroke="#f8bbd0" 
-                          strokeWidth={2} 
-                          dot={{ r: 3, fill: '#f8bbd0', strokeWidth: 1, stroke: '#fff' }}
-                          activeDot={false}
-                          legendType="none"
+                          dot={{ r: 3, fill: '#FFC107', strokeWidth: 1, stroke: '#fff' }}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="saldo" 
                           name="Saldo"
-                          stroke="#6a5acd" 
+                          stroke="#2196F3" 
                           strokeWidth={3} 
-                          dot={{ r: 4, fill: '#6a5acd', strokeWidth: 2, stroke: '#fff' }}
+                          dot={{ r: 4, fill: '#2196F3', strokeWidth: 2, stroke: '#fff' }}
                           activeDot={{ r: 6, strokeWidth: 0 }}
                         />
                       </ComposedChart>
@@ -3302,18 +3279,18 @@ export default function App() {
                       </h4>
                       <div className="space-y-3">
                         {transactions
-                          .filter(t => t.type === 'expense' && (t.status === 'Pendente' || t.status === 'A Vencer'))
+                          .filter(t => t.type === 'expense' && (t.status === 'Vencido' || t.status === 'A Vencer'))
                           .slice(0, 3)
                           .map(t => (
                             <div key={t.id} className="p-3 bg-red-500/5 rounded-2xl border border-red-500/10 flex justify-between items-center">
                               <div>
                                 <p className="text-xs font-bold text-white">{t.title}</p>
-                                <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Vence Hoje</p>
+                                <p className="text-[10px] text-red-400 font-bold uppercase tracking-wider">{t.status === 'Vencido' ? 'Vencido' : 'Vence Hoje'}</p>
                               </div>
                               <span className="text-sm font-black text-red-500">R$ {t.amount.toFixed(2)}</span>
                             </div>
                           ))}
-                        {transactions.filter(t => t.type === 'expense' && (t.status === 'Pendente' || t.status === 'A Vencer')).length === 0 && (
+                        {transactions.filter(t => t.type === 'expense' && (t.status === 'Vencido' || t.status === 'A Vencer')).length === 0 && (
                           <p className="text-slate-600 text-sm italic">Nenhuma conta crítica pendente.</p>
                         )}
                       </div>
@@ -3428,6 +3405,142 @@ export default function App() {
                             </div>
                           ))
                         )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Resumo Detalhado de Dívidas e Entradas */}
+                <div className="mt-8 space-y-6">
+                  <h4 className="text-xl font-display font-bold text-white">Resumo Detalhado de Dívidas e Entradas</h4>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Card 1: Dívidas Detalhadas */}
+                    <div className="glass-card rounded-3xl overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div className="p-6 border-b border-border-dark flex justify-between items-center">
+                          <h5 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#FF4D4D]" />
+                            Dívidas Detalhadas
+                          </h5>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-border-dark text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                                <th className="p-4">Descrição</th>
+                                <th className="p-4">Valor</th>
+                                <th className="p-4">Categoria</th>
+                                <th className="p-4">Vencimento</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4">Recorrência</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-dark text-sm">
+                              {transactions
+                                .filter(t => t.type === 'expense')
+                                .map(t => (
+                                  <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                                    <td className="p-4 text-white font-bold">{t.title}</td>
+                                    <td className="p-4 text-[#FF4D4D] font-mono font-bold">R$ {t.amount.toFixed(2).replace('.', ',')}</td>
+                                    <td className="p-4 text-slate-400">{t.category}</td>
+                                    <td className="p-4 text-slate-400">
+                                      {t.dueDate ? new Date(t.dueDate).toLocaleDateString('pt-BR') : '-'}
+                                    </td>
+                                    <td className="p-4">
+                                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                                        t.status === 'Vencido' ? 'bg-red-500/20 text-[#FF4D4D]' :
+                                        t.status === 'A Vencer' ? 'bg-amber-500/20 text-amber-500' :
+                                        'bg-emerald-500/20 text-emerald-500'
+                                      }`}>
+                                        {t.status}
+                                      </span>
+                                    </td>
+                                    <td className="p-4 text-slate-400">{t.recurrence || 'Único'}</td>
+                                  </tr>
+                                ))}
+                              {transactions.filter(t => t.type === 'expense').length === 0 && (
+                                <tr>
+                                  <td colSpan={6} className="p-8 text-center text-slate-600 italic">Nenhuma dívida registrada.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div className="p-6 border-t border-border-dark bg-white/5 flex justify-between items-center">
+                        <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Dívidas</span>
+                        <span className="text-lg font-display font-black text-[#FF4D4D]">
+                          R$ {transactions
+                            .filter(t => t.type === 'expense')
+                            .reduce((sum, t) => sum + t.amount, 0)
+                            .toFixed(2)
+                            .replace('.', ',')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card 2: Entradas Detalhadas */}
+                    <div className="glass-card rounded-3xl overflow-hidden flex flex-col justify-between">
+                      <div>
+                        <div className="p-6 border-b border-border-dark flex justify-between items-center">
+                          <h5 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#4CAF50]" />
+                            Entradas Detalhadas
+                          </h5>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="border-b border-border-dark text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                                <th className="p-4">Descrição</th>
+                                <th className="p-4">Valor</th>
+                                <th className="p-4">Categoria</th>
+                                <th className="p-4">Data de Recebimento</th>
+                                <th className="p-4">Status</th>
+                                <th className="p-4">Recorrência</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-dark text-sm">
+                              {transactions
+                                .filter(t => t.type === 'income')
+                                .map(t => (
+                                  <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                                    <td className="p-4 text-white font-bold">{t.title}</td>
+                                    <td className="p-4 text-[#4CAF50] font-mono font-bold">R$ {t.amount.toFixed(2).replace('.', ',')}</td>
+                                    <td className="p-4 text-slate-400">{t.category}</td>
+                                    <td className="p-4 text-slate-400">
+                                      {t.dueDate ? new Date(t.dueDate).toLocaleDateString('pt-BR') : '-'}
+                                    </td>
+                                    <td className="p-4">
+                                      <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                                        t.status === 'Pago' ? 'bg-emerald-500/20 text-[#4CAF50]' :
+                                        t.status === 'A Vencer' ? 'bg-amber-500/20 text-amber-500' :
+                                        'bg-red-500/20 text-red-500'
+                                      }`}>
+                                        {t.status}
+                                      </span>
+                                    </td>
+                                    <td className="p-4 text-slate-400">{t.recurrence || 'Único'}</td>
+                                  </tr>
+                                ))}
+                              {transactions.filter(t => t.type === 'income').length === 0 && (
+                                <tr>
+                                  <td colSpan={6} className="p-8 text-center text-slate-600 italic">Nenhuma entrada registrada.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div className="p-6 border-t border-border-dark bg-white/5 flex justify-between items-center">
+                        <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Entradas</span>
+                        <span className="text-lg font-display font-black text-[#4CAF50]">
+                          R$ {transactions
+                            .filter(t => t.type === 'income')
+                            .reduce((sum, t) => sum + t.amount, 0)
+                            .toFixed(2)
+                            .replace('.', ',')}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -5938,7 +6051,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   category: string, 
   dueDate: string | undefined,
   paymentMethod: 'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito' | undefined,
-  status: 'Pendente' | 'Pago' | 'A Vencer',
+  status: 'A Vencer' | 'Pago' | 'Vencido',
   recurrence: 'Único' | 'Semanal' | 'Mensal'
 ) => void }) {
   const [type, setType] = useState<'income' | 'expense'>('expense');
@@ -5947,7 +6060,7 @@ function TransactionForm({ onAdd }: { onAdd: (
   const [category, setCategory] = useState('Geral');
   const [dueDate, setDueDate] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'Cartão' | 'Pix' | 'Boleto' | 'Dinheiro' | 'Cartão de Crédito' | 'Cartão de Débito'>('Pix');
-  const [status, setStatus] = useState<'Pendente' | 'Pago' | 'A Vencer'>('Pendente');
+  const [status, setStatus] = useState<'A Vencer' | 'Pago' | 'Vencido'>('A Vencer');
   const [recurrence, setRecurrence] = useState<'Único' | 'Semanal' | 'Mensal'>('Único');
 
   const handleSubmit = (e: FormEvent) => {
@@ -5983,7 +6096,7 @@ function TransactionForm({ onAdd }: { onAdd: (
           onClick={() => {
             setType('expense');
             setCategory('Geral');
-            setStatus('Pendente');
+            setStatus('A Vencer');
           }}
           className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${type === 'expense' ? 'bg-rosa-claro text-white' : 'text-slate-500'}`}
         >
@@ -6062,9 +6175,9 @@ function TransactionForm({ onAdd }: { onAdd: (
             onChange={(e) => setStatus(e.target.value as any)}
             className="w-full bg-slate-800 border border-border-dark rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-roxo-suave text-white appearance-none"
           >
-            <option value="Pago">{type === 'income' ? 'Recebido' : 'Pago'}</option>
-            <option value="Pendente">Pendente</option>
-            <option value="A Vencer">{type === 'income' ? 'Programado' : 'A Vencer'}</option>
+            <option value="A Vencer">A Vencer</option>
+            <option value="Pago">Pago</option>
+            <option value="Vencido">Vencido</option>
           </select>
         </div>
         <div className="space-y-1">

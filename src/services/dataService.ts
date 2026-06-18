@@ -139,6 +139,9 @@ export const dataService = {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) throw new Error('Acesso negado. Faça login novamente.');
 
+    // Sanitização do status de acordo com a regra de valor padrão 'Pendente'
+    let sanitizedStatus = (transaction.status || 'Pendente').trim();
+
     // Mapeamento direto com as colunas confirmadas via imagem do usuário
     const transactionData = {
       id: transaction.id,
@@ -148,7 +151,7 @@ export const dataService = {
       amount: Number(transaction.amount),
       category: transaction.category || 'Outros',
       dueDate: transaction.dueDate || null,
-      status: transaction.status || 'Pendente',
+      status: sanitizedStatus,
       paymentMethod: transaction.paymentMethod || 'Pix',
       recurrence: transaction.recurrence || 'Único',
       updatedAt: new Date().toISOString()

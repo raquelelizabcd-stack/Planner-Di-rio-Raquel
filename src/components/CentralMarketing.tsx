@@ -65,6 +65,8 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
   // Navigation Tabs within the Marketing Hub
   // 'dashboard' | 'ia-conteudo' | 'banco-ideias' | 'calendario' | 'crm-leads' | 'email-mkt' | 'redes-sociais' | 'analytics' | 'projetos'
   const [subTab, setSubTab] = useState<string>('dashboard');
+  const [activeNetwork, setActiveNetwork] = useState<string>('instagram');
+  const [commentSearch, setCommentSearch] = useState<string>('');
 
   // Loading States
   const [loading, setLoading] = useState(true);
@@ -870,7 +872,7 @@ Chaves obrigatórias no JSON:
   });
 
   return (
-    <div className="w-full bg-slate-900/40 rounded-3xl border border-white/5 p-6 backdrop-blur-xl">
+    <div className="w-full bg-white text-slate-800 rounded-[32px] border border-slate-200 p-6 shadow-sm">
       
       {/* Toast Alert Feedback */}
       <AnimatePresence>
@@ -879,7 +881,7 @@ Chaves obrigatórias no JSON:
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10 }}
-            className="fixed top-6 right-6 z-50 bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 border border-white/20 text-xs"
+            className="fixed top-6 right-6 z-50 bg-indigo-600 text-white font-medium px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 border border-indigo-500 text-xs"
           >
             <CheckCircle size={14} className="text-emerald-400" />
             <span>{toastMessage}</span>
@@ -888,28 +890,28 @@ Chaves obrigatórias no JSON:
       </AnimatePresence>
 
       {/* Header Central de Marketing */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-white/5 mb-6 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-100 mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-gradient-to-br from-indigo-500 to-pink-500 rounded-2xl shadow-lg shadow-indigo-500/20">
-            <Share2 className="text-white w-6 h-6 animate-pulse" />
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-pink-500 rounded-2xl shadow-md">
+            <Share2 className="text-white w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-xl font-display font-bold text-white tracking-tight flex items-center gap-2">
-              Central de Marketing <span className="text-[10px] font-mono font-normal bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded-lg">EXTENSÃO DIRECT</span>
+            <h2 className="text-lg font-display font-bold text-slate-800 tracking-tight flex items-center gap-2">
+              Central de Marketing <span className="text-[9px] font-mono font-normal bg-indigo-50 text-indigo-600 border border-indigo-100 px-1.5 py-0.5 rounded-lg">EXTENSÃO DIRECT</span>
             </h2>
-            <p className="text-xs text-slate-400">Auxiliar de inteligência e inteligência analítica de divulgação dos projetos da Raquel Duarte</p>
+            <p className="text-xs text-slate-500">Auxiliar de inteligência e inteligência analítica de divulgação dos projetos da Raquel Duarte</p>
           </div>
         </div>
         
         {/* Dynamic DB State Indicators */}
-        <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-white/10 text-[11px] text-slate-300">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+        <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-[10px] text-slate-600 font-medium">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
           <span className="font-mono">Supabase Online (com cache Local)</span>
         </div>
       </div>
 
       {/* Internal Navigation Menu (Grid style) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 mb-8 bg-slate-800/40 p-1.5 rounded-2xl border border-white/5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 mb-8 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: Grid },
           { id: 'ia-conteudo', label: 'Conteúdo IA', icon: Sparkles },
@@ -931,14 +933,14 @@ Chaves obrigatórias no JSON:
                 setSearchQuery('');
               }}
               style={{ borderRadius: `${borderRadius - 6}px` }}
-              className={`flex flex-col items-center justify-center p-2 text-center transition-all duration-200 cursor-pointer text-xs font-medium gap-1 ${
+              className={`flex flex-col items-center justify-center p-2 text-center transition-all duration-200 cursor-pointer text-xs font-semibold gap-1 ${
                 isSelected 
-                  ? 'bg-indigo-600/90 text-white shadow-md' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-indigo-600 text-white shadow-sm' 
+                  : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100/50'
               }`}
             >
-              <Icon size={16} className={isSelected ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-white'} />
-              <span className="text-[10px] sm:text-[11px] font-sans truncate w-full">{t.label}</span>
+              <Icon size={14} className={isSelected ? 'scale-110 text-white' : 'text-slate-400 group-hover:text-indigo-600'} />
+              <span className="text-[10px] font-sans truncate w-full">{t.label}</span>
             </button>
           );
         })}
@@ -964,163 +966,321 @@ Chaves obrigatórias no JSON:
               1. VIEW: DASHBOARD PRINCIPAL
               ======================================= */}
           {subTab === 'dashboard' && (
-            <div className="space-y-6">
-              {/* Cards Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="flex flex-col lg:flex-row gap-6 bg-white p-6 rounded-[24px] border border-slate-200 text-slate-800 shadow-sm">
+              {/* Sidebar de Redes Sociais */}
+              <div className="w-full lg:w-48 shrink-0 flex lg:flex-col gap-2 border-b lg:border-b-0 lg:border-r border-slate-100 pb-4 lg:pb-0 lg:pr-4">
                 {[
-                  { title: 'Conteúdos Planejados', value: events.length + ideas.length, icon: Calendar, color: 'text-blue-400', bg: 'from-blue-500/10 to-blue-500/5' },
-                  { title: 'Conteúdos Publicados', value: totalPublished, icon: CheckCircle, color: 'text-emerald-400', bg: 'from-emerald-500/10 to-emerald-500/5' },
-                  { title: 'Leads Captados', value: leads.length, icon: Users, color: 'text-pink-400', bg: 'from-pink-500/10 to-pink-500/5' },
-                  { title: 'Seguidores Totais', value: totalFollowers.toLocaleString('pt-BR'), icon: Globe, color: 'text-purple-400', bg: 'from-purple-500/10 to-purple-500/5' },
-                  { title: 'Taxa Engajamento', value: engagementRate, icon: TrendingUp, color: 'text-yellow-400', bg: 'from-yellow-500/10 to-yellow-500/5' },
-                  { title: 'Campanhas Ativas', value: campaigns.length || 3, icon: Mail, color: 'text-indigo-400', bg: 'from-indigo-500/10 to-indigo-500/5' }
-                ].map((card, i) => {
-                  const Icon = card.icon;
-                  return (
-                    <div 
-                      key={i} 
-                      className="bg-slate-800/40 p-4 rounded-2xl border border-white/5 flex flex-col justify-between group relative overflow-hidden"
-                    >
-                      <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${card.bg} opacity-20 blur-2xl group-hover:opacity-45 transition-all`} />
-                      <div className="flex justify-between items-start">
-                        <span className="text-[10px] text-slate-400 font-sans uppercase font-medium leading-tight">{card.title}</span>
-                        <Icon size={14} className={`${card.color}`} />
-                      </div>
-                      <div className="mt-4">
-                        <h3 className="text-2xl font-bold text-white tracking-tight leading-none">{card.value}</h3>
-                        <p className="text-[10px] text-slate-500 mt-1 flex items-center gap-1">
-                          <TrendingUp size={10} className="text-emerald-400" /> +12.5% este mês
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
+                  { id: 'instagram', label: 'Instagram', icon: '📸', color: 'hover:text-pink-600', activeBg: 'bg-pink-50 text-pink-600' },
+                  { id: 'linkedin', label: 'LinkedIn', icon: '💼', color: 'hover:text-blue-600', activeBg: 'bg-blue-50 text-blue-600' },
+                  { id: 'facebook', label: 'Facebook', icon: '👥', color: 'hover:text-indigo-800', activeBg: 'bg-indigo-50 text-indigo-700' },
+                  { id: 'tiktok', label: 'TikTok', icon: '🎵', color: 'hover:text-slate-900', activeBg: 'bg-slate-100 text-slate-900' }
+                ].map((net) => (
+                  <button
+                    key={net.id}
+                    onClick={() => setActiveNetwork(net.id)}
+                    className={`w-full flex items-center justify-start gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all uppercase tracking-wide border border-transparent cursor-pointer ${
+                      activeNetwork === net.id ? `${net.activeBg} border-slate-100 shadow-sm` : `text-slate-500 hover:bg-slate-50 ${net.color}`
+                    }`}
+                  >
+                    <span className="text-base">{net.icon}</span>
+                    <span>{net.label}</span>
+                  </button>
+                ))}
               </div>
 
-              {/* Graphics Section using Recharts */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* 1. Crescimento de Seguidores AreaChart */}
-                <div className="bg-slate-800/40 p-5 rounded-2xl border border-white/5 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">Crescimento de Seguidores</h4>
-                      <p className="text-[10px] text-slate-400">Total somado em todas as redes integradas</p>
-                    </div>
-                    <span className="text-[10px] font-mono text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/25">MENSAL</span>
+              {/* Área Principal do Dashboard */}
+              <div className="flex-1 space-y-6">
+                {/* Cabeçalho Motivacional */}
+                <div className="border-b border-slate-100 pb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800 tracking-tight capitalize flex items-center gap-2">
+                      Desempenho no {activeNetwork}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {activeNetwork === 'instagram' && "“A consistência atrai o engajamento diário! Excelente trabalho.” ✨"}
+                      {activeNetwork === 'linkedin' && "“Fortaleça sua autoridade técnica compartilhando seus aprendizados.” 🚀"}
+                      {activeNetwork === 'facebook' && "“Mantenha sua comunidade engajada e informada com novidades.” 👥"}
+                      {activeNetwork === 'tiktok' && "“Vídeos curtos e dinâmicos geram conexões incríveis rapidamente.” 🎥"}
+                    </p>
                   </div>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
-                        data={[
-                          { name: 'Jan', Seguidores: 1200 },
-                          { name: 'Fev', Seguidores: 1650 },
-                          { name: 'Mar', Seguidores: 2100 },
-                          { name: 'Abr', Seguidores: 3400 },
-                          { name: 'Mai', Seguidores: 4200 },
-                          { name: 'Jun', Seguidores: totalFollowers || 5340 }
-                        ]}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                      >
-                        <defs>
-                          <linearGradient id="colorFollowers" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#818cf8" stopOpacity={0.4}/>
-                            <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                        <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '11px' }} />
-                        <Area type="monotone" dataKey="Seguidores" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorFollowers)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  <div className="text-[10px] font-mono bg-slate-50 border border-slate-200 text-slate-500 px-2 py-1 rounded-lg">
+                    Sincronizado: Hoje
                   </div>
                 </div>
 
-                {/* 2. Leads por Período LineChart */}
-                <div className="bg-slate-800/40 p-5 rounded-2xl border border-white/5 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">Captação de Leads</h4>
-                      <p className="text-[10px] text-slate-400">Origem de potenciais clientes para os projetos</p>
-                    </div>
-                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/25">HISTÓRICO</span>
+                {/* 1. Resumo de Desempenho */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Alcance Card (Pastel Blue) */}
+                  <div className="bg-blue-50/50 border border-blue-100/60 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform">
+                    <span className="text-[9px] uppercase font-bold text-blue-500 tracking-wider block mb-1">Alcance</span>
+                    <h4 className="text-2xl font-black text-blue-700">
+                      {activeNetwork === 'instagram' && "45.200"}
+                      {activeNetwork === 'linkedin' && "18.900"}
+                      {activeNetwork === 'facebook' && "3.200"}
+                      {activeNetwork === 'tiktok' && "8.400"}
+                    </h4>
+                    <p className="text-[9px] text-blue-500 mt-1.5 flex items-center gap-1 font-medium">
+                      <span>▲</span> +8.2% vs mês anterior
+                    </p>
                   </div>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={[
-                          { name: 'Semana 1', IncluiEdu: 10, EduTec: 15, Outros: 5 },
-                          { name: 'Semana 2', IncluiEdu: 22, EduTec: 18, Outros: 9 },
-                          { name: 'Semana 3', IncluiEdu: 18, EduTec: 30, Outros: 12 },
-                          { name: 'Semana 4', IncluiEdu: 35, EduTec: 42, Outros: 20 }
-                        ]}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                        <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '11px' }} />
-                        <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
-                        <Line type="monotone" dataKey="IncluiEdu" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} />
-                        <Line type="monotone" dataKey="EduTec" stroke="#ec4899" strokeWidth={2} dot={{ r: 3 }} />
-                        <Line type="monotone" dataKey="Outros" stroke="#fbbf24" strokeWidth={2} dot={{ r: 3 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
+
+                  {/* Engajamento Card (Pastel Lilac) */}
+                  <div className="bg-indigo-50/50 border border-indigo-100/60 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform">
+                    <span className="text-[9px] uppercase font-bold text-indigo-500 tracking-wider block mb-1">Engajamento</span>
+                    <h4 className="text-2xl font-black text-indigo-700">
+                      {activeNetwork === 'instagram' && "3.450"}
+                      {activeNetwork === 'linkedin' && "1.820"}
+                      {activeNetwork === 'facebook' && "240"}
+                      {activeNetwork === 'tiktok' && "980"}
+                    </h4>
+                    <p className="text-[9px] text-indigo-500 mt-1.5 flex items-center gap-1 font-medium">
+                      <span>▲</span> +12.5% vs mês anterior
+                    </p>
+                  </div>
+
+                  {/* Seguidores Card (Pastel Green) */}
+                  <div className="bg-emerald-50/50 border border-emerald-100/60 p-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-transform">
+                    <span className="text-[9px] uppercase font-bold text-emerald-500 tracking-wider block mb-1">Seguidores</span>
+                    <h4 className="text-2xl font-black text-emerald-700">
+                      {activeNetwork === 'instagram' && (socialAccounts.find(s => s.platform === 'instagram')?.followers || 3).toLocaleString('pt-BR')}
+                      {activeNetwork === 'linkedin' && (socialAccounts.find(s => s.platform === 'linkedin')?.followers || 2310).toLocaleString('pt-BR')}
+                      {activeNetwork === 'facebook' && (socialAccounts.find(s => s.platform === 'facebook')?.followers || 480).toLocaleString('pt-BR')}
+                      {activeNetwork === 'tiktok' && (socialAccounts.find(s => s.platform === 'tiktok')?.followers || 120).toLocaleString('pt-BR')}
+                    </h4>
+                    <p className="text-[9px] text-emerald-500 mt-1.5 flex items-center gap-1 font-medium">
+                      <span>▲</span> Crescimento contínuo
+                    </p>
                   </div>
                 </div>
 
-                {/* 3. Conteúdos Publicados BarChart */}
-                <div className="bg-slate-800/40 p-5 rounded-2xl border border-white/5 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="text-sm font-semibold text-white">Conteúdos Publicados</h4>
-                      <p className="text-[10px] text-slate-400">Produção editorial dividida por canal principal</p>
+                {/* 2. Gráficos de Crescimento e Interação */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Gráfico 1: Crescimento de Seguidores */}
+                  <div className="bg-slate-50/60 border border-slate-100 p-5 rounded-2xl shadow-sm">
+                    <h4 className="text-[10px] uppercase font-bold text-slate-500 mb-4 tracking-wider">Crescimento de Seguidores (Últimos Dias)</h4>
+                    <div className="h-60">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart
+                          data={
+                            activeNetwork === 'instagram' ? [
+                              { name: '10/06', seguidores: 15100 },
+                              { name: '11/06', seguidores: 15150 },
+                              { name: '12/06', seguidores: 15220 },
+                              { name: '13/06', seguidores: 15300 },
+                              { name: '14/06', seguidores: 15350 },
+                              { name: '15/06', seguidores: 15400 }
+                            ] : activeNetwork === 'linkedin' ? [
+                              { name: '10/06', seguidores: 2210 },
+                              { name: '11/06', seguidores: 2230 },
+                              { name: '12/06', seguidores: 2250 },
+                              { name: '13/06', seguidores: 2270 },
+                              { name: '14/06', seguidores: 2290 },
+                              { name: '15/06', seguidores: 2310 }
+                            ] : activeNetwork === 'facebook' ? [
+                              { name: '10/06', seguidores: 472 },
+                              { name: '11/06', seguidores: 474 },
+                              { name: '12/06', seguidores: 475 },
+                              { name: '13/06', seguidores: 477 },
+                              { name: '14/06', seguidores: 479 },
+                              { name: '15/06', seguidores: 480 }
+                            ] : [
+                              { name: '10/06', seguidores: 95 },
+                              { name: '11/06', seguidores: 100 },
+                              { name: '12/06', seguidores: 105 },
+                              { name: '13/06', seguidores: 110 },
+                              { name: '14/06', seguidores: 115 },
+                              { name: '15/06', seguidores: 120 }
+                            ]
+                          }
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <defs>
+                            <linearGradient id="colorFollowersMetricool" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#818cf8" stopOpacity={0.2}/>
+                              <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="name" fontSize={9} stroke="#94a3b8" tickLine={false} />
+                          <YAxis fontSize={9} stroke="#94a3b8" tickLine={false} />
+                          <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px' }} />
+                          <Area type="monotone" dataKey="seguidores" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorFollowersMetricool)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
                     </div>
-                    <span className="text-[10px] font-mono text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-md border border-pink-500/25">MÉTRICAS</span>
                   </div>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={[
-                          { name: 'Insta', Posts: 14 },
-                          { name: 'LkdIn', Posts: 10 },
-                          { name: 'Blog', Posts: 4 },
-                          { name: 'E-mail', Posts: 8 },
-                          { name: 'TikTok', Posts: 3 }
-                        ]}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" />
-                        <XAxis dataKey="name" stroke="#64748b" fontSize={10} tickLine={false} />
-                        <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', fontSize: '11px' }} />
-                        <Bar dataKey="Posts" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={25} />
-                      </BarChart>
-                    </ResponsiveContainer>
+
+                  {/* Gráfico 2: Interações por tipo de postagem */}
+                  <div className="bg-slate-50/60 border border-slate-100 p-5 rounded-2xl shadow-sm">
+                    <h4 className="text-[10px] uppercase font-bold text-slate-500 mb-4 tracking-wider">Interações por Formato de Post</h4>
+                    <div className="h-60">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart
+                          data={
+                            activeNetwork === 'instagram' ? [
+                              { name: 'Imagem', cliques: 420 },
+                              { name: 'Vídeo', cliques: 280 },
+                              { name: 'Reels', cliques: 950 },
+                              { name: 'Carrossel', cliques: 640 }
+                            ] : activeNetwork === 'linkedin' ? [
+                              { name: 'Texto', cliques: 180 },
+                              { name: 'Imagem', cliques: 340 },
+                              { name: 'Vídeo', cliques: 90 },
+                              { name: 'Artigo', cliques: 120 }
+                            ] : activeNetwork === 'facebook' ? [
+                              { name: 'Link', cliques: 45 },
+                              { name: 'Imagem', cliques: 120 },
+                              { name: 'Vídeo', cliques: 30 }
+                            ] : [
+                              { name: 'Trend', cliques: 450 },
+                              { name: 'Tutorial', cliques: 720 },
+                              { name: 'Vlog', cliques: 310 }
+                            ]
+                          }
+                          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="name" fontSize={9} stroke="#94a3b8" tickLine={false} />
+                          <YAxis fontSize={9} stroke="#94a3b8" tickLine={false} />
+                          <Tooltip contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '10px' }} />
+                          <Bar dataKey="cliques" fill="#fed7aa" stroke="#f97316" strokeWidth={1} radius={[6, 6, 0, 0]} barSize={25} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 </div>
 
-              </div>
-
-              {/* Quick Checklist Section / Upcoming content scheduling items */}
-              <div className="bg-slate-800/25 p-5 rounded-2xl border border-white/5">
-                <h4 className="text-sm font-semibold text-white mb-3">Divulgação de Projetos Estratégicos</h4>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {[
-                    { name: 'Planner Diário Raquel', key: '1', handle: 'Acessível, otimizado para pequenos negócios e produtividade integral de devs' },
-                    { name: 'IncluiEduTec', key: '2', handle: 'Inclusão educacional focada na transformação digital e capacitação no terceiro setor' },
-                    { name: 'EduTecProfessor', key: '3', handle: 'Portal educacional de mentoria especializada para docentes de alto rendimento' },
-                    { name: 'Marca Pessoal Raquel Duarte', key: '4', handle: 'Análise de autoridade profissional com storytelling de forte impacto técnico' },
-                  ].map((p, idx) => (
-                    <div key={idx} className="bg-slate-800/40 p-4 rounded-xl border border-white/5 text-xs text-slate-300">
-                      <span className="text-[10px] font-bold text-indigo-400 font-mono block mb-1">PROJETO DE DIVULGAÇÃO 0{idx+1}</span>
-                      <strong className="text-white block text-sm font-semibold">{p.name}</strong>
-                      <p className="text-slate-400 mt-2 text-[11px] leading-relaxed">{p.handle}</p>
-                    </div>
-                  ))}
+                {/* 3. Tabelas de Publicações e Stories */}
+                <div className="bg-slate-50/60 border border-slate-100 p-5 rounded-2xl shadow-sm overflow-hidden">
+                  <h4 className="text-[10px] uppercase font-bold text-slate-500 mb-4 tracking-wider">Tabela de Publicações Recentes</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-[9px] text-slate-400 uppercase font-mono">
+                          <th className="pb-3 pr-2">Legenda / Conteúdo</th>
+                          <th className="pb-3 px-2">Data</th>
+                          <th className="pb-3 px-2">Alcance</th>
+                          <th className="pb-3 px-2">Interações</th>
+                          <th className="pb-3 px-2">Taxa Engajamento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(activeNetwork === 'instagram' ? [
+                          { post: "Guia prático de Acessibilidade Digital ♿", date: "15/06/2026", reach: "12.400", inter: "885", eng: "7.1%" },
+                          { post: "Como usar o Supabase no seu MicroSaaS 🚀", date: "12/06/2026", reach: "15.100", inter: "1.012", eng: "6.7%" },
+                          { post: "Dica rápida de produtividade para devs 💻", date: "09/06/2026", reach: "8.900", inter: "438", eng: "4.9%" }
+                        ] : activeNetwork === 'linkedin' ? [
+                          { post: "A importância da acessibilidade digital no terceiro setor...", date: "14/06/2026", reach: "8.200", inter: "338", eng: "4.1%" },
+                          { post: "Desafios de escalar um MicroSaaS sozinho...", date: "10/06/2026", reach: "6.400", inter: "221", eng: "3.5%" }
+                        ] : activeNetwork === 'facebook' ? [
+                          { post: "Lançamento do IncluiEduTec! 🚀", date: "11/06/2026", reach: "1.500", inter: "97", eng: "6.4%" }
+                        ] : [
+                          { post: "Meu dia a dia como dev solo 👩‍💻", date: "13/06/2026", reach: "5.200", inter: "455", eng: "8.7%" },
+                          { post: "Erros comuns ao iniciar no Supabase...", date: "08/06/2026", reach: "3.200", inter: "195", eng: "6.1%" }
+                        ]).map((p, idx) => (
+                          <tr key={idx} className="border-b border-slate-100 hover:bg-slate-100/30 transition-colors">
+                            <td className="py-3 pr-2 font-semibold text-slate-800">{p.post}</td>
+                            <td className="py-3 px-2 text-slate-500 font-mono text-[10px]">{p.date}</td>
+                            <td className="py-3 px-2 text-slate-600 font-mono text-[10px]">{p.reach}</td>
+                            <td className="py-3 px-2 text-slate-600 font-mono text-[10px]">{p.inter}</td>
+                            <td className="py-3 px-2 text-indigo-600 font-bold font-mono text-[10px]">{p.eng}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* 4. Indicadores de Tipo de Conteúdo e 5. Comentários */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Tipo de Conteúdo */}
+                  <div className="bg-slate-50/60 border border-slate-100 p-5 rounded-2xl shadow-sm">
+                    <h4 className="text-[10px] uppercase font-bold text-slate-500 mb-4 tracking-wider">Formatos Preferidos</h4>
+                    <div className="h-44 flex items-center justify-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={
+                              activeNetwork === 'instagram' ? [
+                                { name: 'Imagem', value: 40 },
+                                { name: 'Vídeo', value: 20 },
+                                { name: 'Reels', value: 40 }
+                              ] : activeNetwork === 'linkedin' ? [
+                                { name: 'Texto', value: 45 },
+                                { name: 'Imagem', value: 35 },
+                                { name: 'Vídeo/PDF', value: 20 }
+                              ] : activeNetwork === 'facebook' ? [
+                                { name: 'Imagem', value: 60 },
+                                { name: 'Link', value: 30 },
+                                { name: 'Vídeo', value: 10 }
+                              ] : [
+                                { name: 'Vlog', value: 30 },
+                                { name: 'Dicas', value: 50 },
+                                { name: 'Trend', value: 20 }
+                              ]
+                            }
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={5}
+                            dataKey="value"
+                          >
+                            {/* Pastel tones: blue, lilac, green */}
+                            {['#93c5fd', '#c084fc', '#86efac'].map((color, index) => (
+                              <Cell key={`cell-${index}`} fill={color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend iconSize={8} wrapperStyle={{ fontSize: '10px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* 5. Comentários e Pesquisa */}
+                  <div className="bg-slate-50/60 border border-slate-100 p-5 rounded-2xl shadow-sm flex flex-col justify-between space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                      <h4 className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Comentários e Feedbacks</h4>
+                      <div className="relative">
+                        <Search size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar..."
+                          value={commentSearch}
+                          onChange={(e) => setCommentSearch(e.target.value)}
+                          className="bg-white border border-slate-200 rounded-lg pl-6 pr-2 py-0.5 text-[10px] text-slate-600 focus:outline-none focus:border-indigo-500 w-28"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-40 overflow-y-auto pr-1">
+                      {((activeNetwork === 'instagram' ? [
+                        { user: "@prof_lucas", text: "Excelente conteúdo, Raquel! Acessibilidade digital é muito importante.", tag: "Positivo", sentimentColor: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+                        { user: "@dev_carol", text: "Esse Planner de micro-saas mudou muito a forma como me organizo.", tag: "Elogio", sentimentColor: "bg-purple-50 text-purple-600 border-purple-100" },
+                        { user: "@eduardo_mkt", text: "Você usou alguma biblioteca específica de gráficos?", tag: "Pergunta", sentimentColor: "bg-blue-50 text-blue-600 border-blue-100" }
+                      ] : activeNetwork === 'linkedin' ? [
+                        { user: "Carlos Silva", text: "Muito inspirador seu relato sobre o IncluiEduTec!", tag: "Positivo", sentimentColor: "bg-emerald-50 text-emerald-600 border-emerald-100" },
+                        { user: "Amanda Souza", text: "Quais as principais metodologias para o letramento digital no projeto?", tag: "Dúvida", sentimentColor: "bg-blue-50 text-blue-600 border-blue-100" }
+                      ] : activeNetwork === 'facebook' ? [
+                        { user: "Maria Clara", text: "Parabéns por levar a inclusão digital para mais pessoas!", tag: "Elogio", sentimentColor: "bg-purple-50 text-purple-600 border-purple-100" }
+                      ] : [
+                        { user: "@gaby_codes", text: "Adorei seu setup de desenvolvimento!", tag: "Elogio", sentimentColor: "bg-purple-50 text-purple-600 border-purple-100" },
+                        { user: "@pedro_dev", text: "Você prefere Supabase ou Firebase para começar?", tag: "Pergunta", sentimentColor: "bg-blue-50 text-blue-600 border-blue-100" }
+                      ]).filter(c => c.user.toLowerCase().includes(commentSearch.toLowerCase()) || c.text.toLowerCase().includes(commentSearch.toLowerCase())))
+                      .map((c, idx) => (
+                        <div key={idx} className="bg-white p-2.5 rounded-xl border border-slate-100 space-y-1">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-[10px] text-slate-800">{c.user}</span>
+                            <span className={`text-[7px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border ${c.sentimentColor}`}>{c.tag}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-600 leading-snug">{c.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
