@@ -2249,7 +2249,7 @@ export default function App() {
         if (t.type === 'income') {
           income += val;
         } else {
-          expense += val;
+          expense += val * -1; // Aplicar valor negativo para Saídas
         }
 
         // A Vencer: somar registros com status = 'A Vencer'
@@ -2270,7 +2270,7 @@ export default function App() {
   // Calcular saldo acumulado
   let runningBalance = 0;
   const finalProjectedData = projectedCashFlow.map((month) => {
-    runningBalance += (month.income - month.expense);
+    runningBalance += (month.income + month.expense); // Como expense é negativo, isso realiza a subtração
     return {
       ...month,
       saldo: Math.round(runningBalance)
