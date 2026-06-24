@@ -52,7 +52,10 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  Legend
+  Legend,
+  PieChart,
+  Pie,
+  Cell
 } from 'recharts';
 
 interface CentralMarketingProps {
@@ -950,7 +953,7 @@ Chaves obrigatórias no JSON:
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-4">
           <div className="relative w-12 h-12">
-            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-500er/20 rounded-full animate-ping" />
+            <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-500/20 rounded-full animate-ping" />
             <div className="absolute top-0 left-0 w-full h-full border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           </div>
           <span className="text-slate-400 text-xs font-mono">Sincronizando Central de Marketing...</span>

@@ -5659,7 +5659,7 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="max-w-7xl mx-auto space-y-8"
               >
-                <CentralMarketing accentColor={accentColor} borderRadius={borderRadius} />
+                {<CentralMarketing accentColor={accentColor} borderRadius={borderRadius} /> || <div className="text-gray-300 p-6">Carregando módulo de Marketing...</div>}
               </motion.div>
             )}
 
