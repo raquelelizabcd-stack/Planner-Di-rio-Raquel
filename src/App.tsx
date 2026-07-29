@@ -1083,6 +1083,25 @@ export default function App() {
   });
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [editingTransactionAmount, setEditingTransactionAmount] = useState<string>('');
+
+  // --- Modais de Dívidas e Entradas ---
+  const [showDebtEditModal, setShowDebtEditModal] = useState(false);
+  const [editingDebt, setEditingDebt] = useState<Transaction | null>(null);
+  const [showIncomeEditModal, setShowIncomeEditModal] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<Transaction | null>(null);
+  const [showNewIncomeModal, setShowNewIncomeModal] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [debtActiveTab, setDebtActiveTab] = useState<'active' | 'history'>('active');
+  const [debtHistory, setDebtHistory] = useState<(Transaction & { archivedAt: string; finalStatus: string })[]>(() => {
+    const saved = localStorage.getItem('raquel_debt_history');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Campos do modal de edição de dívida
+  const [debtForm, setDebtForm] = useState({ title: '', amount: '', category: '', dueDate: '', status: 'A Vencer' as 'A Vencer' | 'Pago' | 'Vencido', recurrence: 'Mensal' as 'Único' | 'Semanal' | 'Mensal' });
+
+  // Campos do modal de edição/criação de entrada
+  const [incomeForm, setIncomeForm] = useState({ title: '', amount: '', category: 'Salário', dueDate: '', status: 'Recebido' as string });
   const [events, setEvents] = useState<CalendarEvent[]>(() => {
     const saved = localStorage.getItem('raquel_events_dark');
     return saved ? JSON.parse(saved) : [];
@@ -1440,6 +1459,10 @@ export default function App() {
     localStorage.setItem('raquel_transactions_dark', JSON.stringify(transactions));
   }, [transactions]);
 
+  useEffect(() => {
+    localStorage.setItem('raquel_debt_history', JSON.stringify(debtHistory));
+  }, [debtHistory]);
+
   // Auto-ajuste para transações existentes de Salário (para que apareçam no fluxo projetado)
   useEffect(() => {
     if (transactions.length > 0) {
@@ -1786,6 +1809,30 @@ export default function App() {
     }
     setEditingTransactionId(null);
     setEditingTransactionAmount('');
+  };
+
+  const updateTransaction = (id: string, fields: Partial<Transaction>) => {
+    const updated = transactions.map(t => t.id === id ? { ...t, ...fields } : t);
+    setTransactions(updated);
+    const found = updated.find(t => t.id === id);
+    if (found) {
+      dataService.saveTransaction(found).catch(err => showToastWithMsg('Erro ao atualizar transação no banco de dados'));
+    }
+    showToastWithMsg('Alteração salva com sucesso!');
+  };
+
+  const archiveDebt = (id: string) => {
+    const debt = transactions.find(t => t.id === id);
+    if (!debt) return;
+    const archived = {
+      ...debt,
+      archivedAt: new Date().toLocaleDateString('pt-BR'),
+      finalStatus: debt.status === 'Pago' ? 'Pago' : 'Encerrado'
+    };
+    setDebtHistory(prev => [archived, ...prev]);
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    dataService.deleteTransaction(id).catch(err => showToastWithMsg('Erro ao arquivar no banco de dados'));
+    showToastWithMsg('Dívida arquivada no histórico!');
   };
 
   const addEvent = (title: string, date: string, type: CalendarEvent['type'], description?: string, projectId?: string) => {
@@ -2393,6 +2440,318 @@ export default function App() {
             isOpen={!!selectedProjectForView} 
             onClose={() => setSelectedProjectForView(null)} 
           />
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODAL: EDITAR DÍVIDA ===== */}
+      <AnimatePresence>
+        {showDebtEditModal && editingDebt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-lg bg-[#1e1e1e] border border-white/10 rounded-3xl p-8 shadow-2xl"
+            >
+              <button
+                onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-red-500/10 rounded-xl">
+                  <Edit2 size={18} className="text-[#FF4D4D]" />
+                </div>
+                <h3 className="text-lg font-display font-bold text-white">Editar Dívida</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Descrição</label>
+                  <input
+                    type="text"
+                    value={debtForm.title}
+                    onChange={e => setDebtForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={debtForm.amount}
+                    onChange={e => setDebtForm(f => ({ ...f, amount: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Categoria</label>
+                  <input
+                    type="text"
+                    value={debtForm.category}
+                    onChange={e => setDebtForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vencimento</label>
+                  <input
+                    type="date"
+                    value={debtForm.dueDate}
+                    onChange={e => setDebtForm(f => ({ ...f, dueDate: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all [color-scheme:dark]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
+                    <select
+                      value={debtForm.status}
+                      onChange={e => setDebtForm(f => ({ ...f, status: e.target.value as any }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
+                    >
+                      <option value="A Vencer">A Vencer</option>
+                      <option value="Pago">Pago</option>
+                      <option value="Vencido">Vencido</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Recorrência</label>
+                    <select
+                      value={debtForm.recurrence}
+                      onChange={e => setDebtForm(f => ({ ...f, recurrence: e.target.value as any }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
+                    >
+                      <option value="Mensal">Mensal</option>
+                      <option value="Único">Único</option>
+                      <option value="Semanal">Semanal</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
+                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-all border border-white/10"
+                >Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (!editingDebt) return;
+                    updateTransaction(editingDebt.id, {
+                      title: debtForm.title,
+                      amount: parseFloat(debtForm.amount) || editingDebt.amount,
+                      category: debtForm.category,
+                      dueDate: debtForm.dueDate || undefined,
+                      status: debtForm.status,
+                      recurrence: debtForm.recurrence,
+                    });
+                    setShowDebtEditModal(false);
+                    setEditingDebt(null);
+                  }}
+                  className="flex-1 py-2.5 bg-[#FF4D4D] hover:bg-red-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
+                >Salvar Alterações</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODAL: CONFIRMAÇÃO DE EXCLUSÃO ===== */}
+      <AnimatePresence>
+        {confirmDeleteId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmDeleteId(null)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-sm bg-[#1e1e1e] border border-red-500/20 rounded-3xl p-8 shadow-2xl text-center"
+            >
+              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={24} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-display font-bold text-white mb-2">Excluir Dívida?</h3>
+              <p className="text-sm text-slate-400 mb-6">Tem certeza que deseja excluir esta dívida? Esta ação não pode ser desfeita.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-all border border-white/10"
+                >Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (confirmDeleteId) {
+                      deleteTransaction(confirmDeleteId);
+                      setConfirmDeleteId(null);
+                      showToastWithMsg('Dívida excluída com sucesso!');
+                    }
+                  }}
+                  className="flex-1 py-2.5 bg-red-500 hover:bg-red-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
+                >Excluir</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODAL: EDITAR / NOVA ENTRADA ===== */}
+      <AnimatePresence>
+        {(showIncomeEditModal || showNewIncomeModal) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
+              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-lg bg-[#1e1e1e] border border-white/10 rounded-3xl p-8 shadow-2xl"
+            >
+              <button
+                onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-emerald-500/10 rounded-xl">
+                  {showNewIncomeModal ? <Plus size={18} className="text-emerald-400" /> : <Edit2 size={18} className="text-emerald-400" />}
+                </div>
+                <h3 className="text-lg font-display font-bold text-white">
+                  {showNewIncomeModal ? 'Nova Entrada' : 'Editar Entrada'}
+                </h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Descrição</label>
+                  <input
+                    type="text"
+                    value={incomeForm.title}
+                    onChange={e => setIncomeForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Ex: Salário de Julho"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={incomeForm.amount}
+                    onChange={e => setIncomeForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Categoria</label>
+                  <select
+                    value={incomeForm.category}
+                    onChange={e => setIncomeForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                  >
+                    <option value="Salário">Salário</option>
+                    <option value="Reembolso">Reembolso</option>
+                    <option value="Extra">Extra</option>
+                    <option value="Freelance">Freelance</option>
+                    <option value="Investimentos">Investimentos</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Data de Recebimento</label>
+                  <input
+                    type="date"
+                    value={incomeForm.dueDate}
+                    onChange={e => setIncomeForm(f => ({ ...f, dueDate: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
+                  <select
+                    value={incomeForm.status}
+                    onChange={e => setIncomeForm(f => ({ ...f, status: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
+                  >
+                    <option value="Pago">Recebido</option>
+                    <option value="A Vencer">Previsto</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
+                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-all border border-white/10"
+                >Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (showNewIncomeModal) {
+                      if (!incomeForm.title || !incomeForm.amount) return;
+                      addTransaction(
+                        'income',
+                        incomeForm.title,
+                        parseFloat(incomeForm.amount),
+                        incomeForm.category,
+                        incomeForm.dueDate || undefined,
+                        undefined,
+                        incomeForm.status as 'A Vencer' | 'Pago' | 'Vencido',
+                        'Único'
+                      );
+                      showToastWithMsg('Nova entrada adicionada!');
+                    } else if (showIncomeEditModal && editingIncome) {
+                      updateTransaction(editingIncome.id, {
+                        title: incomeForm.title,
+                        amount: parseFloat(incomeForm.amount) || editingIncome.amount,
+                        category: incomeForm.category,
+                        dueDate: incomeForm.dueDate || undefined,
+                        status: incomeForm.status as 'A Vencer' | 'Pago' | 'Vencido',
+                      });
+                    }
+                    setShowIncomeEditModal(false);
+                    setShowNewIncomeModal(false);
+                    setEditingIncome(null);
+                    setIncomeForm({ title: '', amount: '', category: 'Salário', dueDate: '', status: 'Recebido' });
+                  }}
+                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20"
+                >
+                  {showNewIncomeModal ? 'Adicionar Entrada' : 'Salvar Alterações'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -3417,55 +3776,186 @@ export default function App() {
                     {/* Card 1: Dívidas Detalhadas */}
                     <div className="glass-card rounded-3xl overflow-hidden flex flex-col justify-between">
                       <div>
-                        <div className="p-6 border-b border-border-dark flex justify-between items-center">
+                        {/* Cabeçalho com abas */}
+                        <div className="p-6 border-b border-border-dark flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <h5 className="text-lg font-display font-bold text-white flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-[#FF4D4D]" />
                             Dívidas Detalhadas
                           </h5>
+                          {/* Abas: Ativas / Histórico */}
+                          <div className="flex bg-white/5 rounded-xl p-1 gap-1">
+                            <button
+                              onClick={() => setDebtActiveTab('active')}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                debtActiveTab === 'active'
+                                  ? 'bg-[#FF4D4D] text-white shadow'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >Ativas</button>
+                            <button
+                              onClick={() => setDebtActiveTab('history')}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                debtActiveTab === 'history'
+                                  ? 'bg-amber-600/80 text-white shadow'
+                                  : 'text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              <Archive size={12} />
+                              Histórico
+                              {debtHistory.length > 0 && (
+                                <span className="bg-amber-500/30 text-amber-300 text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center">
+                                  {debtHistory.length}
+                                </span>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className="border-b border-border-dark text-[10px] uppercase tracking-widest text-slate-500 font-bold">
-                                <th className="p-4">Descrição</th>
-                                <th className="p-4">Valor</th>
-                                <th className="p-4">Categoria</th>
-                                <th className="p-4">Vencimento</th>
-                                <th className="p-4">Status</th>
-                                <th className="p-4">Recorrência</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border-dark text-sm">
-                              {transactions
-                                .filter(t => t.type === 'expense')
-                                .map(t => (
-                                  <tr key={t.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="p-4 text-white font-bold">{t.title}</td>
-                                    <td className="p-4 text-[#FF4D4D] font-mono font-bold">R$ {t.amount.toFixed(2).replace('.', ',')}</td>
-                                    <td className="p-4 text-slate-400">{t.category}</td>
-                                    <td className="p-4 text-slate-400">
-                                      {t.dueDate ? new Date(t.dueDate).toLocaleDateString('pt-BR') : '-'}
-                                    </td>
+
+                        {/* Tabela Ativas */}
+                        {debtActiveTab === 'active' && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="border-b border-border-dark text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                                  <th className="p-4">Descrição</th>
+                                  <th className="p-4">Valor</th>
+                                  <th className="p-4">Categoria</th>
+                                  <th className="p-4">Vencimento</th>
+                                  <th className="p-4">Status</th>
+                                  <th className="p-4">Recorrência</th>
+                                  <th className="p-4 text-right">Ações</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border-dark text-sm">
+                                {transactions
+                                  .filter(t => t.type === 'expense')
+                                  .map(t => (
+                                    <tr key={t.id} className="group hover:bg-white/5 transition-colors cursor-pointer"
+                                      onClick={() => {
+                                        setEditingDebt(t);
+                                        setDebtForm({
+                                          title: t.title,
+                                          amount: t.amount.toString(),
+                                          category: t.category,
+                                          dueDate: t.dueDate || '',
+                                          status: t.status as 'A Vencer' | 'Pago' | 'Vencido',
+                                          recurrence: (t.recurrence || 'Mensal') as 'Único' | 'Semanal' | 'Mensal',
+                                        });
+                                        setShowDebtEditModal(true);
+                                      }}
+                                    >
+                                      <td className="p-4 text-white font-bold">{t.title}</td>
+                                      <td className="p-4 text-[#FF4D4D] font-mono font-bold">R$ {t.amount.toFixed(2).replace('.', ',')}</td>
+                                      <td className="p-4 text-slate-400">{t.category}</td>
+                                      <td className="p-4 text-slate-400">
+                                        {t.dueDate ? new Date(t.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
+                                      </td>
+                                      <td className="p-4">
+                                        <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${
+                                          t.status === 'Vencido' ? 'bg-red-500/20 text-[#FF4D4D]' :
+                                          t.status === 'A Vencer' ? 'bg-amber-500/20 text-amber-500' :
+                                          'bg-emerald-500/20 text-emerald-500'
+                                        }`}>
+                                          {t.status}
+                                        </span>
+                                      </td>
+                                      <td className="p-4 text-slate-400">{t.recurrence || 'Único'}</td>
+                                      <td className="p-4" onClick={e => e.stopPropagation()}>
+                                        <div className="flex items-center justify-end gap-1">
+                                          {/* Editar */}
+                                          <button
+                                            title="Editar dívida"
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              setEditingDebt(t);
+                                              setDebtForm({
+                                                title: t.title,
+                                                amount: t.amount.toString(),
+                                                category: t.category,
+                                                dueDate: t.dueDate || '',
+                                                status: t.status as 'A Vencer' | 'Pago' | 'Vencido',
+                                                recurrence: (t.recurrence || 'Mensal') as 'Único' | 'Semanal' | 'Mensal',
+                                              });
+                                              setShowDebtEditModal(true);
+                                            }}
+                                            className="p-1.5 bg-white/5 hover:bg-roxo-suave/20 text-slate-400 hover:text-roxo-suave rounded-lg transition-all"
+                                          >
+                                            <Edit2 size={13} />
+                                          </button>
+                                          {/* Arquivar */}
+                                          <button
+                                            title="Arquivar dívida"
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              archiveDebt(t.id);
+                                            }}
+                                            className="p-1.5 bg-white/5 hover:bg-amber-500/20 text-slate-400 hover:text-amber-400 rounded-lg transition-all"
+                                          >
+                                            <Archive size={13} />
+                                          </button>
+                                          {/* Excluir */}
+                                          <button
+                                            title="Excluir dívida"
+                                            onClick={e => {
+                                              e.stopPropagation();
+                                              setConfirmDeleteId(t.id);
+                                            }}
+                                            className="p-1.5 bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all"
+                                          >
+                                            <Trash2 size={13} />
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                {transactions.filter(t => t.type === 'expense').length === 0 && (
+                                  <tr>
+                                    <td colSpan={7} className="p-8 text-center text-slate-600 italic">Nenhuma dívida registrada.</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {/* Histórico de Dívidas Arquivadas */}
+                        {debtActiveTab === 'history' && (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                              <thead>
+                                <tr className="border-b border-border-dark text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                                  <th className="p-4">Descrição</th>
+                                  <th className="p-4">Valor</th>
+                                  <th className="p-4">Categoria</th>
+                                  <th className="p-4">Status Final</th>
+                                  <th className="p-4">Arquivado em</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border-dark text-sm">
+                                {debtHistory.map(h => (
+                                  <tr key={h.id + h.archivedAt} className="hover:bg-white/3 transition-colors opacity-70">
+                                    <td className="p-4 text-slate-300 font-bold">{h.title}</td>
+                                    <td className="p-4 text-slate-400 font-mono">R$ {h.amount.toFixed(2).replace('.', ',')}</td>
+                                    <td className="p-4 text-slate-500">{h.category}</td>
                                     <td className="p-4">
                                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${
-                                        t.status === 'Vencido' ? 'bg-red-500/20 text-[#FF4D4D]' :
-                                        t.status === 'A Vencer' ? 'bg-amber-500/20 text-amber-500' :
-                                        'bg-emerald-500/20 text-emerald-500'
+                                        h.finalStatus === 'Pago' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-500/20 text-slate-400'
                                       }`}>
-                                        {t.status}
+                                        {h.finalStatus}
                                       </span>
                                     </td>
-                                    <td className="p-4 text-slate-400">{t.recurrence || 'Único'}</td>
+                                    <td className="p-4 text-slate-500 text-xs">{h.archivedAt}</td>
                                   </tr>
                                 ))}
-                              {transactions.filter(t => t.type === 'expense').length === 0 && (
-                                <tr>
-                                  <td colSpan={6} className="p-8 text-center text-slate-600 italic">Nenhuma dívida registrada.</td>
-                                </tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
+                                {debtHistory.length === 0 && (
+                                  <tr>
+                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">Nenhuma dívida arquivada ainda.</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
                       <div className="p-6 border-t border-border-dark bg-white/5 flex justify-between items-center">
                         <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Dívidas</span>
@@ -3482,11 +3972,22 @@ export default function App() {
                     {/* Card 2: Entradas Detalhadas */}
                     <div className="glass-card rounded-3xl overflow-hidden flex flex-col justify-between">
                       <div>
-                        <div className="p-6 border-b border-border-dark flex justify-between items-center">
+                        <div className="p-6 border-b border-border-dark flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                           <h5 className="text-lg font-display font-bold text-white flex items-center gap-2">
                             <span className="w-2.5 h-2.5 rounded-full bg-[#4CAF50]" />
                             Entradas Detalhadas
                           </h5>
+                          {/* Botão Nova Entrada */}
+                          <button
+                            onClick={() => {
+                              setIncomeForm({ title: '', amount: '', category: 'Salário', dueDate: '', status: 'Pago' });
+                              setShowNewIncomeModal(true);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold transition-all"
+                          >
+                            <Plus size={14} />
+                            Nova Entrada
+                          </button>
                         </div>
                         <div className="overflow-x-auto">
                           <table className="w-full text-left border-collapse">
@@ -3497,19 +3998,31 @@ export default function App() {
                                 <th className="p-4">Categoria</th>
                                 <th className="p-4">Data de Recebimento</th>
                                 <th className="p-4">Status</th>
-                                <th className="p-4">Recorrência</th>
+                                <th className="p-4 text-right">Ações</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border-dark text-sm">
                               {transactions
                                 .filter(t => t.type === 'income')
                                 .map(t => (
-                                  <tr key={t.id} className="hover:bg-white/5 transition-colors">
+                                  <tr key={t.id} className="group hover:bg-white/5 transition-colors cursor-pointer"
+                                    onClick={() => {
+                                      setEditingIncome(t);
+                                      setIncomeForm({
+                                        title: t.title,
+                                        amount: t.amount.toString(),
+                                        category: t.category,
+                                        dueDate: t.dueDate || '',
+                                        status: t.status,
+                                      });
+                                      setShowIncomeEditModal(true);
+                                    }}
+                                  >
                                     <td className="p-4 text-white font-bold">{t.title}</td>
                                     <td className="p-4 text-[#4CAF50] font-mono font-bold">R$ {t.amount.toFixed(2).replace('.', ',')}</td>
                                     <td className="p-4 text-slate-400">{t.category}</td>
                                     <td className="p-4 text-slate-400">
-                                      {t.dueDate ? new Date(t.dueDate).toLocaleDateString('pt-BR') : '-'}
+                                      {t.dueDate ? new Date(t.dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : '-'}
                                     </td>
                                     <td className="p-4">
                                       <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase ${
@@ -3517,10 +4030,41 @@ export default function App() {
                                         t.status === 'A Vencer' ? 'bg-amber-500/20 text-amber-500' :
                                         'bg-red-500/20 text-red-500'
                                       }`}>
-                                        {t.status}
+                                        {t.status === 'Pago' ? 'Recebido' : t.status === 'A Vencer' ? 'Previsto' : t.status}
                                       </span>
                                     </td>
-                                    <td className="p-4 text-slate-400">{t.recurrence || 'Único'}</td>
+                                    <td className="p-4" onClick={e => e.stopPropagation()}>
+                                      <div className="flex items-center justify-end gap-1">
+                                        <button
+                                          title="Editar entrada"
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            setEditingIncome(t);
+                                            setIncomeForm({
+                                              title: t.title,
+                                              amount: t.amount.toString(),
+                                              category: t.category,
+                                              dueDate: t.dueDate || '',
+                                              status: t.status,
+                                            });
+                                            setShowIncomeEditModal(true);
+                                          }}
+                                          className="p-1.5 bg-white/5 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 rounded-lg transition-all"
+                                        >
+                                          <Edit2 size={13} />
+                                        </button>
+                                        <button
+                                          title="Excluir entrada"
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            setConfirmDeleteId(t.id);
+                                          }}
+                                          className="p-1.5 bg-white/5 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-all"
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </div>
+                                    </td>
                                   </tr>
                                 ))}
                               {transactions.filter(t => t.type === 'income').length === 0 && (
