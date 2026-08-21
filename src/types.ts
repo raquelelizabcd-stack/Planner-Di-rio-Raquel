@@ -259,4 +259,13 @@ export interface MarketingAnalytics {
   projectId: string;
   createdAt?: string;
 }
-
+export interface FinanceDashboardSummary {
+  ano: number;
+  mes: number;
+  entradas: number;
+  saidas: number;
+  saldo: number;
+  resultado_mensal: number;
+  variacao_percentual: number;
+  crescimento_saldo: number;
+}

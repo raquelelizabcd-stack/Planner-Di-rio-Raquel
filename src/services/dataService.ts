@@ -11,7 +11,8 @@ import {
   MarketingCampaign,
   MarketingSocialAccount,
   MarketingIdea,
-  MarketingAnalytics
+  MarketingAnalytics,
+  FinanceDashboardSummary
 } from '../types';
 
 export const dataService = {
@@ -179,6 +180,22 @@ export const dataService = {
       console.error('Error deleting transaction:', error);
       throw error;
     }
+  },
+
+  async fetchFinanceDashboardSummary(): Promise<FinanceDashboardSummary | null> {
+    try {
+      const { data, error } = await supabase
+        .from('finance_dashboard_summary')
+        .select('*')
+        .maybeSingle();
+
+      if (!error && data) {
+        return data as FinanceDashboardSummary;
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar view finance_dashboard_summary:', err);
+    }
+    return null;
   },
 
   // Snippets
