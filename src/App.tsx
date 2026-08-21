@@ -83,7 +83,11 @@ import {
   FilePlus,
   Filter,
   ArrowRight,
-  Megaphone
+  Megaphone,
+  Sliders,
+  ArrowUpRight,
+  ArrowDownRight,
+  ArrowUpDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -92,6 +96,9 @@ import {
   Area, 
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Legend,
   CartesianGrid, 
   ResponsiveContainer, 
   XAxis, 
@@ -1318,6 +1325,17 @@ export default function App() {
   const [newSnippetCode, setNewSnippetCode] = useState('');
   const [editingSnippetId, setEditingSnippetId] = useState<string | null>(null);
 
+  // Financial Filter and Comparison States
+  const [selectedFinMonth, setSelectedFinMonth] = useState<string>('all'); // 'all' or '0'..'11'
+  const [selectedFinYear, setSelectedFinYear] = useState<string>('all'); // 'all' or '2024','2025','2026',...
+  const [finCategoryFilter, setFinCategoryFilter] = useState<string>('all');
+  const [finPaymentFilter, setFinPaymentFilter] = useState<string>('all');
+  const [finRecurrenceFilter, setFinRecurrenceFilter] = useState<string>('all');
+  const [finStatusFilter, setFinStatusFilter] = useState<string>('all');
+  const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
+  const [compareMonth, setCompareMonth] = useState<string>('0');
+  const [compareYear, setCompareYear] = useState<string>('2025');
+
   // New goal form state
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [newGoalTitle, setNewGoalTitle] = useState('');
@@ -2221,33 +2239,198 @@ export default function App() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const totalIncome = transactions
+  // Financial Filtering Logic
+  const fullMonthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+  // Anos e Categorias disponíveis dinamicamente
+  const availableYears = Array.from(new Set([
+    new Date().getFullYear().toString(),
+    '2024', '2025', '2026', '2027',
+    ...transactions.map(t => {
+      if (t.dueDate) return t.dueDate.split('-')[0];
+      return new Date(t.createdAt).getFullYear().toString();
+    })
+  ])).sort((a, b) => b.localeCompare(a));
+
+  const availableCategories = Array.from(new Set([
+    'Salário', 'Freelance', 'Investimento', 'Alimentação', 'Transporte', 'Lazer', 'Saúde', 'Educação', 'Moradia', 'Geral',
+    ...transactions.map(t => t.category).filter(Boolean)
+  ])).sort();
+
+  const isTransactionInPeriod = (
+    t: Transaction, 
+    monthStr: string, 
+    yearStr: string,
+    catFilter: string = 'all',
+    payFilter: string = 'all',
+    recFilter: string = 'all',
+    statusFilter: string = 'all'
+  ) => {
+    let tDate: Date;
+    if (t.dueDate) {
+      const [y, m, d_val] = t.dueDate.split('-').map(Number);
+      tDate = new Date(y, m - 1, d_val);
+    } else {
+      tDate = new Date(t.createdAt);
+    }
+    const tMonth = tDate.getMonth().toString();
+    const tYear = tDate.getFullYear().toString();
+
+    if (monthStr !== 'all' && tMonth !== monthStr) return false;
+    if (yearStr !== 'all' && tYear !== yearStr) return false;
+    if (catFilter !== 'all' && t.category !== catFilter) return false;
+    if (payFilter !== 'all' && (t.paymentMethod || 'Pix') !== payFilter) return false;
+    if (recFilter !== 'all' && (t.recurrence || 'Único') !== recFilter) return false;
+    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
+
+    return true;
+  };
+
+  const filteredTransactions = transactions.filter(t => 
+    isTransactionInPeriod(t, selectedFinMonth, selectedFinYear, finCategoryFilter, finPaymentFilter, finRecurrenceFilter, finStatusFilter)
+  );
+
+  const totalIncome = filteredTransactions
     .filter(t => t.type === 'income')
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const totalExpenses = transactions
+  const totalExpenses = filteredTransactions
     .filter(t => t.type === 'expense')
     .reduce((acc, t) => acc + t.amount, 0);
 
   const balance = totalIncome - totalExpenses;
 
-  // Fluxo de Caixa Projetado Data
-  const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  
+  // Função aux para calcular estatísticas de um período (para comparação ou alertas)
+  const getPeriodStats = (mStr: string, yStr: string) => {
+    const list = transactions.filter(t => isTransactionInPeriod(t, mStr, yStr));
+    const inc = list.filter(t => t.type === 'income').reduce((acc, t) => acc + t.amount, 0);
+    const exp = list.filter(t => t.type === 'expense').reduce((acc, t) => acc + t.amount, 0);
+    const bal = inc - exp;
+    const sav = bal > 0 ? bal * 0.2 : 0;
+    return { inc, exp, bal, sav, count: list.length };
+  };
+
+  // Alertas Inteligentes Financeiros (Calculados com base nas estatísticas do período e vencimentos)
+  const smartFinancialAlerts = (() => {
+    const alerts: { id: string; type: 'success' | 'danger' | 'warning' | 'info'; title: string; message: string; icon: string }[] = [];
+    
+    // 1. Contas Vencidas Críticas
+    const overdueExpenseTotal = transactions
+      .filter(t => t.type === 'expense' && t.status === 'Vencido')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    if (overdueExpenseTotal > 0) {
+      alerts.push({
+        id: 'overdue-alert',
+        type: 'warning',
+        title: 'Contas Críticas Vencidas',
+        message: `Atenção: há R$ ${overdueExpenseTotal.toFixed(2).replace('.', ',')} em contas vencidas pendentes de pagamento.`,
+        icon: '⚠️'
+      });
+    }
+
+    // 2. Comparação com Mês Anterior
+    const now = new Date();
+    const curMonthIdx = selectedFinMonth !== 'all' ? parseInt(selectedFinMonth) : now.getMonth();
+    const curYearNum = selectedFinYear !== 'all' ? parseInt(selectedFinYear) : now.getFullYear();
+
+    const prevMonthIdx = curMonthIdx === 0 ? 11 : curMonthIdx - 1;
+    const prevYearNum = curMonthIdx === 0 ? curYearNum - 1 : curYearNum;
+
+    const curMonthStats = getPeriodStats(curMonthIdx.toString(), curYearNum.toString());
+    const prevMonthStats = getPeriodStats(prevMonthIdx.toString(), prevYearNum.toString());
+
+    if (prevMonthStats.exp > 0) {
+      const expDiffPct = ((curMonthStats.exp - prevMonthStats.exp) / prevMonthStats.exp) * 100;
+      if (expDiffPct > 0) {
+        alerts.push({
+          id: 'expense-increase-alert',
+          type: 'danger',
+          title: 'Aumento de Gastos',
+          message: `Suas despesas aumentaram ${expDiffPct.toFixed(1)}% em relação ao mês anterior (${fullMonthNames[prevMonthIdx]}).`,
+          icon: '📈'
+        });
+      } else if (expDiffPct < 0) {
+        alerts.push({
+          id: 'expense-decrease-alert',
+          type: 'success',
+          title: 'Redução de Despesas',
+          message: `Ótimo trabalho! Suas despesas reduziram ${Math.abs(expDiffPct).toFixed(1)}% em relação a ${fullMonthNames[prevMonthIdx]}.`,
+          icon: '🎉'
+        });
+      }
+    }
+
+    // 3. Economia Gerada Maior
+    if (prevMonthStats.sav > 0 && curMonthStats.sav > prevMonthStats.sav) {
+      const savDiffPct = ((curMonthStats.sav - prevMonthStats.sav) / prevMonthStats.sav) * 100;
+      alerts.push({
+        id: 'savings-increase-alert',
+        type: 'success',
+        title: 'Meta de Economia Superada',
+        message: `Você economizou ${savDiffPct.toFixed(1)}% a mais este mês do que no mês anterior!`,
+        icon: '💡'
+      });
+    } else if (curMonthStats.sav > 0 && prevMonthStats.sav === 0) {
+      alerts.push({
+        id: 'savings-start-alert',
+        type: 'success',
+        title: 'Economia Positiva',
+        message: `Meta de economia atingida: R$ ${curMonthStats.sav.toFixed(2).replace('.', ',')} guardados este mês.`,
+        icon: '💰'
+      });
+    }
+
+    // Alerta informativo se nenhum alerta crítico
+    if (alerts.length === 0) {
+      alerts.push({
+        id: 'stable-finance-alert',
+        type: 'info',
+        title: 'Finanças sob Controle',
+        message: 'Todas as contas estão em dia e o fluxo de caixa está equilibrado para o período selecionado.',
+        icon: '✅'
+      });
+    }
+
+    return alerts;
+  })();
+
+  // Período Atual vs Período Selecionado para Comparação
+  const currentPeriodLabel = selectedFinMonth === 'all' 
+    ? (selectedFinYear === 'all' ? 'Todo o Período' : `Ano ${selectedFinYear}`)
+    : `${fullMonthNames[parseInt(selectedFinMonth)]} / ${selectedFinYear === 'all' ? 'Todos os Anos' : selectedFinYear}`;
+
+  const comparePeriodLabel = `${fullMonthNames[parseInt(compareMonth)]} / ${compareYear}`;
+
+  const periodAStats = { inc: totalIncome, exp: totalExpenses, bal: balance, sav: balance > 0 ? balance * 0.2 : 0 };
+  const periodBStats = getPeriodStats(compareMonth, compareYear);
+
+  const calcVariationPct = (valA: number, valB: number) => {
+    if (valB === 0) return valA > 0 ? 100 : 0;
+    return ((valA - valB) / Math.abs(valB)) * 100;
+  };
+
+  // Fluxo de Caixa Projetado Data (Filtrado ou Visão Geral)
   const projectedCashFlow = Array.from({ length: 12 }, (_, i) => {
     const now = new Date();
-    const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
-    const targetMonth = targetDate.getMonth();
-    const targetYear = targetDate.getFullYear();
-    const targetValue = targetYear * 12 + targetMonth;
-    const name = monthNames[targetMonth];
+    const baseYear = selectedFinYear !== 'all' ? parseInt(selectedFinYear) : now.getFullYear();
+    const targetMonth = selectedFinMonth !== 'all' ? parseInt(selectedFinMonth) : i;
+    const targetYear = selectedFinMonth !== 'all' ? baseYear + (i - Math.floor(12/2)) : baseYear; // Se mês fixo, ajusta para visualização
+    const targetDate = selectedFinMonth !== 'all' 
+      ? new Date(baseYear, i, 1) // Se mês selecionado, mostra evolução mês a mês do ano selecionado
+      : new Date(baseYear, i, 1);
+    
+    const targetM = targetDate.getMonth();
+    const targetY = targetDate.getFullYear();
+    const targetValue = targetY * 12 + targetM;
+    const name = monthNames[targetM];
     
     let income = 0;
     let expense = 0;
     let vencer = 0;
 
     transactions.forEach(t => {
-      // Usar a melhor data disponível para a transação
       let tDate: Date;
       if (t.dueDate) {
         const [y, m, d_val] = t.dueDate.split('-').map(Number);
@@ -2263,30 +2446,17 @@ export default function App() {
       let applies = false;
       let multiplier = 1;
 
-      // Normalizar o texto de recorrência e validar contra todas as possibilidades
       const rec = (t.recurrence || 'Único').trim().toLowerCase();
 
-      // MENSAL ou MÊS
       if (rec.includes('mens') || rec.includes('mes')) {
-        // Mensal: a partir do mês da transação, se aplica a todos os meses futuros
-        if (targetValue >= tValue) {
-          applies = true;
-        }
-      } 
-      // SEMANAL
-      else if (rec.includes('seman')) {
-        // Semanal: aplica multiplicador médio (4.33 semanas por mês)
+        if (targetValue >= tValue) applies = true;
+      } else if (rec.includes('seman')) {
         if (targetValue >= tValue) {
           applies = true;
           multiplier = 4.33;
         }
-      } 
-      // ÚNICO ou PADRÃO
-      else {
-        // Único: apenas no mês exato
-        if (targetValue === tValue) {
-          applies = true;
-        }
+      } else {
+        if (targetValue === tValue) applies = true;
       }
 
       if (applies) {
@@ -2296,10 +2466,9 @@ export default function App() {
         if (t.type === 'income') {
           income += val;
         } else {
-          expense += val * -1; // Aplicar valor negativo para Saídas
+          expense += val * -1;
         }
 
-        // A Vencer: somar registros com status = 'A Vencer'
         if (t.status === 'A Vencer') {
           vencer += val;
         }
@@ -2307,7 +2476,7 @@ export default function App() {
     });
     
     return { 
-      name, 
+      name: selectedFinYear !== 'all' && selectedFinMonth !== 'all' ? `${name}/${targetY}` : name, 
       income: Math.round(income), 
       expense: Math.round(expense), 
       vencer: Math.round(vencer)
@@ -2317,12 +2486,12 @@ export default function App() {
   // Calcular saldo acumulado
   let runningBalance = 0;
   const finalProjectedData = projectedCashFlow.map((month) => {
-    runningBalance += (month.income + month.expense); // Como expense é negativo, isso realiza a subtração
+    runningBalance += (month.income + month.expense);
     return {
       ...month,
       saldo: Math.round(runningBalance)
     };
-  }).slice(0, 6);
+  }).slice(0, selectedFinMonth !== 'all' ? 12 : 6);
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
@@ -3445,6 +3614,178 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="space-y-4 md:space-y-8 p-4 md:p-0 pb-24 md:pb-12"
               >
+                {/* Painel de Alertas Inteligentes */}
+                {smartFinancialAlerts.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {smartFinancialAlerts.map(alert => (
+                      <motion.div
+                        key={alert.id}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`p-4 rounded-2xl border backdrop-blur-md flex items-start gap-3 shadow-lg transition-all ${
+                          alert.type === 'danger' 
+                            ? 'bg-red-500/10 border-red-500/30 text-red-200' 
+                            : alert.type === 'warning' 
+                            ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' 
+                            : alert.type === 'success' 
+                            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200' 
+                            : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-200'
+                        }`}
+                      >
+                        <span className="text-xl shrink-0 mt-0.5">{alert.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="text-xs font-bold uppercase tracking-wider mb-0.5">{alert.title}</h4>
+                          <p className="text-xs opacity-90 leading-relaxed">{alert.message}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Barra de Filtros Mensal/Anual e Filtros Avançados */}
+                <div className="glass-card p-4 md:p-6 rounded-3xl border border-roxo-suave/30 flex flex-col gap-4 bg-gradient-to-r from-roxo-suave/10 via-transparent to-emerald-500/10">
+                  <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 border-b border-border-dark/50 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-3 bg-roxo-suave/20 text-roxo-suave rounded-2xl border border-roxo-suave/40">
+                        <Filter size={20} />
+                      </div>
+                      <div>
+                        <h3 className="text-base md:text-lg font-display font-bold text-white flex items-center gap-2">
+                          Filtros Avançados & Período
+                          <span className="text-[10px] font-bold text-roxo-suave bg-roxo-suave/20 px-2.5 py-0.5 rounded-full border border-roxo-suave/30">
+                            {currentPeriodLabel}
+                          </span>
+                        </h3>
+                        <p className="text-xs text-slate-400">Combine múltiplos filtros para análises financeiras detalhadas</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Seletor Mês */}
+                      <div className="flex-1 sm:flex-initial">
+                        <select
+                          value={selectedFinMonth}
+                          onChange={(e) => setSelectedFinMonth(e.target.value)}
+                          className="w-full bg-slate-900/90 border border-roxo-suave/40 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-roxo-suave hover:border-roxo-suave transition-all cursor-pointer shadow-sm"
+                        >
+                          <option value="all">🗓️ Todos os Meses</option>
+                          {fullMonthNames.map((m, idx) => (
+                            <option key={idx} value={idx.toString()}>{m}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Seletor Ano */}
+                      <div className="flex-1 sm:flex-initial">
+                        <select
+                          value={selectedFinYear}
+                          onChange={(e) => setSelectedFinYear(e.target.value)}
+                          className="w-full bg-slate-900/90 border border-roxo-suave/40 rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:outline-none focus:border-roxo-suave hover:border-roxo-suave transition-all cursor-pointer shadow-sm"
+                        >
+                          <option value="all">📅 Todos os Anos</option>
+                          {availableYears.map(yr => (
+                            <option key={yr} value={yr}>Ano {yr}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Botão Comparar Períodos */}
+                      <button
+                        onClick={() => setShowComparisonModal(true)}
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-roxo-suave to-indigo-600 hover:from-roxo-suave/90 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-roxo-suave/25 border border-white/10 transition-all active:scale-95"
+                      >
+                        <ArrowUpDown size={15} />
+                        Comparar Períodos
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Segunda Linha de Filtros Avançados Combinados */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+                    {/* Categoria */}
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1 block">Categoria</label>
+                      <select
+                        value={finCategoryFilter}
+                        onChange={(e) => setFinCategoryFilter(e.target.value)}
+                        className="w-full bg-slate-900/90 border border-border-dark rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-roxo-suave hover:border-roxo-suave/50 transition-all cursor-pointer"
+                      >
+                        <option value="all">Todas as Categorias</option>
+                        {availableCategories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Método de Pagamento */}
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1 block">Pagamento</label>
+                      <select
+                        value={finPaymentFilter}
+                        onChange={(e) => setFinPaymentFilter(e.target.value)}
+                        className="w-full bg-slate-900/90 border border-border-dark rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-roxo-suave hover:border-roxo-suave/50 transition-all cursor-pointer"
+                      >
+                        <option value="all">Todos os Meios</option>
+                        <option value="Pix">Pix</option>
+                        <option value="Cartão de Crédito">Cartão de Crédito</option>
+                        <option value="Cartão de Débito">Cartão de Débito</option>
+                        <option value="Cartão">Cartão</option>
+                        <option value="Boleto">Boleto</option>
+                        <option value="Dinheiro">Dinheiro</option>
+                      </select>
+                    </div>
+
+                    {/* Recorrência */}
+                    <div>
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1 block">Recorrência</label>
+                      <select
+                        value={finRecurrenceFilter}
+                        onChange={(e) => setFinRecurrenceFilter(e.target.value)}
+                        className="w-full bg-slate-900/90 border border-border-dark rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-roxo-suave hover:border-roxo-suave/50 transition-all cursor-pointer"
+                      >
+                        <option value="all">Todas as Recorrências</option>
+                        <option value="Único">Único</option>
+                        <option value="Semanal">Semanal</option>
+                        <option value="Mensal">Mensal</option>
+                      </select>
+                    </div>
+
+                    {/* Status */}
+                    <div className="relative">
+                      <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1 block">Status</label>
+                      <div className="flex gap-1">
+                        <select
+                          value={finStatusFilter}
+                          onChange={(e) => setFinStatusFilter(e.target.value)}
+                          className="w-full bg-slate-900/90 border border-border-dark rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:border-roxo-suave hover:border-roxo-suave/50 transition-all cursor-pointer"
+                        >
+                          <option value="all">Todos os Status</option>
+                          <option value="Pago">Pago / Recebido</option>
+                          <option value="A Vencer">A Vencer / Previsto</option>
+                          <option value="Vencido">Vencido</option>
+                        </select>
+
+                        {(selectedFinMonth !== 'all' || selectedFinYear !== 'all' || finCategoryFilter !== 'all' || finPaymentFilter !== 'all' || finRecurrenceFilter !== 'all' || finStatusFilter !== 'all') && (
+                          <button
+                            onClick={() => {
+                              setSelectedFinMonth('all');
+                              setSelectedFinYear('all');
+                              setFinCategoryFilter('all');
+                              setFinPaymentFilter('all');
+                              setFinRecurrenceFilter('all');
+                              setFinStatusFilter('all');
+                            }}
+                            className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-xl transition-all"
+                            title="Limpar todos os filtros"
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Alerta de Diagnóstico se necessário */}
                 <div className="flex justify-end">
                   <button
@@ -3672,13 +4013,13 @@ export default function App() {
                         <DollarSign size={20} className="text-slate-500" />
                       </div>
                       <div className="divide-y divide-border-dark max-h-[800px] overflow-y-auto">
-                        {transactions.length === 0 ? (
+                        {filteredTransactions.length === 0 ? (
                           <div className="p-12 text-center text-slate-600">
                             <Wallet size={48} className="mx-auto mb-4 opacity-20" />
-                            <p>Nenhuma transação encontrada.</p>
+                            <p>Nenhuma transação encontrada para o período selecionado.</p>
                           </div>
                         ) : (
-                          transactions.map(t => (
+                          filteredTransactions.map(t => (
                             <div key={t.id} className="p-4 flex items-center justify-between hover:bg-white/5 transition-colors group">
                               <div className="flex items-center gap-2 md:gap-4 overflow-hidden">
                                 <div className={`p-2 rounded-xl flex-shrink-0 ${t.type === 'income' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rosa-claro/10 text-rosa-claro'}`}>
@@ -3771,7 +4112,7 @@ export default function App() {
 
                 {/* Resumo Detalhado de Dívidas e Entradas */}
                 <div className="mt-8 space-y-6">
-                  <h4 className="text-xl font-display font-bold text-white">Resumo Detalhado de Dívidas e Entradas</h4>
+                  <h4 className="text-xl font-display font-bold text-white">Resumo Detalhado de Dívidas e Entradas ({currentPeriodLabel})</h4>
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Card 1: Dívidas Detalhadas */}
                     <div className="glass-card rounded-3xl overflow-hidden flex flex-col justify-between">
@@ -3827,7 +4168,7 @@ export default function App() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border-dark text-sm">
-                                {transactions
+                                {filteredTransactions
                                   .filter(t => t.type === 'expense')
                                   .map(t => (
                                     <tr key={t.id} className="group hover:bg-white/5 transition-colors cursor-pointer"
@@ -3908,9 +4249,9 @@ export default function App() {
                                       </td>
                                     </tr>
                                   ))}
-                                {transactions.filter(t => t.type === 'expense').length === 0 && (
+                                {filteredTransactions.filter(t => t.type === 'expense').length === 0 && (
                                   <tr>
-                                    <td colSpan={7} className="p-8 text-center text-slate-600 italic">Nenhuma dívida registrada.</td>
+                                    <td colSpan={7} className="p-8 text-center text-slate-600 italic">Nenhuma dívida registrada para este período.</td>
                                   </tr>
                                 )}
                               </tbody>
@@ -3958,9 +4299,9 @@ export default function App() {
                         )}
                       </div>
                       <div className="p-6 border-t border-border-dark bg-white/5 flex justify-between items-center">
-                        <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Dívidas</span>
+                        <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Dívidas ({currentPeriodLabel})</span>
                         <span className="text-lg font-display font-black text-[#FF4D4D]">
-                          R$ {transactions
+                          R$ {filteredTransactions
                             .filter(t => t.type === 'expense')
                             .reduce((sum, t) => sum + t.amount, 0)
                             .toFixed(2)
@@ -4002,7 +4343,7 @@ export default function App() {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-border-dark text-sm">
-                              {transactions
+                              {filteredTransactions
                                 .filter(t => t.type === 'income')
                                 .map(t => (
                                   <tr key={t.id} className="group hover:bg-white/5 transition-colors cursor-pointer"
@@ -4067,9 +4408,9 @@ export default function App() {
                                     </td>
                                   </tr>
                                 ))}
-                              {transactions.filter(t => t.type === 'income').length === 0 && (
+                              {filteredTransactions.filter(t => t.type === 'income').length === 0 && (
                                 <tr>
-                                  <td colSpan={6} className="p-8 text-center text-slate-600 italic">Nenhuma entrada registrada.</td>
+                                  <td colSpan={6} className="p-8 text-center text-slate-600 italic">Nenhuma entrada registrada para este período.</td>
                                 </tr>
                               )}
                             </tbody>
@@ -4077,9 +4418,9 @@ export default function App() {
                         </div>
                       </div>
                       <div className="p-6 border-t border-border-dark bg-white/5 flex justify-between items-center">
-                        <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Entradas</span>
+                        <span className="text-xs uppercase tracking-widest text-slate-400 font-bold">Total de Entradas ({currentPeriodLabel})</span>
                         <span className="text-lg font-display font-black text-[#4CAF50]">
-                          R$ {transactions
+                          R$ {filteredTransactions
                             .filter(t => t.type === 'income')
                             .reduce((sum, t) => sum + t.amount, 0)
                             .toFixed(2)
@@ -4089,6 +4430,160 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Modal de Comparação de Períodos */}
+                <AnimatePresence>
+                  {showComparisonModal && (
+                    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="w-full max-w-4xl max-h-[90vh] glass-card bg-slate-900/95 border border-roxo-suave/40 rounded-3xl p-6 md:p-8 overflow-y-auto shadow-2xl flex flex-col space-y-6"
+                      >
+                        {/* Header do Modal */}
+                        <div className="flex justify-between items-start border-b border-border-dark pb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="p-3 bg-gradient-to-br from-roxo-suave to-indigo-600 rounded-2xl text-white shadow-lg">
+                              <ArrowUpDown size={22} />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-display font-bold text-white">Comparação de Períodos</h3>
+                              <p className="text-xs text-slate-400">Analise lado a lado o desempenho financeiro entre dois momentos</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setShowComparisonModal(false)}
+                            className="p-2 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl transition-all"
+                          >
+                            <X size={20} />
+                          </button>
+                        </div>
+
+                        {/* Controles do Período de Comparação B */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-border-dark">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Período Principal (A):</span>
+                            <div className="text-sm font-bold text-roxo-suave mt-1">{currentPeriodLabel}</div>
+                          </div>
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Selecione o Período para Comparar (B):</span>
+                            <div className="grid grid-cols-2 gap-2 mt-1">
+                              <select
+                                value={compareMonth}
+                                onChange={(e) => setCompareMonth(e.target.value)}
+                                className="bg-slate-800 border border-roxo-suave/40 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none font-bold"
+                              >
+                                {fullMonthNames.map((m, idx) => (
+                                  <option key={idx} value={idx.toString()}>{m}</option>
+                                ))}
+                              </select>
+                              <select
+                                value={compareYear}
+                                onChange={(e) => setCompareYear(e.target.value)}
+                                className="bg-slate-800 border border-roxo-suave/40 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none font-bold"
+                              >
+                                {availableYears.map(yr => (
+                                  <option key={yr} value={yr}>Ano {yr}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cards de Variação Percentual */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          {/* Entradas */}
+                          <div className="glass-card p-4 rounded-2xl border-l-4 border-[#4CAF50] bg-white/5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Entradas</span>
+                            <div className="text-lg font-mono font-bold text-[#4CAF50]">
+                              R$ {periodAStats.inc.toFixed(2).replace('.', ',')}
+                            </div>
+                            <div className="text-xs text-slate-400">vs R$ {periodBStats.inc.toFixed(2).replace('.', ',')}</div>
+                            <div className={`mt-2 flex items-center gap-1 text-xs font-bold ${calcVariationPct(periodAStats.inc, periodBStats.inc) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {calcVariationPct(periodAStats.inc, periodBStats.inc) >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                              {Math.abs(calcVariationPct(periodAStats.inc, periodBStats.inc)).toFixed(1)}% de variação
+                            </div>
+                          </div>
+
+                          {/* Saídas */}
+                          <div className="glass-card p-4 rounded-2xl border-l-4 border-[#FF4D4D] bg-white/5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Saídas (Despesas)</span>
+                            <div className="text-lg font-mono font-bold text-[#FF4D4D]">
+                              R$ {periodAStats.exp.toFixed(2).replace('.', ',')}
+                            </div>
+                            <div className="text-xs text-slate-400">vs R$ {periodBStats.exp.toFixed(2).replace('.', ',')}</div>
+                            <div className={`mt-2 flex items-center gap-1 text-xs font-bold ${calcVariationPct(periodAStats.exp, periodBStats.exp) <= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {calcVariationPct(periodAStats.exp, periodBStats.exp) >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                              {Math.abs(calcVariationPct(periodAStats.exp, periodBStats.exp)).toFixed(1)}% de variação
+                            </div>
+                          </div>
+
+                          {/* Saldo Final */}
+                          <div className="glass-card p-4 rounded-2xl border-l-4 border-[#2196F3] bg-white/5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Saldo Final</span>
+                            <div className={`text-lg font-mono font-bold ${periodAStats.bal >= 0 ? 'text-[#2196F3]' : 'text-red-400'}`}>
+                              R$ {periodAStats.bal.toFixed(2).replace('.', ',')}
+                            </div>
+                            <div className="text-xs text-slate-400">vs R$ {periodBStats.bal.toFixed(2).replace('.', ',')}</div>
+                            <div className={`mt-2 flex items-center gap-1 text-xs font-bold ${calcVariationPct(periodAStats.bal, periodBStats.bal) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {calcVariationPct(periodAStats.bal, periodBStats.bal) >= 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                              {Math.abs(calcVariationPct(periodAStats.bal, periodBStats.bal)).toFixed(1)}% de crescimento
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Gráfico Comparativo Lado a Lado (Barras Duplas) */}
+                        <div className="glass-card p-5 rounded-2xl border border-white/10 bg-slate-950/50">
+                          <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                            <BarChart size={16} className="text-roxo-suave" />
+                            Gráfico Comparativo de Barras Lado a Lado
+                          </h4>
+                          <div className="h-64 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart
+                                data={[
+                                  { name: 'Entradas', PeríodoA: periodAStats.inc, PeríodoB: periodBStats.inc },
+                                  { name: 'Saídas', PeríodoA: periodAStats.exp, PeríodoB: periodBStats.exp },
+                                  { name: 'Saldo', PeríodoA: periodAStats.bal, PeríodoB: periodBStats.bal },
+                                  { name: 'Economia (Meta)', PeríodoA: periodAStats.sav, PeríodoB: periodBStats.sav }
+                                ]}
+                                margin={{ top: 20, right: 20, left: 10, bottom: 5 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                                <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
+                                <YAxis tick={{ fill: '#94a3b8', fontSize: 10 }} tickFormatter={(val) => `R$${val}`} />
+                                <RechartsTooltip
+                                  formatter={(val: number, name: string) => [
+                                    `R$ ${val.toFixed(2).replace('.', ',')}`,
+                                    name === 'PeríodoA' ? currentPeriodLabel : comparePeriodLabel
+                                  ]}
+                                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '12px', color: '#fff' }}
+                                />
+                                <Legend
+                                  formatter={(value) => value === 'PeríodoA' ? currentPeriodLabel : comparePeriodLabel}
+                                  wrapperStyle={{ paddingTop: 10, fontSize: 12, fontWeight: 600 }}
+                                />
+                                <Bar dataKey="PeríodoA" name="Período A" fill="#8b5cf6" radius={[6, 6, 0, 0]} barSize={28} />
+                                <Bar dataKey="PeríodoB" name="Período B" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={28} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        {/* Botão Fechar */}
+                        <div className="flex justify-end pt-2">
+                          <button
+                            onClick={() => setShowComparisonModal(false)}
+                            className="px-6 py-2.5 bg-roxo-suave hover:bg-roxo-suave/90 text-white rounded-xl font-bold text-xs shadow-lg transition-all"
+                          >
+                            Concluir Comparação
+                          </button>
+                        </div>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             )}
 
