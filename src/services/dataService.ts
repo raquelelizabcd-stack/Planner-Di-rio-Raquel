@@ -182,21 +182,22 @@ export const dataService = {
     }
   },
 
-  async fetchFinanceDashboardSummary(): Promise<FinanceDashboardSummary | null> {
+  async fetchFinanceDashboardSummary(): Promise<FinanceDashboardSummary[]> {
     try {
       const { data, error } = await supabase
         .from('finance_dashboard_summary')
         .select('*')
-        .maybeSingle();
+        .order('mes', { ascending: true });
 
-      if (!error && data) {
-        return data as FinanceDashboardSummary;
+      if (!error && data && data.length > 0) {
+        return data as FinanceDashboardSummary[];
       }
     } catch (err) {
       console.warn('Erro ao consultar view finance_dashboard_summary:', err);
     }
-    return null;
+    return [];
   },
+
 
   // Snippets
   _cachedSnippetsTable: null as string | null,

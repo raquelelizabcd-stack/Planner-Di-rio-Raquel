@@ -1336,7 +1336,8 @@ export default function App() {
   const [showComparisonModal, setShowComparisonModal] = useState<boolean>(false);
   const [compareMonth, setCompareMonth] = useState<string>('0');
   const [compareYear, setCompareYear] = useState<string>('2025');
-  const [finDashboardSummary, setFinDashboardSummary] = useState<FinanceDashboardSummary | null>(null);
+  const [finDashboardSummary, setFinDashboardSummary] = useState<FinanceDashboardSummary[]>([]);
+
 
   // New goal form state
   const [showAddGoal, setShowAddGoal] = useState(false);
@@ -1456,7 +1457,8 @@ export default function App() {
           setTransactions(sanitized);
         }
         if (supaSnippets && supaSnippets.length > 0) setSnippets(supaSnippets);
-        if (supaFinSummary) setFinDashboardSummary(supaFinSummary);
+        if (supaFinSummary && supaFinSummary.length > 0) setFinDashboardSummary(supaFinSummary);
+
       } catch (err) {
         console.error('Failed to load Supabase data:', err);
       }
@@ -2419,83 +2421,103 @@ export default function App() {
   const projectedCashFlow = Array.from({ length: 12 }, (_, i) => {
     const now = new Date();
     const baseYear = selectedFinYear !== 'all' ? parseInt(selectedFinYear) : now.getFullYear();
-    const targetMonth = selectedFinMonth !== 'all' ? parseInt(selectedFinMonth) : i;
-    const targetYear = selectedFinMonth !== 'all' ? baseYear + (i - Math.floor(12/2)) : baseYear; // Se mês fixo, ajusta para visualização
-    const targetDate = selectedFinMonth !== 'all' 
-      ? new Date(baseYear, i, 1) // Se mês selecionado, mostra evolução mês a mês do ano selecionado
-      : new Date(baseYear, i, 1);
-    
-    const targetM = targetDate.getMonth();
-    const targetY = targetDate.getFullYear();
-    const targetValue = targetY * 12 + targetM;
-    const name = monthNames[targetM];
-    
+    const monthNum = i + 1;
+    const name = monthNames[i];
+
     let income = 0;
     let expense = 0;
     let vencer = 0;
+    let dbSaldo: number | undefined = undefined;
 
-    transactions.forEach(t => {
-      let tDate: Date;
-      if (t.dueDate) {
-        const [y, m, d_val] = t.dueDate.split('-').map(Number);
-        tDate = new Date(y, m - 1, d_val);
-      } else {
-        tDate = new Date(t.createdAt);
-      }
+    const hasCustomFilters = finCategoryFilter !== 'all' || finPaymentFilter !== 'all' || finRecurrenceFilter !== 'all' || finStatusFilter !== 'all';
+    const dbItem = finDashboardSummary.find(item => Number(item.mes) === monthNum);
 
-      const tMonth = tDate.getMonth();
-      const tYear = tDate.getFullYear();
-      const tValue = (tYear * 12) + tMonth;
+    if (dbItem && !hasCustomFilters && (selectedFinYear === 'all' || parseInt(selectedFinYear) === now.getFullYear())) {
+      income = Number(dbItem.entradas) || 0;
+      expense = Number(dbItem.saidas) || 0;
+      vencer = Number(dbItem.a_vencer) || 0;
+      dbSaldo = Number(dbItem.saldo);
+    } else {
+      const targetValue = (baseYear * 12) + i;
 
-      let applies = false;
-      let multiplier = 1;
-
-      const rec = (t.recurrence || 'Único').trim().toLowerCase();
-
-      if (rec.includes('mens') || rec.includes('mes')) {
-        if (targetValue >= tValue) applies = true;
-      } else if (rec.includes('seman')) {
-        if (targetValue >= tValue) {
-          applies = true;
-          multiplier = 4.33;
-        }
-      } else {
-        if (targetValue === tValue) applies = true;
-      }
-
-      if (applies) {
-        const amount = Number(t.amount) || 0;
-        const val = amount * multiplier;
-        
-        if (t.type === 'income') {
-          income += val;
+      transactions.forEach(t => {
+        let tDate: Date;
+        if (t.dueDate) {
+          const [y, m, d_val] = t.dueDate.split('-').map(Number);
+          tDate = new Date(y, m - 1, d_val);
         } else {
-          expense += val * -1;
+          tDate = new Date(t.createdAt);
         }
 
-        if (t.status === 'A Vencer') {
-          vencer += val;
+        const tMonth = tDate.getMonth();
+        const tYear = tDate.getFullYear();
+        const tValue = (tYear * 12) + tMonth;
+
+        let applies = false;
+        let multiplier = 1;
+
+        const rec = (t.recurrence || 'Único').trim().toLowerCase();
+
+        if (rec.includes('mens') || rec.includes('mes')) {
+          if (targetValue >= tValue) applies = true;
+        } else if (rec.includes('seman')) {
+          if (targetValue >= tValue) {
+            applies = true;
+            multiplier = 4.33;
+          }
+        } else {
+          if (targetValue === tValue) applies = true;
         }
-      }
-    });
-    
+
+        if (finCategoryFilter !== 'all' && t.category !== finCategoryFilter) applies = false;
+        if (finPaymentFilter !== 'all' && (t.paymentMethod || 'Pix') !== finPaymentFilter) applies = false;
+        if (finRecurrenceFilter !== 'all' && (t.recurrence || 'Único') !== finRecurrenceFilter) applies = false;
+        if (finStatusFilter !== 'all' && t.status !== finStatusFilter) applies = false;
+
+        if (applies) {
+          const amount = Number(t.amount) || 0;
+          const val = amount * multiplier;
+          
+          if (t.type === 'income') {
+            income += val;
+          } else {
+            expense += val;
+          }
+
+          if (t.status === 'A Vencer') {
+            vencer += val;
+          }
+        }
+      });
+    }
+
     return { 
-      name: selectedFinYear !== 'all' && selectedFinMonth !== 'all' ? `${name}/${targetY}` : name, 
+      name, 
       income: Math.round(income), 
       expense: Math.round(expense), 
-      vencer: Math.round(vencer)
+      vencer: Math.round(vencer),
+      dbSaldo
     };
   });
 
   // Calcular saldo acumulado
   let runningBalance = 0;
-  const finalProjectedData = projectedCashFlow.map((month) => {
-    runningBalance += (month.income + month.expense);
+  const allProjectedData = projectedCashFlow.map((month) => {
+    runningBalance += (month.income - month.expense);
     return {
-      ...month,
-      saldo: Math.round(runningBalance)
+      name: month.name,
+      income: month.income,
+      expense: month.expense,
+      vencer: month.vencer,
+      saldo: month.dbSaldo !== undefined ? Math.round(month.dbSaldo) : Math.round(runningBalance)
     };
-  }).slice(0, selectedFinMonth !== 'all' ? 12 : 6);
+  });
+
+  // Exibe todos os 12 meses quando selectedFinMonth === 'all', ou apenas o mês selecionado
+  const finalProjectedData = selectedFinMonth === 'all' 
+    ? allProjectedData 
+    : allProjectedData.filter((_, idx) => idx === parseInt(selectedFinMonth));
+
 
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
@@ -3984,84 +4006,100 @@ export default function App() {
                 </div>
 
                 {/* Fluxo de Caixa Projetado */}
-                <div className="glass-card p-4 md:p-6 rounded-3xl relative overflow-hidden">
+                <div className="glass-card p-4 md:p-6 rounded-3xl relative overflow-hidden border border-roxo-suave/30 shadow-lg shadow-roxo-suave/5">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                      <h4 className="text-base md:text-lg font-display font-bold text-white">Fluxo de Caixa Projetado</h4>
-                      <p className="text-[10px] md:text-xs text-slate-500">Realizado vs Agendado (Mensal)</p>
+                      <h4 className="text-base md:text-lg font-display font-bold text-white flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-roxo-suave animate-pulse" />
+                        Fluxo de Caixa Projetado
+                      </h4>
+                      <p className="text-[10px] md:text-xs text-slate-400">Realizado vs Agendado (Janeiro a Dezembro)</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-3 md:gap-4 lg:gap-4">
+                    <div className="flex flex-wrap items-center gap-3 md:gap-4 lg:gap-4 bg-slate-900/60 px-3.5 py-2 rounded-2xl border border-roxo-suave/20">
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#4CAF50] rounded-full" />
-                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Entradas</span>
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#4CAF50] rounded-full shadow-sm shadow-[#4CAF50]/50" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-wider">Entradas</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#FF4D4D] rounded-full" />
-                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saídas</span>
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#FF4D4D] rounded-full shadow-sm shadow-[#FF4D4D]/50" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-wider">Saídas</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#FFC107] rounded-full" />
-                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">A Vencer</span>
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#FFC107] rounded-full shadow-sm shadow-[#FFC107]/50" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-wider">A Vencer</span>
                       </div>
                       <div className="flex items-center gap-1.5 md:gap-2">
-                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#2196F3] rounded-full" />
-                        <span className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase">Saldo</span>
+                        <div className="min-w-2 w-2 md:w-3 h-2 md:h-3 bg-[#2196F3] rounded-full shadow-sm shadow-[#2196F3]/50" />
+                        <span className="text-[9px] md:text-[10px] font-bold text-slate-300 uppercase tracking-wider">Saldo</span>
                       </div>
                     </div>
                   </div>
                   
                   <div className="h-64 md:h-80 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={finalProjectedData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                      <ComposedChart data={finalProjectedData} margin={{ top: 15, right: 15, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(168, 85, 247, 0.12)" />
                         <XAxis 
                           dataKey="name" 
-                          axisLine={false} 
+                          axisLine={{ stroke: 'rgba(168, 85, 247, 0.3)' }} 
                           tickLine={false} 
-                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                          dy={10}
+                          tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }}
+                          dy={8}
                         />
                         <YAxis 
                           axisLine={false} 
                           tickLine={false} 
-                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                          tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
                           tickFormatter={(value) => `R$ ${value}`}
                         />
                         <RechartsTooltip 
                           formatter={(value: number, name: string) => {
-                            return [`R$ ${value.toFixed(2).replace('.', ',')}`, name];
+                            const valNum = Number(value) || 0;
+                            return [`R$ ${valNum.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, name];
                           }}
                           contentStyle={{ 
-                            backgroundColor: 'rgba(30, 30, 30, 0.9)', 
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: '12px',
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)', 
+                            border: '1px solid rgba(168, 85, 247, 0.4)',
+                            borderRadius: '16px',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(168, 85, 247, 0.2)',
                             fontSize: '12px',
-                            color: '#fff'
+                            color: '#f8fafc',
+                            padding: '10px 14px'
                           }}
+                          itemStyle={{ padding: '2px 0' }}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="income" 
                           name="Entradas"
                           stroke="#4CAF50" 
-                          strokeWidth={2} 
-                          dot={{ r: 3, fill: '#4CAF50', strokeWidth: 1, stroke: '#fff' }}
+                          strokeWidth={2.5} 
+                          dot={{ r: 4, fill: '#4CAF50', strokeWidth: 1.5, stroke: '#fff' }}
+                          activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                          isAnimationActive={true}
+                          animationDuration={1000}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="expense" 
                           name="Saídas"
                           stroke="#FF4D4D" 
-                          strokeWidth={2} 
-                          dot={{ r: 3, fill: '#FF4D4D', strokeWidth: 1, stroke: '#fff' }}
+                          strokeWidth={2.5} 
+                          dot={{ r: 4, fill: '#FF4D4D', strokeWidth: 1.5, stroke: '#fff' }}
+                          activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                          isAnimationActive={true}
+                          animationDuration={1000}
                         />
                         <Line 
                           type="monotone" 
                           dataKey="vencer" 
                           name="A Vencer"
                           stroke="#FFC107" 
-                          strokeWidth={2} 
-                          dot={{ r: 3, fill: '#FFC107', strokeWidth: 1, stroke: '#fff' }}
+                          strokeWidth={2.5} 
+                          dot={{ r: 4, fill: '#FFC107', strokeWidth: 1.5, stroke: '#fff' }}
+                          activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                          isAnimationActive={true}
+                          animationDuration={1000}
                         />
                         <Line 
                           type="monotone" 
@@ -4070,7 +4108,9 @@ export default function App() {
                           stroke="#2196F3" 
                           strokeWidth={3} 
                           dot={{ r: 4, fill: '#2196F3', strokeWidth: 2, stroke: '#fff' }}
-                          activeDot={{ r: 6, strokeWidth: 0 }}
+                          activeDot={{ r: 7, strokeWidth: 2, stroke: '#fff' }}
+                          isAnimationActive={true}
+                          animationDuration={1200}
                         />
                       </ComposedChart>
                     </ResponsiveContainer>

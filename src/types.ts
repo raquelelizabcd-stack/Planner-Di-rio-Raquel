@@ -260,12 +260,10 @@ export interface MarketingAnalytics {
   createdAt?: string;
 }
 export interface FinanceDashboardSummary {
-  ano: number;
   mes: number;
   entradas: number;
   saidas: number;
+  a_vencer: number;
   saldo: number;
-  resultado_mensal: number;
-  variacao_percentual: number;
-  crescimento_saldo: number;
 }
+
