@@ -1254,18 +1254,27 @@ export default function App() {
     },
     {
       id: 'prog-2',
-      title: 'Banco de Dados',
+      title: 'Banco de Dados Avançado (PostgreSQL & Supabase)',
       completed: false,
       priority: 'High',
       notebookId: '1',
       level: 'Avançado',
       categoryIcon: '🗄️',
       createdAt: Date.now(),
-      lessons: ['Modelagem Relacional e Normalização', 'SQL Avançado (JOIN, Índices, Triggers)', 'NoSQL (MongoDB, Redis)', 'Integração com IA para Análise de Dados'],
+      lessons: [
+        'Modelagem Relacional (1:1, 1:N, N:N) e Normalização (1FN, 2FN, 3FN)',
+        'SQL Avançado (INNER, LEFT, RIGHT, FULL JOIN, CTEs, Window Functions)',
+        'Otimização de Queries & EXPLAIN ANALYZE (B-Tree Indexes, Hash Indexes)',
+        'Transactions, ACID e Isolation Levels (Read Committed, Repeatable Read, Serializable)',
+        'Stored Procedures, Triggers, Functions e Materialized Views no PostgreSQL',
+        'Arquitetura Supabase (Postgres, RLS Policies, Realtime, Connection Pooling, pgvector & Storage)'
+      ],
       homeworks: [
-        { id: 'hw-prog-4', task: 'Criar banco relacional para e-commerce', completed: false, notes: '', practiceTimeMinutes: 50 },
-        { id: 'hw-prog-5', task: 'Gerar relatórios automáticos com IA', completed: false, notes: '', practiceTimeMinutes: 40 },
-        { id: 'hw-prog-6', task: 'Implementar consultas otimizadas com índices', completed: false, notes: '', practiceTimeMinutes: 35 }
+        { id: 'hw-prog-4', task: 'Modelar e criar o esquema relacional completo de um SaaS Multi-Tenant (Tabelas, FKs, Normalização 3FN)', completed: false, notes: 'PostgreSQL Schema + Migrations', practiceTimeMinutes: 60, published: true },
+        { id: 'hw-prog-5', task: 'Escrever consultas avançadas com CTEs, Window Functions e JOINs otimizados para relatórios de faturamento', completed: false, notes: 'SQL Queries + CTEs', practiceTimeMinutes: 45, published: false },
+        { id: 'hw-prog-6', task: 'Executar EXPLAIN ANALYZE em consulta lenta e criar índices B-Tree e parciais reduzindo tempo de execução em >80%', completed: false, notes: 'EXPLAIN ANALYZE + Index Tuning', practiceTimeMinutes: 50, published: true },
+        { id: 'hw-prog-7-db', task: 'Implementar Triggers e Stored Procedures para auditoria de pagamentos e prevenção de race conditions com Transactions ACID', completed: false, notes: 'PL/pgSQL Triggers & Locks', practiceTimeMinutes: 55, published: false },
+        { id: 'hw-prog-8-db', task: 'Configurar Row Level Security (RLS) no Supabase restringindo acesso por tenant_id e role JWT', completed: false, notes: 'Supabase RLS Policies + Auth', practiceTimeMinutes: 40, published: true }
       ]
     },
     {
