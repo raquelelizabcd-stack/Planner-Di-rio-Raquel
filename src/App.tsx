@@ -125,6 +125,7 @@ import {
   PersonalNote,
   StudyNote,
   StudyTopic,
+  StudyLessonDetail,
   StudyPlan,
   StudyNotebook,
   StudySession,
@@ -1388,6 +1389,31 @@ export default function App() {
     const saved = localStorage.getItem('raquel_study_plans');
     return saved ? JSON.parse(saved) : [];
   });
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+
+  const handleToggleLessonCompletion = (topicId: string, lessonId: string) => {
+    setStudyTopics(prev => {
+      const updated = prev.map(topic => {
+        if (topic.id !== topicId || !topic.detailedLessons) return topic;
+        const newDetailed = topic.detailedLessons.map(l => l.id === lessonId ? { ...l, completed: !l.completed } : l);
+        return { ...topic, detailedLessons: newDetailed };
+      });
+      localStorage.setItem('raquel_study_topics', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleUpdateLessonDetail = (topicId: string, lessonId: string, updates: Partial<StudyLessonDetail>) => {
+    setStudyTopics(prev => {
+      const updated = prev.map(topic => {
+        if (topic.id !== topicId || !topic.detailedLessons) return topic;
+        const newDetailed = topic.detailedLessons.map(l => l.id === lessonId ? { ...l, ...updates } : l);
+        return { ...topic, detailedLessons: newDetailed };
+      });
+      localStorage.setItem('raquel_study_topics', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Study Form State
   const [activeStudyNoteTitle, setActiveStudyNoteTitle] = useState('');
@@ -7062,8 +7088,246 @@ export default function App() {
                                       </button>
                                     </div>
 
-                                    {/* Lições Incluídas (se houver) */}
-                                    {topic.lessons && topic.lessons.length > 0 && (
+                                    {/* Informações detalhadas da Matéria / Tópico */}
+                                    {topic.description && (
+                                      <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+                                        <p className="text-xs text-slate-300 italic">{topic.description}</p>
+                                        {topic.objective && (
+                                          <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                                            <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">🎯 Objetivo da Matéria:</p>
+                                            <p className="text-xs text-slate-200">{topic.objective}</p>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Pré-requisitos e Tecnologias */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                                          {topic.prerequisites && topic.prerequisites.length > 0 && (
+                                            <div className="p-2.5 bg-black/20 rounded-xl border border-white/5">
+                                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">📌 Pré-requisitos:</p>
+                                              <div className="flex flex-wrap gap-1">
+                                                {topic.prerequisites.map((req, i) => (
+                                                  <span key={i} className="text-[10px] bg-white/5 text-slate-400 px-2 py-0.5 rounded-md border border-white/5">{req}</span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                          {topic.technologies && topic.technologies.length > 0 && (
+                                            <div className="p-2.5 bg-black/20 rounded-xl border border-white/5">
+                                              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">🛠️ Tecnologias:</p>
+                                              <div className="flex flex-wrap gap-1">
+                                                {topic.technologies.map((tech, i) => (
+                                                  <span key={i} className="text-[10px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded-md border border-indigo-500/20">{tech}</span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Recursos Oficiais */}
+                                        {topic.officialResources && topic.officialResources.length > 0 && (
+                                          <div className="pt-2">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">📚 Documentação & Recursos Oficiais:</p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {topic.officialResources.map((res, i) => (
+                                                <a
+                                                  key={i}
+                                                  href={res.url}
+                                                  target="_blank"
+                                                  rel="noopener noreferrer"
+                                                  className="px-3 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 rounded-xl text-xs font-medium flex items-center gap-1.5 transition-all"
+                                                >
+                                                  <span>{res.icon || '🔗'}</span>
+                                                  <span>{res.name}</span>
+                                                  <ExternalLink size={12} />
+                                                </a>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Detailed Lessons Aulas Clicáveis & Expansíveis */}
+                                    {topic.detailedLessons && topic.detailedLessons.length > 0 && (
+                                      <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-between">
+                                          <span>🎓 Aulas & Conteúdo da Formação:</span>
+                                          <span className="text-indigo-400">{topic.detailedLessons.filter(l => l.completed).length} / {topic.detailedLessons.length} Concluídas</span>
+                                        </p>
+                                        <div className="space-y-3">
+                                          {topic.detailedLessons.map((lesson) => {
+                                            const isExpanded = selectedLessonId === lesson.id;
+                                            return (
+                                              <div key={lesson.id} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden transition-all">
+                                                {/* Lesson Header */}
+                                                <div 
+                                                  onClick={() => setSelectedLessonId(isExpanded ? null : lesson.id)}
+                                                  className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-all"
+                                                >
+                                                  <div className="flex items-center gap-3">
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleToggleLessonCompletion(topic.id, lesson.id);
+                                                      }}
+                                                      className={`w-6 h-6 rounded-lg border flex items-center justify-center transition-all ${
+                                                        lesson.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/20 hover:border-indigo-400'
+                                                      }`}
+                                                    >
+                                                      {lesson.completed && <Check size={14} strokeWidth={3} />}
+                                                    </button>
+                                                    <span className={`text-sm font-bold ${lesson.completed ? 'text-slate-500 line-through' : 'text-white'}`}>
+                                                      {lesson.title}
+                                                    </span>
+                                                  </div>
+                                                  <div className="flex items-center gap-2">
+                                                    <span className="text-xs text-indigo-400 font-medium">
+                                                      {isExpanded ? 'Recolher Aula ▲' : 'Ver Conteúdo Completo ▼'}
+                                                    </span>
+                                                  </div>
+                                                </div>
+
+                                                {/* Lesson Detail Body */}
+                                                {isExpanded && (
+                                                  <motion.div
+                                                    initial={{ opacity: 0, height: 0 }}
+                                                    animate={{ opacity: 1, height: 'auto' }}
+                                                    exit={{ opacity: 0, height: 0 }}
+                                                    className="p-6 border-t border-white/10 bg-black/40 space-y-6 text-xs text-slate-300 leading-relaxed"
+                                                  >
+                                                    {/* 1. O que você vai aprender & Por que existe */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                      <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl">
+                                                        <p className="font-bold text-indigo-300 uppercase tracking-widest text-[10px] mb-1">🎯 1. O que você vai aprender:</p>
+                                                        <p>{lesson.whatYouWillLearn}</p>
+                                                      </div>
+                                                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                                                        <p className="font-bold text-amber-300 uppercase tracking-widest text-[10px] mb-1">💡 2. Por que isso existe:</p>
+                                                        <p>{lesson.whyItExists}</p>
+                                                      </div>
+                                                    </div>
+
+                                                    {/* 2. Conceito Profundo & Como funciona por baixo */}
+                                                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-2">
+                                                      <p className="font-bold text-white uppercase tracking-widest text-[10px]">🧠 3. Conceito & 4. Por Baixo dos Panos:</p>
+                                                      <p><strong className="text-white">Conceito:</strong> {lesson.concept}</p>
+                                                      {lesson.underTheHood && (
+                                                        <p><strong className="text-indigo-400">Por Baixo dos Panos:</strong> {lesson.underTheHood}</p>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Quando Usar vs Quando NÃO Usar */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                      <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl">
+                                                        <p className="font-bold text-emerald-400 uppercase tracking-widest text-[10px] mb-1">✅ Quando Usar:</p>
+                                                        <p>{lesson.whenToUse}</p>
+                                                      </div>
+                                                      <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                                                        <p className="font-bold text-rose-400 uppercase tracking-widest text-[10px] mb-1">❌ Quando NÃO Usar:</p>
+                                                        <p>{lesson.whenNotToUse}</p>
+                                                      </div>
+                                                    </div>
+
+                                                    {/* Exemplo Prático & Correto vs Errado */}
+                                                    <div className="space-y-3">
+                                                      <p className="font-bold text-white uppercase tracking-widest text-[10px]">💻 Exemplo Prático de Código:</p>
+                                                      <pre className="p-4 bg-black/80 rounded-2xl border border-white/10 text-emerald-400 font-mono text-[11px] overflow-x-auto">
+                                                        {lesson.practicalExample}
+                                                      </pre>
+                                                      {lesson.wrongExample && (
+                                                        <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl font-mono text-[11px] text-rose-300">
+                                                          <span className="font-bold uppercase block text-[9px] mb-1">Exemplo Errado:</span>
+                                                          {lesson.wrongExample}
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Boas Práticas, Segurança & Performance */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                      {lesson.bestPractices && (
+                                                        <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                                                          <p className="font-bold text-emerald-300 uppercase tracking-widest text-[10px] mb-1">⭐ Boas Práticas:</p>
+                                                          <p>{lesson.bestPractices}</p>
+                                                        </div>
+                                                      )}
+                                                      {lesson.securityAndPerformance && (
+                                                        <div className="p-3 bg-white/5 border border-white/10 rounded-xl">
+                                                          <p className="font-bold text-sky-300 uppercase tracking-widest text-[10px] mb-1">🔒 Segurança & Performance:</p>
+                                                          <p>{lesson.securityAndPerformance}</p>
+                                                        </div>
+                                                      )}
+                                                    </div>
+
+                                                    {/* Passo a Passo */}
+                                                    {lesson.stepByStep && lesson.stepByStep.length > 0 && (
+                                                      <div className="p-4 bg-indigo-950/40 border border-indigo-500/30 rounded-2xl space-y-2">
+                                                        <p className="font-bold text-indigo-300 uppercase tracking-widest text-[10px]">📋 Passo a Passo para Executar:</p>
+                                                        <ul className="space-y-1 pl-2">
+                                                          {lesson.stepByStep.map((step, idx) => (
+                                                            <li key={idx} className="text-slate-200">{step}</li>
+                                                          ))}
+                                                        </ul>
+                                                      </div>
+                                                    )}
+
+                                                    {/* Exercício & Desafio */}
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                      <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl">
+                                                        <p className="font-bold text-purple-300 uppercase tracking-widest text-[10px] mb-1">🏋️ Exercício Prático:</p>
+                                                        <p>{lesson.practicalExercise}</p>
+                                                      </div>
+                                                      <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                                                        <p className="font-bold text-amber-300 uppercase tracking-widest text-[10px] mb-1">🔥 Desafio Profissional:</p>
+                                                        <p>{lesson.challenge}</p>
+                                                      </div>
+                                                    </div>
+
+                                                    {/* Observações, GitHub e Links da Aula */}
+                                                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3 pt-3">
+                                                      <p className="font-bold text-white uppercase tracking-widest text-[10px]">🔗 Submissão de Código e Observações:</p>
+                                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <input
+                                                          type="text"
+                                                          value={lesson.githubUrl || ''}
+                                                          placeholder="Link do repositório no GitHub (ex: https://github.com/...)"
+                                                          onChange={(e) => handleUpdateLessonDetail(topic.id, lesson.id, { githubUrl: e.target.value })}
+                                                          className="bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50"
+                                                        />
+                                                        <input
+                                                          type="text"
+                                                          value={lesson.appUrl || ''}
+                                                          placeholder="Link da aplicação publicada (ex: https://meusass.vercel.app)"
+                                                          onChange={(e) => handleUpdateLessonDetail(topic.id, lesson.id, { appUrl: e.target.value })}
+                                                          className="bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-emerald-400 placeholder-slate-600 focus:outline-none focus:border-emerald-500/50"
+                                                        />
+                                                      </div>
+                                                      <div className="flex items-center justify-between pt-2">
+                                                        <div className="flex items-center gap-2">
+                                                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Publicado:</span>
+                                                          <button
+                                                            onClick={() => handleUpdateLessonDetail(topic.id, lesson.id, { published: !lesson.published })}
+                                                            className={`px-3 py-1 rounded-xl text-[10px] font-bold transition-all border ${
+                                                              lesson.published
+                                                                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-sm shadow-emerald-500/20'
+                                                                : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                                                            }`}
+                                                          >
+                                                            {lesson.published ? '✅ Sim (Publicado)' : '❌ Não'}
+                                                          </button>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                  </motion.div>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Lições Simples (se houver) */}
+                                    {topic.lessons && topic.lessons.length > 0 && (!topic.detailedLessons || topic.detailedLessons.length === 0) && (
                                       <div className="mt-4 pt-4 border-t border-white/5">
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">📘 Lições do Tópico:</p>
                                         <div className="flex flex-wrap gap-2">

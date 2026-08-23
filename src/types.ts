@@ -139,6 +139,41 @@ export interface EnglishHomework {
   published?: boolean;
 }
 
+export interface StudyLessonDetail {
+  id: string;
+  title: string;
+  completed: boolean;
+  whatYouWillLearn: string;
+  whyItExists: string;
+  concept: string;
+  underTheHood?: string;
+  typesOrVariations?: string;
+  whenToUse: string;
+  whenNotToUse: string;
+  practicalExample: string;
+  wrongExample?: string;
+  correctExample?: string;
+  bestPractices?: string;
+  commonErrors?: string;
+  securityAndPerformance?: string;
+  stepByStep: string[];
+  practicalExercise: string;
+  challenge: string;
+  completionCriteria: string;
+  relatedRealProject: string;
+  reviewChecklist: string[];
+  githubUrl?: string;
+  appUrl?: string;
+  notes?: string;
+  published?: boolean;
+}
+
+export interface OfficialResource {
+  name: string;
+  url: string;
+  icon?: string;
+}
+
 export interface StudyTopic {
   id: string;
   title: string;
@@ -146,10 +181,17 @@ export interface StudyTopic {
   priority: 'High' | 'Medium' | 'Low';
   notebookId?: string;
   createdAt: number;
-  level?: 'Iniciante' | 'Intermediário' | 'Avançado';
+  level?: 'Iniciante' | 'Intermediário' | 'Avançado' | 'Profissional';
   categoryIcon?: string;
   lessons?: string[];
   homeworks?: EnglishHomework[];
+  description?: string;
+  objective?: string;
+  prerequisites?: string[];
+  technologies?: string[];
+  estimatedHours?: number;
+  officialResources?: OfficialResource[];
+  detailedLessons?: StudyLessonDetail[];
 }
 
 export interface StudyPlan {
