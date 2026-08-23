@@ -2612,6 +2612,331 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
+      {/* Modals e Overlays Globais */}
+      <AnimatePresence>
+        {selectedProjectForView && (
+          <ProjectModal 
+            project={selectedProjectForView} 
+            isOpen={!!selectedProjectForView} 
+            onClose={() => setSelectedProjectForView(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODAL: EDITAR DÍVIDA ===== */}
+      <AnimatePresence>
+        {showDebtEditModal && editingDebt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-lg bg-[#1e1e1e] border border-white/10 rounded-3xl p-8 shadow-2xl"
+            >
+              <button
+                onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-[#3B82F6]/10 rounded-xl">
+                  <Edit2 size={18} className="text-[#3B82F6]" />
+                </div>
+                <h3 className="text-lg font-display font-bold text-white">Editar Transação</h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Descrição</label>
+                  <input
+                    type="text"
+                    value={debtForm.title}
+                    onChange={e => setDebtForm(f => ({ ...f, title: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={debtForm.amount}
+                    onChange={e => setDebtForm(f => ({ ...f, amount: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Categoria</label>
+                  <input
+                    type="text"
+                    value={debtForm.category}
+                    onChange={e => setDebtForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vencimento</label>
+                  <input
+                    type="date"
+                    value={debtForm.dueDate}
+                    onChange={e => setDebtForm(f => ({ ...f, dueDate: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all [color-scheme:dark]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
+                    <select
+                      value={debtForm.status}
+                      onChange={e => setDebtForm(f => ({ ...f, status: e.target.value as any }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                    >
+                      <option value="A Vencer">A Vencer</option>
+                      <option value="Pago">Pago</option>
+                      <option value="Vencido">Vencido</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Recorrência</label>
+                    <select
+                      value={debtForm.recurrence}
+                      onChange={e => setDebtForm(f => ({ ...f, recurrence: e.target.value as any }))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                    >
+                      <option value="Mensal">Mensal</option>
+                      <option value="Único">Único</option>
+                      <option value="Semanal">Semanal</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
+                  className="flex-1 py-2.5 bg-[#6B7280] hover:bg-gray-600 text-white rounded-xl text-sm font-bold transition-all border border-white/10"
+                >Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (!editingDebt) return;
+                    updateTransaction(editingDebt.id, {
+                      title: debtForm.title,
+                      amount: parseFloat(debtForm.amount) || editingDebt.amount,
+                      category: debtForm.category,
+                      dueDate: debtForm.dueDate || undefined,
+                      status: debtForm.status,
+                      recurrence: debtForm.recurrence,
+                    });
+                    setShowDebtEditModal(false);
+                    setEditingDebt(null);
+                    showToastWithMsg('Transação atualizada com sucesso!');
+                  }}
+                  className="flex-1 py-2.5 bg-[#3B82F6] hover:bg-[#60A5FA] text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20"
+                >Salvar</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODAL: CONFIRMAÇÃO DE EXCLUSÃO ===== */}
+      <AnimatePresence>
+        {confirmDeleteId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmDeleteId(null)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-sm bg-[#1e1e1e] border border-red-500/20 rounded-3xl p-8 shadow-2xl text-center"
+            >
+              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 size={24} className="text-red-500" />
+              </div>
+              <h3 className="text-lg font-display font-bold text-white mb-2">Excluir Transação?</h3>
+              <p className="text-sm text-slate-400 mb-6">Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2.5 bg-[#6B7280] hover:bg-gray-600 text-white rounded-xl text-sm font-bold transition-all border border-white/10"
+                >Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (confirmDeleteId) {
+                      deleteTransaction(confirmDeleteId);
+                      setConfirmDeleteId(null);
+                      showToastWithMsg('Transação excluída com sucesso!');
+                    }
+                  }}
+                  className="flex-1 py-2.5 bg-red-500 hover:bg-red-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
+                >Excluir</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== MODAL: EDITAR / NOVA ENTRADA ===== */}
+      <AnimatePresence>
+        {(showIncomeEditModal || showNewIncomeModal) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-lg bg-[#1e1e1e] border border-white/10 rounded-3xl p-8 shadow-2xl"
+            >
+              <button
+                onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-[#3B82F6]/10 rounded-xl">
+                  {showNewIncomeModal ? <Plus size={18} className="text-[#3B82F6]" /> : <Edit2 size={18} className="text-[#3B82F6]" />}
+                </div>
+                <h3 className="text-lg font-display font-bold text-white">
+                  {showNewIncomeModal ? 'Nova Entrada' : 'Editar Transação'}
+                </h3>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Descrição</label>
+                  <input
+                    type="text"
+                    value={incomeForm.title}
+                    onChange={e => setIncomeForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Ex: Salário de Julho"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={incomeForm.amount}
+                    onChange={e => setIncomeForm(f => ({ ...f, amount: e.target.value }))}
+                    placeholder="0,00"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Categoria</label>
+                  <select
+                    value={incomeForm.category}
+                    onChange={e => setIncomeForm(f => ({ ...f, category: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  >
+                    <option value="Salário">Salário</option>
+                    <option value="Reembolso">Reembolso</option>
+                    <option value="Extra">Extra</option>
+                    <option value="Freelance">Freelance</option>
+                    <option value="Investimentos">Investimentos</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Data de Recebimento</label>
+                  <input
+                    type="date"
+                    value={incomeForm.dueDate}
+                    onChange={e => setIncomeForm(f => ({ ...f, dueDate: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all [color-scheme:dark]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
+                  <select
+                    value={incomeForm.status}
+                    onChange={e => setIncomeForm(f => ({ ...f, status: e.target.value }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3B82F6] transition-all"
+                  >
+                    <option value="Pago">Recebido</option>
+                    <option value="A Vencer">Previsto</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
+                  className="flex-1 py-2.5 bg-[#6B7280] hover:bg-gray-600 text-white rounded-xl text-sm font-bold transition-all border border-white/10"
+                >Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (showNewIncomeModal) {
+                      if (!incomeForm.title || !incomeForm.amount) return;
+                      addTransaction(
+                        'income',
+                        incomeForm.title,
+                        parseFloat(incomeForm.amount),
+                        incomeForm.category,
+                        incomeForm.dueDate || undefined,
+                        undefined,
+                        (incomeForm.status === 'Recebido' ? 'Pago' : incomeForm.status === 'Previsto' ? 'A Vencer' : incomeForm.status) as 'A Vencer' | 'Pago' | 'Vencido',
+                        'Único'
+                      );
+                      showToastWithMsg('Entrada registrada com sucesso!');
+                    } else if (showIncomeEditModal && editingIncome) {
+                      updateTransaction(editingIncome.id, {
+                        title: incomeForm.title,
+                        amount: parseFloat(incomeForm.amount) || editingIncome.amount,
+                        category: incomeForm.category,
+                        dueDate: incomeForm.dueDate || undefined,
+                        status: (incomeForm.status === 'Recebido' ? 'Pago' : incomeForm.status === 'Previsto' ? 'A Vencer' : incomeForm.status) as 'A Vencer' | 'Pago' | 'Vencido',
+                      });
+                      showToastWithMsg('Transação atualizada com sucesso!');
+                    }
+                    setShowIncomeEditModal(false);
+                    setShowNewIncomeModal(false);
+                    setEditingIncome(null);
+                    setIncomeForm({ title: '', amount: '', category: 'Salário', dueDate: '', status: 'Pago' });
+                  }}
+                  className="flex-1 py-2.5 bg-[#3B82F6] hover:bg-[#60A5FA] text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-blue-500/20"
+                >
+                  Salvar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile Menu Floating Button (< 768px / mobile) */}
       <button
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -4079,7 +4404,7 @@ export default function App() {
                                               });
                                               setShowDebtEditModal(true);
                                             }}
-                                            className="p-1.5 bg-white/5 hover:bg-roxo-suave/20 text-slate-400 hover:text-roxo-suave rounded-lg transition-all"
+                                            className="p-1.5 bg-white/5 hover:bg-[#3B82F6]/20 text-slate-400 hover:text-[#60A5FA] rounded-lg transition-all"
                                           >
                                             <Edit2 size={13} />
                                           </button>
@@ -4261,7 +4586,7 @@ export default function App() {
                                             });
                                             setShowIncomeEditModal(true);
                                           }}
-                                          className="p-1.5 bg-white/5 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 rounded-lg transition-all"
+                                          className="p-1.5 bg-white/5 hover:bg-[#3B82F6]/20 text-slate-400 hover:text-[#60A5FA] rounded-lg transition-all"
                                         >
                                           <Edit2 size={13} />
                                         </button>
