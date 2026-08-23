@@ -1859,6 +1859,34 @@ export default function App() {
     showToastWithMsg('Dívida arquivada no histórico!');
   };
 
+  const restoreDebt = (id: string) => {
+    // 1. Procurar no histórico de arquivadas
+    const archivedItem = debtHistory.find(h => h.id === id);
+    if (archivedItem) {
+      const { archivedAt, finalStatus, ...restoredTransaction } = archivedItem;
+      const newStatus = finalStatus === 'Pago' ? 'Pago' : 'A Vencer';
+      const updated: Transaction = {
+        ...restoredTransaction,
+        status: newStatus as 'A Vencer' | 'Pago' | 'Vencido' | 'Pendente'
+      };
+
+      setTransactions(prev => [updated, ...prev]);
+      setDebtHistory(prev => prev.filter(h => h.id !== id));
+      dataService.saveTransaction(updated).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+      showToastWithMsg('Dívida restaurada com sucesso!');
+      return;
+    }
+
+    // 2. Se já estiver nas transações ativas mas com status 'Pago' ou 'Vencido'
+    const activeItem = transactions.find(t => t.id === id);
+    if (activeItem) {
+      const updated: Transaction = { ...activeItem, status: 'A Vencer' };
+      setTransactions(prev => prev.map(t => t.id === id ? updated : t));
+      dataService.saveTransaction(updated).catch(err => showToastWithMsg('Erro ao salvar no banco de dados'));
+      showToastWithMsg('Dívida restaurada com sucesso!');
+    }
+  };
+
   const addEvent = (title: string, date: string, type: CalendarEvent['type'], description?: string, projectId?: string) => {
     const newEvent: CalendarEvent = { id: Date.now().toString(), title, date, type, description, projectId };
     setEvents([...events, newEvent]);
@@ -4022,6 +4050,19 @@ export default function App() {
                                       <td className="p-4 text-slate-400">{t.recurrence || 'Único'}</td>
                                       <td className="p-4" onClick={e => e.stopPropagation()}>
                                         <div className="flex items-center justify-end gap-1">
+                                          {/* Restaurar / Voltar para Ativas (visível se Pago) */}
+                                          {t.status === 'Pago' && (
+                                            <button
+                                              title="Restaurar dívida para Ativas"
+                                              onClick={e => {
+                                                e.stopPropagation();
+                                                restoreDebt(t.id);
+                                              }}
+                                              className="p-1.5 bg-blue-500/10 hover:bg-blue-500/25 text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg transition-all"
+                                            >
+                                              <RotateCcw size={13} />
+                                            </button>
+                                          )}
                                           {/* Editar */}
                                           <button
                                             title="Editar dívida"
@@ -4089,11 +4130,12 @@ export default function App() {
                                   <th className="p-4">Categoria</th>
                                   <th className="p-4">Status Final</th>
                                   <th className="p-4">Arquivado em</th>
+                                  <th className="p-4 text-right">Ações</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-border-dark text-sm">
                                 {debtHistory.map(h => (
-                                  <tr key={h.id + h.archivedAt} className="hover:bg-white/3 transition-colors opacity-70">
+                                  <tr key={h.id + h.archivedAt} className="hover:bg-white/5 transition-colors">
                                     <td className="p-4 text-slate-300 font-bold">{h.title}</td>
                                     <td className="p-4 text-slate-400 font-mono">R$ {h.amount.toFixed(2).replace('.', ',')}</td>
                                     <td className="p-4 text-slate-500">{h.category}</td>
@@ -4105,11 +4147,21 @@ export default function App() {
                                       </span>
                                     </td>
                                     <td className="p-4 text-slate-500 text-xs">{h.archivedAt}</td>
+                                    <td className="p-4 text-right">
+                                      <button
+                                        title="Restaurar dívida para Ativas"
+                                        onClick={() => restoreDebt(h.id)}
+                                        className="p-1.5 bg-blue-500/10 hover:bg-blue-500/25 text-blue-400 hover:text-blue-300 border border-blue-500/30 rounded-lg transition-all flex items-center gap-1.5 ml-auto text-xs font-bold"
+                                      >
+                                        <RotateCcw size={13} />
+                                        <span>Voltar para Ativas</span>
+                                      </button>
+                                    </td>
                                   </tr>
                                 ))}
                                 {debtHistory.length === 0 && (
                                   <tr>
-                                    <td colSpan={5} className="p-8 text-center text-slate-600 italic">Nenhuma dívida arquivada ainda.</td>
+                                    <td colSpan={6} className="p-8 text-center text-slate-600 italic">Nenhuma dívida arquivada ainda.</td>
                                   </tr>
                                 )}
                               </tbody>
