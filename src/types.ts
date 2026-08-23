@@ -261,9 +261,11 @@ export interface MarketingAnalytics {
 }
 export interface FinanceDashboardSummary {
   mes: number;
+  mes_nome?: string;
   entradas: number;
   saidas: number;
   a_vencer: number;
   saldo: number;
+  crescimento_saldo?: number;
 }
 

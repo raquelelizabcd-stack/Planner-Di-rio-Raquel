@@ -76,7 +76,7 @@ import {
   MapPin,
   Archive,
   Volume2,
-  BarChart2,
+  BarChart2 as BarChartIcon,
   Search,
   MoreVertical,
   FolderPlus,
@@ -1257,7 +1257,7 @@ export default function App() {
   const [debugNotes, setDebugNotes] = useState<string>('');
   const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
   const [isPomodoroActive, setIsPomodoroActive] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
@@ -2584,371 +2584,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
-      {/* Barra de Diagnóstico de Emergência - MEGA VISÍVEL */}
-      <div className="fixed top-0 left-0 w-full bg-indigo-700 text-white px-4 py-2 flex items-center justify-between text-[11px] font-bold z-[10000] shadow-2xl border-b border-white/20">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full border border-white/20 overflow-hidden max-w-[300px]">
-            <div className={`w-2 h-2 rounded-full shrink-0 ${diagResult?.includes('OK') ? 'bg-emerald-400' : diagResult ? 'bg-red-400' : 'bg-blue-400 animate-pulse'}`} />
-            <span className="truncate">{diagResult ? `RESULTADO: ${diagResult}` : 'PRONTO PARA TESTAR v3.6 (BOTÕES VISÍVEIS)'}</span>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={async () => {
-              setDiagLoading(true);
-              setDiagResult('Processando...');
-              console.log('BOTÃO DIAGNÓSTICO: Clicado');
-              
-              try {
-                const result = await dataService.testConnection();
-                console.log('BOTÃO DIAGNÓSTICO: Resultado:', result);
-                
-                if (result.success) {
-                  setDiagResult(`CONEXÃO OK! (${result.count} registros)`);
-                } else {
-                  setDiagResult(`ERRO: ${result.error}`);
-                  // Se o erro for longo, tenta alert como backup
-                  if (result.error.length > 30) alert(`ERRO DETALHADO:\n${result.error}`);
-                }
-              } catch (err: any) {
-                console.error('BOTÃO DIAGNÓSTICO: Crash:', err);
-                setDiagResult(`CRASH: ${err.message}`);
-              } finally {
-                setDiagLoading(false);
-              }
-            }}
-            disabled={diagLoading}
-            className={`px-4 py-1.5 rounded-lg transition-all flex items-center gap-2 active:scale-95 ${diagLoading ? 'bg-slate-400 cursor-wait' : 'bg-white text-indigo-600 hover:bg-slate-100 shadow-lg'}`}
-          >
-            <ShieldAlert size={14} />
-            {diagLoading ? 'TESTANDO...' : 'TESTAR CONEXÃO AGORA'}
-          </button>
-        </div>
-      </div>
-
-      {/* Modals e Overlays Globais */}
-      <AnimatePresence>
-        {selectedProjectForView && (
-          <ProjectModal 
-            project={selectedProjectForView} 
-            isOpen={!!selectedProjectForView} 
-            onClose={() => setSelectedProjectForView(null)} 
-          />
-        )}
-      </AnimatePresence>
-
-      {/* ===== MODAL: EDITAR DÍVIDA ===== */}
-      <AnimatePresence>
-        {showDebtEditModal && editingDebt && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative z-10 w-full max-w-lg bg-[#1e1e1e] border border-white/10 rounded-3xl p-8 shadow-2xl"
-            >
-              <button
-                onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
-                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
-              >
-                <X size={18} />
-              </button>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-red-500/10 rounded-xl">
-                  <Edit2 size={18} className="text-[#FF4D4D]" />
-                </div>
-                <h3 className="text-lg font-display font-bold text-white">Editar Dívida</h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Descrição</label>
-                  <input
-                    type="text"
-                    value={debtForm.title}
-                    onChange={e => setDebtForm(f => ({ ...f, title: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Valor (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={debtForm.amount}
-                    onChange={e => setDebtForm(f => ({ ...f, amount: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Categoria</label>
-                  <input
-                    type="text"
-                    value={debtForm.category}
-                    onChange={e => setDebtForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Vencimento</label>
-                  <input
-                    type="date"
-                    value={debtForm.dueDate}
-                    onChange={e => setDebtForm(f => ({ ...f, dueDate: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all [color-scheme:dark]"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
-                    <select
-                      value={debtForm.status}
-                      onChange={e => setDebtForm(f => ({ ...f, status: e.target.value as any }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
-                    >
-                      <option value="A Vencer">A Vencer</option>
-                      <option value="Pago">Pago</option>
-                      <option value="Vencido">Vencido</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Recorrência</label>
-                    <select
-                      value={debtForm.recurrence}
-                      onChange={e => setDebtForm(f => ({ ...f, recurrence: e.target.value as any }))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#FF4D4D]/50 transition-all"
-                    >
-                      <option value="Mensal">Mensal</option>
-                      <option value="Único">Único</option>
-                      <option value="Semanal">Semanal</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => { setShowDebtEditModal(false); setEditingDebt(null); }}
-                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-all border border-white/10"
-                >Cancelar</button>
-                <button
-                  onClick={() => {
-                    if (!editingDebt) return;
-                    updateTransaction(editingDebt.id, {
-                      title: debtForm.title,
-                      amount: parseFloat(debtForm.amount) || editingDebt.amount,
-                      category: debtForm.category,
-                      dueDate: debtForm.dueDate || undefined,
-                      status: debtForm.status,
-                      recurrence: debtForm.recurrence,
-                    });
-                    setShowDebtEditModal(false);
-                    setEditingDebt(null);
-                  }}
-                  className="flex-1 py-2.5 bg-[#FF4D4D] hover:bg-red-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
-                >Salvar Alterações</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ===== MODAL: CONFIRMAÇÃO DE EXCLUSÃO ===== */}
-      <AnimatePresence>
-        {confirmDeleteId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setConfirmDeleteId(null)}
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative z-10 w-full max-w-sm bg-[#1e1e1e] border border-red-500/20 rounded-3xl p-8 shadow-2xl text-center"
-            >
-              <div className="w-14 h-14 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Trash2 size={24} className="text-red-500" />
-              </div>
-              <h3 className="text-lg font-display font-bold text-white mb-2">Excluir Dívida?</h3>
-              <p className="text-sm text-slate-400 mb-6">Tem certeza que deseja excluir esta dívida? Esta ação não pode ser desfeita.</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setConfirmDeleteId(null)}
-                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-all border border-white/10"
-                >Cancelar</button>
-                <button
-                  onClick={() => {
-                    if (confirmDeleteId) {
-                      deleteTransaction(confirmDeleteId);
-                      setConfirmDeleteId(null);
-                      showToastWithMsg('Dívida excluída com sucesso!');
-                    }
-                  }}
-                  className="flex-1 py-2.5 bg-red-500 hover:bg-red-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
-                >Excluir</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ===== MODAL: EDITAR / NOVA ENTRADA ===== */}
-      <AnimatePresence>
-        {(showIncomeEditModal || showNewIncomeModal) && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          >
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
-              className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative z-10 w-full max-w-lg bg-[#1e1e1e] border border-white/10 rounded-3xl p-8 shadow-2xl"
-            >
-              <button
-                onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
-                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
-              >
-                <X size={18} />
-              </button>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-emerald-500/10 rounded-xl">
-                  {showNewIncomeModal ? <Plus size={18} className="text-emerald-400" /> : <Edit2 size={18} className="text-emerald-400" />}
-                </div>
-                <h3 className="text-lg font-display font-bold text-white">
-                  {showNewIncomeModal ? 'Nova Entrada' : 'Editar Entrada'}
-                </h3>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Descrição</label>
-                  <input
-                    type="text"
-                    value={incomeForm.title}
-                    onChange={e => setIncomeForm(f => ({ ...f, title: e.target.value }))}
-                    placeholder="Ex: Salário de Julho"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Valor (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={incomeForm.amount}
-                    onChange={e => setIncomeForm(f => ({ ...f, amount: e.target.value }))}
-                    placeholder="0,00"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Categoria</label>
-                  <select
-                    value={incomeForm.category}
-                    onChange={e => setIncomeForm(f => ({ ...f, category: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
-                  >
-                    <option value="Salário">Salário</option>
-                    <option value="Reembolso">Reembolso</option>
-                    <option value="Extra">Extra</option>
-                    <option value="Freelance">Freelance</option>
-                    <option value="Investimentos">Investimentos</option>
-                    <option value="Outros">Outros</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Data de Recebimento</label>
-                  <input
-                    type="date"
-                    value={incomeForm.dueDate}
-                    onChange={e => setIncomeForm(f => ({ ...f, dueDate: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all [color-scheme:dark]"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Status</label>
-                  <select
-                    value={incomeForm.status}
-                    onChange={e => setIncomeForm(f => ({ ...f, status: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500/50 transition-all"
-                  >
-                    <option value="Pago">Recebido</option>
-                    <option value="A Vencer">Previsto</option>
-                  </select>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={() => { setShowIncomeEditModal(false); setShowNewIncomeModal(false); setEditingIncome(null); }}
-                  className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-sm font-bold transition-all border border-white/10"
-                >Cancelar</button>
-                <button
-                  onClick={() => {
-                    if (showNewIncomeModal) {
-                      if (!incomeForm.title || !incomeForm.amount) return;
-                      addTransaction(
-                        'income',
-                        incomeForm.title,
-                        parseFloat(incomeForm.amount),
-                        incomeForm.category,
-                        incomeForm.dueDate || undefined,
-                        undefined,
-                        incomeForm.status as 'A Vencer' | 'Pago' | 'Vencido',
-                        'Único'
-                      );
-                      showToastWithMsg('Nova entrada adicionada!');
-                    } else if (showIncomeEditModal && editingIncome) {
-                      updateTransaction(editingIncome.id, {
-                        title: incomeForm.title,
-                        amount: parseFloat(incomeForm.amount) || editingIncome.amount,
-                        category: incomeForm.category,
-                        dueDate: incomeForm.dueDate || undefined,
-                        status: incomeForm.status as 'A Vencer' | 'Pago' | 'Vencido',
-                      });
-                    }
-                    setShowIncomeEditModal(false);
-                    setShowNewIncomeModal(false);
-                    setEditingIncome(null);
-                    setIncomeForm({ title: '', amount: '', category: 'Salário', dueDate: '', status: 'Recebido' });
-                  }}
-                  className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20"
-                >
-                  {showNewIncomeModal ? 'Adicionar Entrada' : 'Salvar Alterações'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Mobile Menu Floating Button (< 768px / mobile) */}
+      <button
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        className="md:hidden fixed top-3.5 left-4 z-[1100] w-10 h-10 bg-roxo-suave text-white rounded-full flex items-center justify-center shadow-lg shadow-roxo-suave/30 hover:scale-105 active:scale-95 transition-transform"
+        aria-label="Abrir Menu"
+        title="MENU"
+      >
+        {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+      </button>
 
       {/* Mobile Sidebar Overlay */}
       <AnimatePresence>
@@ -2957,8 +2601,9 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[999] md:hidden"
           />
         )}
       </AnimatePresence>
@@ -2966,27 +2611,28 @@ export default function App() {
       {/* Sidebar */}
       <aside 
         className={`
-          fixed inset-y-0 left-0 z-50 transition-all duration-300 
-          ${isSidebarOpen ? 'w-64 translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0 lg:w-20'}
-          flex flex-col bg-bg-card border-r border-border-dark overflow-hidden
+          fixed top-0 left-0 h-full z-[1000] transition-transform duration-300 ease-in-out
+          w-[240px] md:w-64 bg-bg-card border-r border-border-dark flex flex-col overflow-hidden
+          shadow-[0_0_20px_rgba(0,0,0,0.4)]
+          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0 md:w-20'}
         `}
       >
-        <div className={`p-6 flex items-center justify-between ${isSidebarOpen ? 'bg-white/5 border-b border-white/5 mb-4' : 'lg:justify-center lg:px-0'}`}>
+        <div className={`p-4 sm:p-5 flex items-center justify-between ${isSidebarOpen ? 'bg-white/5 border-b border-white/5 mb-2' : 'md:justify-center md:px-0'}`}>
             {isSidebarOpen && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between w-full gap-2">
                 <motion.div 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="px-4 py-2 bg-gradient-to-r from-roxo-suave to-rosa-claro rounded-xl shadow-lg shadow-roxo-suave/20"
+                  className="px-3 py-1.5 bg-gradient-to-r from-roxo-suave to-rosa-claro rounded-xl shadow-lg shadow-roxo-suave/20"
                 >
-                  <h1 className="text-sm font-display font-bold text-white whitespace-nowrap">
+                  <h1 className="text-xs sm:text-sm font-display font-bold text-white whitespace-nowrap">
                     Planner Diário Raquel
                   </h1>
                 </motion.div>
                 {/* Mobile Close Button */}
                 <button 
                   onClick={() => setIsSidebarOpen(false)}
-                  className="lg:hidden p-2 hover:bg-white/10 rounded-xl transition-colors text-white"
+                  className="md:hidden p-2 hover:bg-white/10 rounded-xl transition-colors text-white"
                 >
                   <X size={20} />
                 </button>
@@ -2994,25 +2640,25 @@ export default function App() {
             )}
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="hidden lg:block p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
+              className="hidden md:block p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
             >
               {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
         </div>
 
-        <nav className={`flex-1 px-3 pt-4 pb-20 space-y-1.5 overflow-y-auto custom-scrollbar ${!isSidebarOpen && 'lg:px-2'}`}>
+        <nav className={`flex-1 px-3 pt-2 pb-20 space-y-1.5 overflow-y-auto custom-scrollbar ${!isSidebarOpen && 'md:px-2'}`}>
           {sidebarItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
                 setActiveTab(item.id as TabType);
-                if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                if (window.innerWidth < 768) setIsSidebarOpen(false);
               }}
               className={`w-full flex items-center p-3 sm:p-3.5 rounded-xl transition-all group ${
                 activeTab === item.id 
-                  ? 'bg-roxo-suave/15 text-roxo-suave' 
+                  ? 'bg-roxo-suave/15 text-roxo-suave font-bold' 
                   : 'text-slate-500 hover:bg-white/5 active:bg-white/10'
-              } ${!isSidebarOpen && 'lg:justify-center'}`}
+              } ${!isSidebarOpen && 'md:justify-center'}`}
             >
               <item.icon 
                 size={22} 
@@ -3033,17 +2679,11 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 pt-8 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 mt-0 relative z-1 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
         {/* Fixed Header */}
-        <header className="bg-bg-dark/80 backdrop-blur-xl border-b border-border-dark z-20 sticky top-0">
-          <div className="px-4 py-3 md:px-6 md:py-5 flex justify-between items-center">
+        <header className="bg-bg-dark/90 backdrop-blur-xl border-b border-border-dark z-[900] sticky top-0 h-[60px] flex items-center">
+          <div className="w-full px-4 py-3 md:px-6 flex justify-between items-center pl-16 md:pl-6">
             <div className="flex items-center gap-3">
-              <button 
-                onClick={() => setIsSidebarOpen(true)}
-                className="lg:hidden p-2 hover:bg-border-dark rounded-lg transition-colors text-slate-400"
-              >
-                <Menu size={24} />
-              </button>
               <h2 className="text-lg font-display font-bold text-white md:max-w-none">
                 {sidebarItems.find(i => i.id === activeTab)?.label}
               </h2>
@@ -3260,19 +2900,26 @@ export default function App() {
                           <span className="text-xs font-medium text-slate-400">Saldo Consolidado</span>
                           <span className="p-1.5 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:scale-110 transition-transform">💰</span>
                         </div>
-                        <h5 className="text-xl md:text-2xl font-display font-black text-emerald-400">
-                          R$ {(finDashboardSummary?.saldo ?? balance).toFixed(2).replace('.', ',')}
-                        </h5>
-                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 mt-2">
-                          {finDashboardSummary?.crescimento_saldo !== undefined ? (
+                        {(() => {
+                          const currentMonthSummary = finDashboardSummary.find(item => Number(item.mes) === (new Date().getMonth() + 1));
+                          return (
                             <>
-                              {finDashboardSummary.crescimento_saldo >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                              <span>{finDashboardSummary.crescimento_saldo >= 0 ? `+${finDashboardSummary.crescimento_saldo}%` : `${finDashboardSummary.crescimento_saldo}%`} vs mês anterior</span>
+                              <h5 className="text-xl md:text-2xl font-display font-black text-emerald-400">
+                                R$ {(currentMonthSummary?.saldo ?? balance).toFixed(2).replace('.', ',')}
+                              </h5>
+                              <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 mt-2">
+                                {currentMonthSummary?.crescimento_saldo !== undefined ? (
+                                  <>
+                                    {currentMonthSummary.crescimento_saldo >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                                    <span>{currentMonthSummary.crescimento_saldo >= 0 ? `+${currentMonthSummary.crescimento_saldo}%` : `${currentMonthSummary.crescimento_saldo}%`} vs mês anterior</span>
+                                  </>
+                                ) : (
+                                  <span>Calculado com base nas transações</span>
+                                )}
+                              </div>
                             </>
-                          ) : (
-                            <span>Calculado com base nas transações</span>
-                          )}
-                        </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Entradas do Mês (azul) */}
@@ -3284,9 +2931,14 @@ export default function App() {
                           <span className="text-xs font-medium text-slate-400">Entradas do Mês</span>
                           <span className="p-1.5 bg-blue-500/10 text-blue-400 rounded-lg group-hover:scale-110 transition-transform">📈</span>
                         </div>
-                        <h5 className="text-xl md:text-2xl font-display font-black text-blue-400">
-                          R$ {(finDashboardSummary?.entradas ?? totalIncome).toFixed(2).replace('.', ',')}
-                        </h5>
+                        {(() => {
+                          const currentMonthSummary = finDashboardSummary.find(item => Number(item.mes) === (new Date().getMonth() + 1));
+                          return (
+                            <h5 className="text-xl md:text-2xl font-display font-black text-blue-400">
+                              R$ {(currentMonthSummary?.entradas ?? totalIncome).toFixed(2).replace('.', ',')}
+                            </h5>
+                          );
+                        })()}
                         <div className="flex items-center gap-1 text-[10px] font-bold text-blue-400 mt-2">
                           <TrendingUp size={12} />
                           <span>Receitas acumuladas</span>
@@ -3302,9 +2954,14 @@ export default function App() {
                           <span className="text-xs font-medium text-slate-400">Saídas do Mês</span>
                           <span className="p-1.5 bg-red-500/10 text-red-400 rounded-lg group-hover:scale-110 transition-transform">📉</span>
                         </div>
-                        <h5 className="text-xl md:text-2xl font-display font-black text-red-400">
-                          R$ {(finDashboardSummary?.saidas ?? totalExpenses).toFixed(2).replace('.', ',')}
-                        </h5>
+                        {(() => {
+                          const currentMonthSummary = finDashboardSummary.find(item => Number(item.mes) === (new Date().getMonth() + 1));
+                          return (
+                            <h5 className="text-xl md:text-2xl font-display font-black text-red-400">
+                              R$ {(currentMonthSummary?.saidas ?? totalExpenses).toFixed(2).replace('.', ',')}
+                            </h5>
+                          );
+                        })()}
                         <div className="flex items-center gap-1 text-[10px] font-bold text-red-400 mt-2">
                           <TrendingDown size={12} />
                           <span>Despesas acumuladas</span>
@@ -3320,11 +2977,16 @@ export default function App() {
                           <span className="text-xs font-medium text-slate-400">Crescimento do Saldo</span>
                           <span className="p-1.5 bg-roxo-suave/10 text-roxo-suave rounded-lg group-hover:scale-110 transition-transform">💎</span>
                         </div>
-                        <h5 className="text-xl md:text-2xl font-display font-black text-roxo-suave">
-                          {finDashboardSummary?.crescimento_saldo !== undefined
-                            ? (finDashboardSummary.crescimento_saldo >= 0 ? `+${finDashboardSummary.crescimento_saldo}%` : `${finDashboardSummary.crescimento_saldo}%`)
-                            : '+12,5%'}
-                        </h5>
+                        {(() => {
+                          const currentMonthSummary = finDashboardSummary.find(item => Number(item.mes) === (new Date().getMonth() + 1));
+                          return (
+                            <h5 className="text-xl md:text-2xl font-display font-black text-roxo-suave">
+                              {currentMonthSummary?.crescimento_saldo !== undefined
+                                ? (currentMonthSummary.crescimento_saldo >= 0 ? `+${currentMonthSummary.crescimento_saldo}%` : `${currentMonthSummary.crescimento_saldo}%`)
+                                : '+12,5%'}
+                            </h5>
+                          );
+                        })()}
                         <div className="flex items-center gap-1 text-[10px] font-bold text-roxo-suave mt-2">
                           <Sparkles size={12} />
                           <span>Desempenho mensal</span>
@@ -4693,7 +4355,7 @@ export default function App() {
                         {/* Gráfico Comparativo Lado a Lado (Barras Duplas) */}
                         <div className="glass-card p-5 rounded-2xl border border-white/10 bg-slate-950/50">
                           <h4 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-                            <BarChart size={16} className="text-roxo-suave" />
+                            <BarChartIcon size={16} className="text-roxo-suave" />
                             Gráfico Comparativo de Barras Lado a Lado
                           </h4>
                           <div className="h-64 w-full">
@@ -6832,7 +6494,7 @@ export default function App() {
                                 handleSaveStudyNote();
                                 setIsStudyNoteFocusMode(false);
                               }}
-                              disabled={!newStudyNote.trim() || !activeStudyNoteTitle.trim()}
+                              disabled={newStudyNote.trim() === '' || activeStudyNoteTitle.trim() === ''}
                               className="px-10 py-4 bg-white text-black rounded-2xl font-bold hover:bg-slate-200 disabled:opacity-50 transition-all shadow-2xl shadow-white/10 flex items-center gap-3"
                             >
                               <Save size={20} />
@@ -6855,7 +6517,7 @@ export default function App() {
                 exit={{ opacity: 0, y: -20 }}
                 className="max-w-7xl mx-auto space-y-8"
               >
-                {<CentralMarketing accentColor={accentColor} borderRadius={borderRadius} /> || <div className="text-gray-300 p-6">Carregando módulo de Marketing...</div>}
+                <CentralMarketing accentColor={accentColor} borderRadius={borderRadius} />
               </motion.div>
             )}
 
