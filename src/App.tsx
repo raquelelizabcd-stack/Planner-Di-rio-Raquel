@@ -1147,15 +1147,111 @@ export default function App() {
   const [userPassword, setUserPassword] = useState('********');
   
   // Study State
+  const defaultNotebooks: StudyNotebook[] = [
+    { id: 'english', title: 'Inglês', icon: '📘', color: '#3B82F6', createdAt: Date.now() },
+    { id: '1', title: 'Programação', icon: '💻', color: '#6366f1', createdAt: Date.now() },
+    { id: '2', title: 'Finanças', icon: '💰', color: '#10b981', createdAt: Date.now() },
+    { id: '3', title: 'Pessoal', icon: '🏠', color: '#f59e0b', createdAt: Date.now() },
+  ];
+
+  const defaultTopics: StudyTopic[] = [
+    {
+      id: 'eng-1',
+      title: 'Vocabulário Básico',
+      completed: false,
+      priority: 'High',
+      notebookId: 'english',
+      level: 'Iniciante',
+      categoryIcon: '📘',
+      createdAt: Date.now(),
+      lessons: ['Cores', 'Números', 'Dias da Semana', 'Meses', 'Comidas', 'Roupas', 'Objetos da Casa'],
+      homeworks: [
+        { id: 'hw-1', task: 'Escrever 10 frases com cores e números em inglês', completed: false, notes: '', practiceTimeMinutes: 15 },
+        { id: 'hw-2', task: 'Escrever 10 frases com dias da semana e meses', completed: false, notes: '', practiceTimeMinutes: 15 },
+        { id: 'hw-3', task: 'Escrever 10 frases descrevendo comidas e roupas favoritas', completed: false, notes: '', practiceTimeMinutes: 20 },
+        { id: 'hw-4', task: 'Escrever 10 frases sobre objetos da sua casa em inglês', completed: false, notes: '', practiceTimeMinutes: 20 }
+      ]
+    },
+    {
+      id: 'eng-2',
+      title: 'Gramática Essencial',
+      completed: false,
+      priority: 'High',
+      notebookId: 'english',
+      level: 'Iniciante',
+      categoryIcon: '✏️',
+      createdAt: Date.now(),
+      lessons: ['Verbo To Be', 'Verbo Have', 'Verbo Do', 'Pronomes Pessoais', 'Present Simple', 'Past Simple', 'Future Simple'],
+      homeworks: [
+        { id: 'hw-5', task: 'Montar 5 frases afirmativas, 5 negativas e 5 interrogativas com To Be', completed: false, notes: '', practiceTimeMinutes: 25 },
+        { id: 'hw-6', task: 'Montar frases usando Have e Do no Present Simple', completed: false, notes: '', practiceTimeMinutes: 20 },
+        { id: 'hw-7', task: 'Montar 10 frases contando um evento passado (Past Simple)', completed: false, notes: '', practiceTimeMinutes: 25 },
+        { id: 'hw-8', task: 'Montar 10 frases sobre planos futuros (Future Simple - Will / Going to)', completed: false, notes: '', practiceTimeMinutes: 20 }
+      ]
+    },
+    {
+      id: 'eng-3',
+      title: 'Conversação Prática',
+      completed: false,
+      priority: 'Medium',
+      notebookId: 'english',
+      level: 'Intermediário',
+      categoryIcon: '💬',
+      createdAt: Date.now(),
+      lessons: ['Saudações e Cumprimentos', 'Apresentações Pessoais', 'Pedir Informações e Direções', 'Fazer Compras e Pedidos', 'Conversar sobre Hobbies e Interesses'],
+      homeworks: [
+        { id: 'hw-9', task: 'Simular um diálogo de apresentação pessoal gravando áudio de 2 minutos', completed: false, notes: '', practiceTimeMinutes: 15 },
+        { id: 'hw-10', task: 'Simular compra em restaurante ou loja em inglês', completed: false, notes: '', practiceTimeMinutes: 20 },
+        { id: 'hw-11', task: 'Fazer diálogo simulado pedindo direções em uma cidade estrangeira', completed: false, notes: '', practiceTimeMinutes: 20 }
+      ]
+    },
+    {
+      id: 'eng-4',
+      title: 'Listening e Pronúncia',
+      completed: false,
+      priority: 'Medium',
+      notebookId: 'english',
+      level: 'Intermediário',
+      categoryIcon: '🎧',
+      createdAt: Date.now(),
+      lessons: ['Sons difíceis: TH (/θ/ e /ð/)', 'Sons de R e L em inglês', 'Pronúncia dos sons V e B', 'Entonação e Ritmo da fala'],
+      homeworks: [
+        { id: 'hw-12', task: 'Ouvir podcast curto e repetir 5 frases com o som TH', completed: false, notes: '', practiceTimeMinutes: 25, pronunciationNotes: 'Atenção com a língua entre os dentes ao falar think e this.' },
+        { id: 'hw-13', task: 'Ouvir e repetir trava-línguas em inglês para treinar R e L', completed: false, notes: '', practiceTimeMinutes: 20, pronunciationNotes: 'Diferença entre red e led.' },
+        { id: 'hw-14', task: 'Gravador de voz: praticar entonação de perguntas e respostas em inglês', completed: false, notes: '', practiceTimeMinutes: 30, pronunciationNotes: 'Subir a entonação em Yes/No questions.' }
+      ]
+    },
+    {
+      id: 'eng-5',
+      title: 'Business English & Conversação Avançada',
+      completed: false,
+      priority: 'High',
+      notebookId: 'english',
+      level: 'Avançado',
+      categoryIcon: '💬',
+      createdAt: Date.now(),
+      lessons: ['Reuniões de Trabalho em Inglês', 'Vocabulário Corporativo & E-mails', 'Entrevistas de Emprego', 'Apresentações & Pitching'],
+      homeworks: [
+        { id: 'hw-15', task: 'Redigir um e-mail corporativo formal em inglês solicitando reunião', completed: false, notes: '', practiceTimeMinutes: 30 },
+        { id: 'hw-16', task: 'Simular entrevista de emprego respondendo: Tell me about yourself', completed: false, notes: '', practiceTimeMinutes: 35, pronunciationNotes: 'Fluência e conectivos adequados.' }
+      ]
+    },
+    { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
+    { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
+    { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
+    { id: '4', title: 'Finanças pessoais', completed: false, priority: 'Low', createdAt: Date.now() },
+  ];
+
   const [studyNotebooks, setStudyNotebooks] = useState<StudyNotebook[]>(() => {
     const saved = localStorage.getItem('raquel_study_notebooks');
-    return saved ? JSON.parse(saved) : [
-      { id: 'english', title: 'Inglês', icon: '📘', color: '#3B82F6', createdAt: Date.now() },
-      { id: '1', title: 'Programação', icon: '💻', color: '#6366f1', createdAt: Date.now() },
-      { id: '2', title: 'Finanças', icon: '💰', color: '#10b981', createdAt: Date.now() },
-      { id: '3', title: 'Pessoal', icon: '🏠', color: '#f59e0b', createdAt: Date.now() },
-    ];
+    if (!saved) return defaultNotebooks;
+    const parsed: StudyNotebook[] = JSON.parse(saved);
+    if (!parsed.some(n => n.id === 'english')) {
+      return [defaultNotebooks[0], ...parsed];
+    }
+    return parsed;
   });
+
   const [studySessions, setStudySessions] = useState<StudySession[]>(() => {
     const saved = localStorage.getItem('raquel_study_sessions');
     return saved ? JSON.parse(saved) : [];
@@ -1171,95 +1267,16 @@ export default function App() {
     const saved = localStorage.getItem('raquel_study_notes');
     return saved ? JSON.parse(saved) : [];
   });
+
   const [studyTopics, setStudyTopics] = useState<StudyTopic[]>(() => {
     const saved = localStorage.getItem('raquel_study_topics');
-    return saved ? JSON.parse(saved) : [
-      {
-        id: 'eng-1',
-        title: 'Vocabulário Básico',
-        completed: false,
-        priority: 'High',
-        notebookId: 'english',
-        level: 'Iniciante',
-        categoryIcon: '📘',
-        createdAt: Date.now(),
-        lessons: ['Cores', 'Números', 'Dias da Semana', 'Meses', 'Comidas', 'Roupas', 'Objetos da Casa'],
-        homeworks: [
-          { id: 'hw-1', task: 'Escrever 10 frases com cores e números em inglês', completed: false, notes: '', practiceTimeMinutes: 15 },
-          { id: 'hw-2', task: 'Escrever 10 frases com dias da semana e meses', completed: false, notes: '', practiceTimeMinutes: 15 },
-          { id: 'hw-3', task: 'Escrever 10 frases descrevendo comidas e roupas favoritas', completed: false, notes: '', practiceTimeMinutes: 20 },
-          { id: 'hw-4', task: 'Escrever 10 frases sobre objetos da sua casa em inglês', completed: false, notes: '', practiceTimeMinutes: 20 }
-        ]
-      },
-      {
-        id: 'eng-2',
-        title: 'Gramática Essencial',
-        completed: false,
-        priority: 'High',
-        notebookId: 'english',
-        level: 'Iniciante',
-        categoryIcon: '✏️',
-        createdAt: Date.now(),
-        lessons: ['Verbo To Be', 'Verbo Have', 'Verbo Do', 'Pronomes Pessoais', 'Present Simple', 'Past Simple', 'Future Simple'],
-        homeworks: [
-          { id: 'hw-5', task: 'Montar 5 frases afirmativas, 5 negativas e 5 interrogativas com To Be', completed: false, notes: '', practiceTimeMinutes: 25 },
-          { id: 'hw-6', task: 'Montar frases usando Have e Do no Present Simple', completed: false, notes: '', practiceTimeMinutes: 20 },
-          { id: 'hw-7', task: 'Montar 10 frases contando um evento passado (Past Simple)', completed: false, notes: '', practiceTimeMinutes: 25 },
-          { id: 'hw-8', task: 'Montar 10 frases sobre planos futuros (Future Simple - Will / Going to)', completed: false, notes: '', practiceTimeMinutes: 20 }
-        ]
-      },
-      {
-        id: 'eng-3',
-        title: 'Conversação Prática',
-        completed: false,
-        priority: 'Medium',
-        notebookId: 'english',
-        level: 'Intermediário',
-        categoryIcon: '💬',
-        createdAt: Date.now(),
-        lessons: ['Saudações e Cumprimentos', 'Apresentações Pessoais', 'Pedir Informações e Direções', 'Fazer Compras e Pedidos', 'Conversar sobre Hobbies e Interesses'],
-        homeworks: [
-          { id: 'hw-9', task: 'Simular um diálogo de apresentação pessoal gravando áudio de 2 minutos', completed: false, notes: '', practiceTimeMinutes: 15 },
-          { id: 'hw-10', task: 'Simular compra em restaurante ou loja em inglês', completed: false, notes: '', practiceTimeMinutes: 20 },
-          { id: 'hw-11', task: 'Fazer diálogo simulado pedindo direções em uma cidade estrangeira', completed: false, notes: '', practiceTimeMinutes: 20 }
-        ]
-      },
-      {
-        id: 'eng-4',
-        title: 'Listening e Pronúncia',
-        completed: false,
-        priority: 'Medium',
-        notebookId: 'english',
-        level: 'Intermediário',
-        categoryIcon: '🎧',
-        createdAt: Date.now(),
-        lessons: ['Sons difíceis: TH (/θ/ e /ð/)', 'Sons de R e L em inglês', 'Pronúncia dos sons V e B', 'Entonação e Ritmo da fala'],
-        homeworks: [
-          { id: 'hw-12', task: 'Ouvir podcast curto e repetir 5 frases com o som TH', completed: false, notes: '', practiceTimeMinutes: 25, pronunciationNotes: 'Atenção com a língua entre os dentes ao falar think e this.' },
-          { id: 'hw-13', task: 'Ouvir e repetir trava-línguas em inglês para treinar R e L', completed: false, notes: '', practiceTimeMinutes: 20, pronunciationNotes: 'Diferença entre red e led.' },
-          { id: 'hw-14', task: 'Gravador de voz: praticar entonação de perguntas e respostas em inglês', completed: false, notes: '', practiceTimeMinutes: 30, pronunciationNotes: 'Subir a entonação em Yes/No questions.' }
-        ]
-      },
-      {
-        id: 'eng-5',
-        title: 'Business English & Conversação Avançada',
-        completed: false,
-        priority: 'High',
-        notebookId: 'english',
-        level: 'Avançado',
-        categoryIcon: '💬',
-        createdAt: Date.now(),
-        lessons: ['Reuniões de Trabalho em Inglês', 'Vocabulário Corporativo & E-mails', 'Entrevistas de Emprego', 'Apresentações & Pitching'],
-        homeworks: [
-          { id: 'hw-15', task: 'Redigir um e-mail corporativo formal em inglês solicitando reunião', completed: false, notes: '', practiceTimeMinutes: 30 },
-          { id: 'hw-16', task: 'Simular entrevista de emprego respondendo: Tell me about yourself', completed: false, notes: '', practiceTimeMinutes: 35, pronunciationNotes: 'Fluência e conectivos adequados.' }
-        ]
-      },
-      { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
-      { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
-      { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
-      { id: '4', title: 'Finanças pessoais', completed: false, priority: 'Low', createdAt: Date.now() },
-    ];
+    if (!saved) return defaultTopics;
+    const parsed: StudyTopic[] = JSON.parse(saved);
+    // Garantir que os tópicos do curso de inglês estejam presentes no estado
+    const englishDefaults = defaultTopics.filter(t => t.notebookId === 'english');
+    const existingEngIds = new Set(parsed.filter(t => t.notebookId === 'english').map(t => t.id));
+    const missingEnglishTopics = englishDefaults.filter(t => !existingEngIds.has(t.id));
+    return [...missingEnglishTopics, ...parsed];
   });
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>(() => {
     const saved = localStorage.getItem('raquel_study_plans');
