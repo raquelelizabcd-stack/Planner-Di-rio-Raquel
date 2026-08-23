@@ -1148,6 +1148,7 @@ export default function App() {
   const [studyNotebooks, setStudyNotebooks] = useState<StudyNotebook[]>(() => {
     const saved = localStorage.getItem('raquel_study_notebooks');
     return saved ? JSON.parse(saved) : [
+      { id: 'english', title: 'Inglês', icon: '📘', color: '#3B82F6', createdAt: Date.now() },
       { id: '1', title: 'Programação', icon: '💻', color: '#6366f1', createdAt: Date.now() },
       { id: '2', title: 'Finanças', icon: '💰', color: '#10b981', createdAt: Date.now() },
       { id: '3', title: 'Pessoal', icon: '🏠', color: '#f59e0b', createdAt: Date.now() },
@@ -1171,6 +1172,10 @@ export default function App() {
   const [studyTopics, setStudyTopics] = useState<StudyTopic[]>(() => {
     const saved = localStorage.getItem('raquel_study_topics');
     return saved ? JSON.parse(saved) : [
+      { id: 'eng-1', title: 'Vocabulário básico', completed: false, priority: 'High', notebookId: 'english', createdAt: Date.now() },
+      { id: 'eng-2', title: 'Gramática essencial', completed: false, priority: 'High', notebookId: 'english', createdAt: Date.now() },
+      { id: 'eng-3', title: 'Conversação prática', completed: false, priority: 'Medium', notebookId: 'english', createdAt: Date.now() },
+      { id: 'eng-4', title: 'Listening e Pronúncia', completed: false, priority: 'Medium', notebookId: 'english', createdAt: Date.now() },
       { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
       { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
       { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
@@ -6253,13 +6258,89 @@ export default function App() {
                             ))}
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                            {/* Recent Progress */}
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Card Curso de Inglês */}
+                            <div className="glass-card p-8 rounded-3xl border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-slate-900/40 to-indigo-500/5 relative overflow-hidden flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-3xl">📘</span>
+                                    <div>
+                                      <h4 className="text-lg font-bold text-white">Curso de Inglês</h4>
+                                      <p className="text-xs text-slate-400">Vocabulário, gramática e conversação</p>
+                                    </div>
+                                  </div>
+                                  <span className="px-2.5 py-1 bg-blue-500/20 text-blue-400 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-500/30">Ativo</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mb-6 italic leading-relaxed">
+                                  “Curso de inglês para aprimorar vocabulário, gramática e conversação.”
+                                </p>
+                                <div className="space-y-4">
+                                  <div>
+                                    <div className="flex justify-between items-center text-xs font-bold mb-2">
+                                      <span className="text-slate-400">Progresso dos Tópicos</span>
+                                      <span className="text-blue-400">
+                                        {studyTopics.filter(t => t.notebookId === 'english' && t.completed).length} / {studyTopics.filter(t => t.notebookId === 'english').length} ({
+                                          studyTopics.filter(t => t.notebookId === 'english').length > 0
+                                            ? Math.round((studyTopics.filter(t => t.notebookId === 'english' && t.completed).length / studyTopics.filter(t => t.notebookId === 'english').length) * 100)
+                                            : 0
+                                        }%)
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
+                                      <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{
+                                          width: `${
+                                            studyTopics.filter(t => t.notebookId === 'english').length > 0
+                                              ? (studyTopics.filter(t => t.notebookId === 'english' && t.completed).length / studyTopics.filter(t => t.notebookId === 'english').length) * 100
+                                              : 0
+                                          }%`
+                                        }}
+                                        transition={{ duration: 0.8, ease: "easeOut" }}
+                                        className="bg-blue-500 h-full rounded-full shadow-lg shadow-blue-500/50"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sessões Foco</p>
+                                      <p className="text-base font-bold text-white">
+                                        {studySessions.filter(s => s.notebookId === 'english').length} sessões
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tempo Total</p>
+                                      <p className="text-base font-bold text-blue-400">
+                                        {Math.floor(studySessions.filter(s => s.notebookId === 'english').reduce((acc, s) => acc + s.duration, 0) / 60)}h {studySessions.filter(s => s.notebookId === 'english').reduce((acc, s) => acc + s.duration, 0) % 60}m
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedNotebookId('english');
+                                  setActiveStudyTab('topics');
+                                }}
+                                className="mt-6 w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                              >
+                                Ver Caderno de Inglês <ArrowRight size={14} />
+                              </button>
+                            </div>
+
+                            {/* Recent Progress / Evolução Semanal */}
                             <div className="glass-card p-8 rounded-3xl border-white/5">
-                              <h4 className="text-lg font-bold text-white mb-6 flex items-center gap-3">
-                                <TrendingUp size={20} className="text-emerald-400" />
-                                Evolução Semanal
-                              </h4>
+                              <div className="flex justify-between items-center mb-6">
+                                <h4 className="text-lg font-bold text-white flex items-center gap-3">
+                                  <TrendingUp size={20} className="text-emerald-400" />
+                                  Evolução Semanal
+                                </h4>
+                                <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-full border border-blue-500/20">
+                                  📘 Inglês incluso
+                                </span>
+                              </div>
                               <div className="h-48 w-full flex items-end gap-2 px-2">
                                 {[40, 70, 45, 90, 65, 80, 55].map((h, i) => (
                                   <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
