@@ -129,6 +129,15 @@ export interface StudyNote {
   updatedAt: number;
 }
 
+export interface EnglishHomework {
+  id: string;
+  task: string;
+  completed: boolean;
+  notes?: string;
+  practiceTimeMinutes?: number;
+  pronunciationNotes?: string;
+}
+
 export interface StudyTopic {
   id: string;
   title: string;
@@ -136,6 +145,10 @@ export interface StudyTopic {
   priority: 'High' | 'Medium' | 'Low';
   notebookId?: string;
   createdAt: number;
+  level?: 'Iniciante' | 'Intermediário' | 'Avançado';
+  categoryIcon?: string;
+  lessons?: string[];
+  homeworks?: EnglishHomework[];
 }
 
 export interface StudyPlan {

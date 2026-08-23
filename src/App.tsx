@@ -129,7 +129,9 @@ import {
   StudyNotebook,
   StudySession,
   StudyTabType,
-  FinanceDashboardSummary
+  MarketingCampaign,
+  FinanceDashboardSummary,
+  EnglishHomework
 } from './types';
 
 import CentralMarketing from './components/CentralMarketing';
@@ -1172,10 +1174,87 @@ export default function App() {
   const [studyTopics, setStudyTopics] = useState<StudyTopic[]>(() => {
     const saved = localStorage.getItem('raquel_study_topics');
     return saved ? JSON.parse(saved) : [
-      { id: 'eng-1', title: 'Vocabulário básico', completed: false, priority: 'High', notebookId: 'english', createdAt: Date.now() },
-      { id: 'eng-2', title: 'Gramática essencial', completed: false, priority: 'High', notebookId: 'english', createdAt: Date.now() },
-      { id: 'eng-3', title: 'Conversação prática', completed: false, priority: 'Medium', notebookId: 'english', createdAt: Date.now() },
-      { id: 'eng-4', title: 'Listening e Pronúncia', completed: false, priority: 'Medium', notebookId: 'english', createdAt: Date.now() },
+      {
+        id: 'eng-1',
+        title: 'Vocabulário Básico',
+        completed: false,
+        priority: 'High',
+        notebookId: 'english',
+        level: 'Iniciante',
+        categoryIcon: '📘',
+        createdAt: Date.now(),
+        lessons: ['Cores', 'Números', 'Dias da Semana', 'Meses', 'Comidas', 'Roupas', 'Objetos da Casa'],
+        homeworks: [
+          { id: 'hw-1', task: 'Escrever 10 frases com cores e números em inglês', completed: false, notes: '', practiceTimeMinutes: 15 },
+          { id: 'hw-2', task: 'Escrever 10 frases com dias da semana e meses', completed: false, notes: '', practiceTimeMinutes: 15 },
+          { id: 'hw-3', task: 'Escrever 10 frases descrevendo comidas e roupas favoritas', completed: false, notes: '', practiceTimeMinutes: 20 },
+          { id: 'hw-4', task: 'Escrever 10 frases sobre objetos da sua casa em inglês', completed: false, notes: '', practiceTimeMinutes: 20 }
+        ]
+      },
+      {
+        id: 'eng-2',
+        title: 'Gramática Essencial',
+        completed: false,
+        priority: 'High',
+        notebookId: 'english',
+        level: 'Iniciante',
+        categoryIcon: '✏️',
+        createdAt: Date.now(),
+        lessons: ['Verbo To Be', 'Verbo Have', 'Verbo Do', 'Pronomes Pessoais', 'Present Simple', 'Past Simple', 'Future Simple'],
+        homeworks: [
+          { id: 'hw-5', task: 'Montar 5 frases afirmativas, 5 negativas e 5 interrogativas com To Be', completed: false, notes: '', practiceTimeMinutes: 25 },
+          { id: 'hw-6', task: 'Montar frases usando Have e Do no Present Simple', completed: false, notes: '', practiceTimeMinutes: 20 },
+          { id: 'hw-7', task: 'Montar 10 frases contando um evento passado (Past Simple)', completed: false, notes: '', practiceTimeMinutes: 25 },
+          { id: 'hw-8', task: 'Montar 10 frases sobre planos futuros (Future Simple - Will / Going to)', completed: false, notes: '', practiceTimeMinutes: 20 }
+        ]
+      },
+      {
+        id: 'eng-3',
+        title: 'Conversação Prática',
+        completed: false,
+        priority: 'Medium',
+        notebookId: 'english',
+        level: 'Intermediário',
+        categoryIcon: '💬',
+        createdAt: Date.now(),
+        lessons: ['Saudações e Cumprimentos', 'Apresentações Pessoais', 'Pedir Informações e Direções', 'Fazer Compras e Pedidos', 'Conversar sobre Hobbies e Interesses'],
+        homeworks: [
+          { id: 'hw-9', task: 'Simular um diálogo de apresentação pessoal gravando áudio de 2 minutos', completed: false, notes: '', practiceTimeMinutes: 15 },
+          { id: 'hw-10', task: 'Simular compra em restaurante ou loja em inglês', completed: false, notes: '', practiceTimeMinutes: 20 },
+          { id: 'hw-11', task: 'Fazer diálogo simulado pedindo direções em uma cidade estrangeira', completed: false, notes: '', practiceTimeMinutes: 20 }
+        ]
+      },
+      {
+        id: 'eng-4',
+        title: 'Listening e Pronúncia',
+        completed: false,
+        priority: 'Medium',
+        notebookId: 'english',
+        level: 'Intermediário',
+        categoryIcon: '🎧',
+        createdAt: Date.now(),
+        lessons: ['Sons difíceis: TH (/θ/ e /ð/)', 'Sons de R e L em inglês', 'Pronúncia dos sons V e B', 'Entonação e Ritmo da fala'],
+        homeworks: [
+          { id: 'hw-12', task: 'Ouvir podcast curto e repetir 5 frases com o som TH', completed: false, notes: '', practiceTimeMinutes: 25, pronunciationNotes: 'Atenção com a língua entre os dentes ao falar think e this.' },
+          { id: 'hw-13', task: 'Ouvir e repetir trava-línguas em inglês para treinar R e L', completed: false, notes: '', practiceTimeMinutes: 20, pronunciationNotes: 'Diferença entre red e led.' },
+          { id: 'hw-14', task: 'Gravador de voz: praticar entonação de perguntas e respostas em inglês', completed: false, notes: '', practiceTimeMinutes: 30, pronunciationNotes: 'Subir a entonação em Yes/No questions.' }
+        ]
+      },
+      {
+        id: 'eng-5',
+        title: 'Business English & Conversação Avançada',
+        completed: false,
+        priority: 'High',
+        notebookId: 'english',
+        level: 'Avançado',
+        categoryIcon: '💬',
+        createdAt: Date.now(),
+        lessons: ['Reuniões de Trabalho em Inglês', 'Vocabulário Corporativo & E-mails', 'Entrevistas de Emprego', 'Apresentações & Pitching'],
+        homeworks: [
+          { id: 'hw-15', task: 'Redigir um e-mail corporativo formal em inglês solicitando reunião', completed: false, notes: '', practiceTimeMinutes: 30 },
+          { id: 'hw-16', task: 'Simular entrevista de emprego respondendo: Tell me about yourself', completed: false, notes: '', practiceTimeMinutes: 35, pronunciationNotes: 'Fluência e conectivos adequados.' }
+        ]
+      },
       { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
       { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
       { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
@@ -1260,6 +1339,40 @@ export default function App() {
     root.style.setProperty('--card-radius', `${borderRadius}px`);
   }, [theme, accentColor, borderRadius]);
   const [debugNotes, setDebugNotes] = useState<string>('');
+  const [showSpeechModal, setShowSpeechModal] = useState(false);
+  const [speechPhrases, setSpeechPhrases] = useState([
+    { en: 'Hello! My name is Raquel, nice to meet you.', pt: 'Olá! Meu nome é Raquel, prazer em te conhecer.' },
+    { en: 'Could you please help me find the nearest train station?', pt: 'Você poderia me ajudar a encontrar a estação de trem mais próxima?' },
+    { en: 'I would like to order a cup of coffee and a croissant, please.', pt: 'Gostaria de pedir uma xícara de café e um croissant, por favor.' },
+    { en: 'What do you like to do in your free time?', pt: 'O que você gosta de fazer no seu tempo livre?' },
+    { en: 'Thank you for your time and assistance today!', pt: 'Obrigada pelo seu tempo e assistência hoje!' }
+  ]);
+  const [currentSpeechIdx, setCurrentSpeechIdx] = useState(0);
+
+  const handleToggleEnglishHomework = (topicId: string, hwId: string) => {
+    setStudyTopics(prev => prev.map(topic => {
+      if (topic.id !== topicId || !topic.homeworks) return topic;
+      const updatedHw = topic.homeworks.map(hw => {
+        if (hw.id !== hwId) return hw;
+        return { ...hw, completed: !hw.completed };
+      });
+      // se todos os deveres estiverem concluídos, marcar o tópico como concluído
+      const allDone = updatedHw.every(h => h.completed);
+      return { ...topic, homeworks: updatedHw, completed: allDone };
+    }));
+    showToastWithMsg('Dever atualizado!');
+  };
+
+  const handleUpdateEnglishHomework = (topicId: string, hwId: string, updates: Partial<EnglishHomework>) => {
+    setStudyTopics(prev => prev.map(topic => {
+      if (topic.id !== topicId || !topic.homeworks) return topic;
+      return {
+        ...topic,
+        homeworks: topic.homeworks.map(hw => hw.id === hwId ? { ...hw, ...updates } : hw)
+      };
+    }));
+    showToastWithMsg('Anotação e tempo registrados!');
+  };
   const [pomodoroTime, setPomodoroTime] = useState(25 * 60);
   const [isPomodoroActive, setIsPomodoroActive] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 768 : true);
@@ -2617,6 +2730,109 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
+      {/* ===== MODAL: PRATICAR FALA (SIMULAÇÃO DE CONVERSAÇÃO) ===== */}
+      <AnimatePresence>
+        {showSpeechModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSpeechModal(false)}
+              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative z-10 w-full max-w-xl bg-[#18181b] border border-blue-500/30 rounded-3xl p-8 shadow-2xl overflow-hidden"
+            >
+              <button
+                onClick={() => setShowSpeechModal(false)}
+                className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+              >
+                <X size={18} />
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-blue-500/10 rounded-2xl border border-blue-500/20 text-blue-400">
+                  <Volume2 size={24} />
+                </div>
+                <div>
+                  <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                    Praticar Fala & Pronúncia
+                    <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                      Guia de Diálogo
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">Simulação de conversação com frases e pronúncia guiada</p>
+                </div>
+              </div>
+
+              {/* Frase Atual */}
+              <div className="p-6 bg-gradient-to-br from-blue-500/10 via-slate-900/60 to-indigo-500/10 border border-blue-500/20 rounded-2xl space-y-4 mb-6 relative">
+                <div className="flex justify-between items-center text-xs font-bold text-blue-400">
+                  <span>Frase {currentSpeechIdx + 1} de {speechPhrases.length}</span>
+                  <span className="px-2 py-0.5 bg-blue-500/20 rounded-full text-[10px] uppercase">Nível Prático</span>
+                </div>
+                <div>
+                  <p className="text-lg font-display font-bold text-white leading-snug">
+                    "{speechPhrases[currentSpeechIdx].en}"
+                  </p>
+                  <p className="text-sm text-slate-400 italic mt-1">
+                    Tradução: {speechPhrases[currentSpeechIdx].pt}
+                  </p>
+                </div>
+              </div>
+
+              {/* Instruções & Botões de Fala */}
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl mb-6 space-y-2">
+                <p className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                  <span>💡</span> Dica de Pronúncia:
+                </p>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Fale a frase em voz alta repetindo 3 vezes. Preste atenção no ritmo, pausa entre as palavras e entonação.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setCurrentSpeechIdx(prev => (prev > 0 ? prev - 1 : speechPhrases.length - 1))}
+                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 transition-all"
+                >
+                  ← Anterior
+                </button>
+
+                <button
+                  onClick={() => {
+                    const utterance = new SpeechSynthesisUtterance(speechPhrases[currentSpeechIdx].en);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.9;
+                    window.speechSynthesis.speak(utterance);
+                    showToastWithMsg('Reproduzindo pronúncia...');
+                  }}
+                  className="flex-1 py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 transition-all active:scale-95"
+                >
+                  <Volume2 size={16} /> Ouvir Pronúncia (Áudio)
+                </button>
+
+                <button
+                  onClick={() => setCurrentSpeechIdx(prev => (prev + 1) % speechPhrases.length)}
+                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs rounded-xl border border-white/10 transition-all"
+                >
+                  Próxima →
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Modals e Overlays Globais */}
       <AnimatePresence>
         {selectedProjectForView && (
@@ -6502,12 +6718,36 @@ export default function App() {
                           exit={{ opacity: 0, x: -20 }}
                           className="max-w-4xl mx-auto space-y-8"
                         >
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-2xl font-display font-bold text-white">Tópicos de Estudo</h3>
-                            <div className="flex items-center gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Alta</span>
-                              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /> Média</span>
-                              <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Baixa</span>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                              <h3 className="text-2xl font-display font-bold text-white flex items-center gap-3">
+                                Tópicos de Estudo
+                                {selectedNotebookId === 'english' && (
+                                  <span className="text-xs px-3 py-1 bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full font-bold">
+                                    📘 Curso de Inglês
+                                  </span>
+                                )}
+                              </h3>
+                              <p className="text-xs text-slate-400 mt-1">
+                                {selectedNotebookId === 'english'
+                                  ? 'Lições, deveres de vocabulário, gramática, conversação e pronúncia'
+                                  : 'Organize suas metas e prioridades de aprendizado'}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {selectedNotebookId === 'english' && (
+                                <button
+                                  onClick={() => setShowSpeechModal(true)}
+                                  className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all active:scale-95 border border-white/10"
+                                >
+                                  <span>💬</span> Praticar Fala
+                                </button>
+                              )}
+                              <div className="hidden sm:flex items-center gap-4 text-xs font-bold text-slate-500 uppercase tracking-widest bg-white/5 px-4 py-2 rounded-xl border border-white/5">
+                                <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-rose-500" /> Alta</span>
+                                <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500" /> Média</span>
+                                <span className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Baixa</span>
+                              </div>
                             </div>
                           </div>
 
@@ -6517,7 +6757,7 @@ export default function App() {
                               type="text"
                               value={newStudyTopic}
                               onChange={(e) => setNewStudyTopic(e.target.value)}
-                              placeholder="O que você precisa aprender?"
+                              placeholder={selectedNotebookId === 'english' ? 'Nova lição ou tópico de inglês...' : 'O que você precisa aprender?'}
                               className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-600 text-lg"
                             />
                             <div className="flex items-center gap-3">
@@ -6542,10 +6782,14 @@ export default function App() {
                           </div>
 
                           {/* Topics List */}
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             <AnimatePresence mode="popLayout">
                               {studyTopics
-                                .filter(t => t.title.toLowerCase().includes(studySearchQuery.toLowerCase()))
+                                .filter(t => {
+                                  const matchesSearch = t.title.toLowerCase().includes(studySearchQuery.toLowerCase());
+                                  const matchesNotebook = selectedNotebookId ? t.notebookId === selectedNotebookId : true;
+                                  return matchesSearch && matchesNotebook;
+                                })
                                 .sort((a, b) => {
                                   if (a.completed !== b.completed) return a.completed ? 1 : -1;
                                   const priorityMap = { High: 0, Medium: 1, Low: 2 };
@@ -6558,44 +6802,130 @@ export default function App() {
                                     animate={{ opacity: 1, y: 0 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
                                     key={topic.id}
-                                    className={`group flex items-center justify-between p-5 rounded-2xl border transition-all ${
+                                    className={`group flex flex-col p-6 rounded-3xl border transition-all ${
                                       topic.completed 
-                                        ? 'bg-white/[0.01] border-white/5 opacity-60' 
-                                        : 'bg-white/5 border-white/10 hover:border-white/20'
+                                        ? 'bg-white/[0.01] border-white/5 opacity-80' 
+                                        : 'bg-white/5 border-white/10 hover:border-blue-500/30'
                                     }`}
                                   >
-                                    <div className="flex items-center gap-4">
-                                      <button
-                                        onClick={() => handleToggleStudyTopic(topic.id)}
-                                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                          topic.completed 
-                                            ? 'bg-emerald-500 border-emerald-500 text-white' 
-                                            : 'border-white/20 hover:border-indigo-500'
-                                        }`}
-                                      >
-                                        {topic.completed && <Check size={14} strokeWidth={3} />}
-                                      </button>
-                                      <div>
-                                        <span className={`text-base font-medium transition-all ${topic.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
-                                          {topic.title}
-                                        </span>
-                                        <div className="flex items-center gap-3 mt-1">
-                                          <div className="flex items-center gap-1.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${
-                                              topic.priority === 'High' ? 'bg-rose-500' : 
-                                              topic.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                                            }`} />
-                                            <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{topic.priority}</span>
+                                    {/* Header do Tópico */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-4">
+                                        <button
+                                          onClick={() => handleToggleStudyTopic(topic.id)}
+                                          className={`w-7 h-7 rounded-xl border-2 flex items-center justify-center transition-all ${
+                                            topic.completed 
+                                              ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+                                              : 'border-white/20 hover:border-blue-500'
+                                          }`}
+                                        >
+                                          {topic.completed && <Check size={16} strokeWidth={3} />}
+                                        </button>
+                                        <div>
+                                          <div className="flex items-center gap-2">
+                                            {topic.categoryIcon && <span className="text-lg">{topic.categoryIcon}</span>}
+                                            <span className={`text-base font-bold transition-all ${topic.completed ? 'text-slate-500 line-through' : 'text-white'}`}>
+                                              {topic.title}
+                                            </span>
+                                            {topic.level && (
+                                              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                                                topic.level === 'Iniciante' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                                                topic.level === 'Intermediário' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                                                'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                              }`}>
+                                                {topic.level}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-3 mt-1">
+                                            <div className="flex items-center gap-1.5">
+                                              <div className={`w-1.5 h-1.5 rounded-full ${
+                                                topic.priority === 'High' ? 'bg-rose-500' : 
+                                                topic.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
+                                              }`} />
+                                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{topic.priority}</span>
+                                            </div>
+                                            {topic.lessons && (
+                                              <span className="text-[10px] text-slate-500 font-medium">
+                                                • {topic.lessons.length} lições
+                                              </span>
+                                            )}
                                           </div>
                                         </div>
                                       </div>
+                                      <button 
+                                        onClick={() => handleDeleteStudyTopic(topic.id)}
+                                        className="p-2 text-slate-600 hover:text-red-400 hover:bg-red-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
+                                      >
+                                        <Trash2 size={16} />
+                                      </button>
                                     </div>
-                                    <button 
-                                      onClick={() => handleDeleteStudyTopic(topic.id)}
-                                      className="p-2 text-slate-700 hover:text-red-400 hover:bg-red-400/10 rounded-xl opacity-0 group-hover:opacity-100 transition-all"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
+
+                                    {/* Lições Incluídas (se houver) */}
+                                    {topic.lessons && topic.lessons.length > 0 && (
+                                      <div className="mt-4 pt-4 border-t border-white/5">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">📘 Lições do Tópico:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {topic.lessons.map((lesson, idx) => (
+                                            <span key={idx} className="px-3 py-1 bg-white/5 border border-white/10 rounded-xl text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                                              <span className="text-blue-400 font-bold">•</span> {lesson}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Deveres e Práticas Práticas (se houver) */}
+                                    {topic.homeworks && topic.homeworks.length > 0 && (
+                                      <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">📝 Deveres & Exercícios Práticos:</p>
+                                        <div className="space-y-2">
+                                          {topic.homeworks.map((hw) => (
+                                            <div key={hw.id} className="p-3 bg-white/5 rounded-2xl border border-white/5 hover:border-white/10 transition-all space-y-2">
+                                              <div className="flex items-center justify-between gap-3">
+                                                <div className="flex items-center gap-3 flex-1">
+                                                  <button
+                                                    onClick={() => handleToggleEnglishHomework(topic.id, hw.id)}
+                                                    className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                                                      hw.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-white/20 hover:border-blue-400'
+                                                    }`}
+                                                  >
+                                                    {hw.completed && <Check size={12} strokeWidth={3} />}
+                                                  </button>
+                                                  <span className={`text-xs font-medium ${hw.completed ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                                    {hw.task}
+                                                  </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                  <div className="flex items-center gap-1 px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-[10px] font-bold">
+                                                    <Clock size={11} />
+                                                    <span>{hw.practiceTimeMinutes || 15}m</span>
+                                                  </div>
+                                                </div>
+                                              </div>
+
+                                              {/* Observações de Pronúncia & Anotações */}
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pl-8">
+                                                <input
+                                                  type="text"
+                                                  value={hw.notes || ''}
+                                                  placeholder="Sua frase / anotação..."
+                                                  onChange={(e) => handleUpdateEnglishHomework(topic.id, hw.id, { notes: e.target.value })}
+                                                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50"
+                                                />
+                                                <input
+                                                  type="text"
+                                                  value={hw.pronunciationNotes || ''}
+                                                  placeholder="Obs. de Pronúncia / Correção..."
+                                                  onChange={(e) => handleUpdateEnglishHomework(topic.id, hw.id, { pronunciationNotes: e.target.value })}
+                                                  className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
+                                                />
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
                                   </motion.div>
                                 ))}
                             </AnimatePresence>
