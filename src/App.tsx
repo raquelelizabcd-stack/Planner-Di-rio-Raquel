@@ -1284,6 +1284,54 @@ export default function App() {
         { id: 'hw-prog-9', task: 'Publicar projeto com pipeline automatizado (Docker + CI/CD)', completed: false, notes: '', practiceTimeMinutes: 60 }
       ]
     },
+    {
+      id: 'prog-prj-1',
+      title: 'Projeto 1: Assistente de Código com IA',
+      completed: false,
+      priority: 'High',
+      notebookId: '1',
+      level: 'Avançado',
+      categoryIcon: '💡',
+      createdAt: Date.now(),
+      lessons: ['Objetivo: Criar um assistente que gera código com base em prompts', 'Tecnologias: Node.js, OpenAI API, Docker'],
+      homeworks: [
+        { id: 'hw-p1-1', task: 'Configurar ambiente e dependências', completed: false, notes: 'Node.js + OpenAI API', practiceTimeMinutes: 30, published: false },
+        { id: 'hw-p1-2', task: 'Criar interface simples para entrada de prompts', completed: false, notes: 'Input + área de código', practiceTimeMinutes: 45, published: false },
+        { id: 'hw-p1-3', task: 'Publicar no GitHub com documentação completa dos endpoints e prompts', completed: false, notes: 'README.md + Repo Publicado', practiceTimeMinutes: 40, published: true }
+      ]
+    },
+    {
+      id: 'prog-prj-2',
+      title: 'Projeto 2: API Inteligente de Usuários',
+      completed: false,
+      priority: 'High',
+      notebookId: '1',
+      level: 'Avançado',
+      categoryIcon: '🧠',
+      createdAt: Date.now(),
+      lessons: ['Objetivo: Integrar IA para validar e otimizar dados de usuários', 'Tecnologias: Python (FastAPI), PostgreSQL, Azure AI'],
+      homeworks: [
+        { id: 'hw-p2-1', task: 'Criar endpoints REST para gestão de usuários', completed: false, notes: 'FastAPI + Swagger', practiceTimeMinutes: 40, published: false },
+        { id: 'hw-p2-2', task: 'Implementar IA para análise e validação de dados', completed: false, notes: 'Validação inteligente', practiceTimeMinutes: 50, published: false },
+        { id: 'hw-p2-3', task: 'Testar API e publicar com CI/CD configurado', completed: false, notes: 'Pytest + GitHub Actions', practiceTimeMinutes: 45, published: true }
+      ]
+    },
+    {
+      id: 'prog-prj-3',
+      title: 'Projeto 3: Dashboard de Insights com IA',
+      completed: false,
+      priority: 'High',
+      notebookId: '1',
+      level: 'Avançado',
+      categoryIcon: '📊',
+      createdAt: Date.now(),
+      lessons: ['Objetivo: Gerar relatórios automáticos e gráficos com IA', 'Tecnologias: React, Supabase, ChatGPT API'],
+      homeworks: [
+        { id: 'hw-p3-1', task: 'Criar interface visual responsiva em React', completed: false, notes: 'Gráficos e Cards UI', practiceTimeMinutes: 60, published: false },
+        { id: 'hw-p3-2', task: 'Integrar IA para gerar insights dos dados automaticamente', completed: false, notes: 'ChatGPT API integration', practiceTimeMinutes: 45, published: false },
+        { id: 'hw-p3-3', task: 'Publicar o dashboard de insights online', completed: false, notes: 'Deploy na Vercel / Netlify', practiceTimeMinutes: 30, published: true }
+      ]
+    },
     { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
     { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
     { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
@@ -7048,8 +7096,8 @@ export default function App() {
                                                 </div>
                                               </div>
 
-                                              {/* Observações de Pronúncia & Anotações */}
-                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 pl-8">
+                                              {/* Observações de Pronúncia & Anotações & Opção de Publicar */}
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1 pl-8 items-center">
                                                 <input
                                                   type="text"
                                                   value={hw.notes || ''}
@@ -7060,10 +7108,23 @@ export default function App() {
                                                 <input
                                                   type="text"
                                                   value={hw.pronunciationNotes || ''}
-                                                  placeholder="Obs. de Pronúncia / Correção..."
+                                                  placeholder="Obs. de Pronúncia / Observação..."
                                                   onChange={(e) => handleUpdateEnglishHomework(topic.id, hw.id, { pronunciationNotes: e.target.value })}
                                                   className="bg-black/30 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-amber-300 placeholder-slate-600 focus:outline-none focus:border-amber-500/50"
                                                 />
+                                                <div className="flex items-center gap-2">
+                                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Publicar:</span>
+                                                  <button
+                                                    onClick={() => handleUpdateEnglishHomework(topic.id, hw.id, { published: !hw.published })}
+                                                    className={`px-3 py-1 rounded-xl text-[10px] font-bold transition-all border ${
+                                                      hw.published
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-sm shadow-emerald-500/20'
+                                                        : 'bg-white/5 text-slate-400 border-white/10 hover:bg-white/10'
+                                                    }`}
+                                                  >
+                                                    {hw.published ? '✅ Sim (Publicado)' : '❌ Não'}
+                                                  </button>
+                                                </div>
                                               </div>
                                             </div>
                                           ))}

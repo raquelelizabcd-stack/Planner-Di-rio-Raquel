@@ -136,6 +136,7 @@ export interface EnglishHomework {
   notes?: string;
   practiceTimeMinutes?: number;
   pronunciationNotes?: string;
+  published?: boolean;
 }
 
 export interface StudyTopic {
