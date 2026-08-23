@@ -1236,6 +1236,54 @@ export default function App() {
         { id: 'hw-16', task: 'Simular entrevista de emprego respondendo: Tell me about yourself', completed: false, notes: '', practiceTimeMinutes: 35, pronunciationNotes: 'Fluência e conectivos adequados.' }
       ]
     },
+    {
+      id: 'prog-1',
+      title: 'Backend',
+      completed: false,
+      priority: 'High',
+      notebookId: '1',
+      level: 'Avançado',
+      categoryIcon: '⚙️',
+      createdAt: Date.now(),
+      lessons: ['Fundamentos de APIs REST', 'Autenticação e Segurança (JWT, OAuth2)', 'Frameworks: Express.js, Spring Boot, FastAPI', 'Testes Automatizados e CI/CD'],
+      homeworks: [
+        { id: 'hw-prog-1', task: 'Criar API de cadastro de usuários', completed: false, notes: '', practiceTimeMinutes: 45 },
+        { id: 'hw-prog-2', task: 'Implementar autenticação e CRUD completo', completed: false, notes: '', practiceTimeMinutes: 60 },
+        { id: 'hw-prog-3', task: 'Publicar no GitHub e documentar endpoints', completed: false, notes: '', practiceTimeMinutes: 30 }
+      ]
+    },
+    {
+      id: 'prog-2',
+      title: 'Banco de Dados',
+      completed: false,
+      priority: 'High',
+      notebookId: '1',
+      level: 'Avançado',
+      categoryIcon: '🗄️',
+      createdAt: Date.now(),
+      lessons: ['Modelagem Relacional e Normalização', 'SQL Avançado (JOIN, Índices, Triggers)', 'NoSQL (MongoDB, Redis)', 'Integração com IA para Análise de Dados'],
+      homeworks: [
+        { id: 'hw-prog-4', task: 'Criar banco relacional para e-commerce', completed: false, notes: '', practiceTimeMinutes: 50 },
+        { id: 'hw-prog-5', task: 'Gerar relatórios automáticos com IA', completed: false, notes: '', practiceTimeMinutes: 40 },
+        { id: 'hw-prog-6', task: 'Implementar consultas otimizadas com índices', completed: false, notes: '', practiceTimeMinutes: 35 }
+      ]
+    },
+    {
+      id: 'prog-3',
+      title: 'Engenharia de Software com IA',
+      completed: false,
+      priority: 'High',
+      notebookId: '1',
+      level: 'Avançado',
+      categoryIcon: '🤖',
+      createdAt: Date.now(),
+      lessons: ['Engenharia de Prompt e Geração de Código', 'Automação de Testes e Documentação com IA', 'DevOps com Docker e GitHub Actions', 'Ética e Segurança em Sistemas Inteligentes'],
+      homeworks: [
+        { id: 'hw-prog-7', task: 'Criar assistente que gera código com prompts', completed: false, notes: '', practiceTimeMinutes: 45 },
+        { id: 'hw-prog-8', task: 'Usar IA para revisar e otimizar uma API', completed: false, notes: '', practiceTimeMinutes: 40 },
+        { id: 'hw-prog-9', task: 'Publicar projeto com pipeline automatizado (Docker + CI/CD)', completed: false, notes: '', practiceTimeMinutes: 60 }
+      ]
+    },
     { id: '1', title: 'Aprender Supabase', completed: false, priority: 'High', createdAt: Date.now() },
     { id: '2', title: 'Organização pessoal', completed: false, priority: 'Medium', createdAt: Date.now() },
     { id: '3', title: 'Estudos de programação', completed: false, priority: 'High', createdAt: Date.now() },
@@ -1272,11 +1320,12 @@ export default function App() {
     const saved = localStorage.getItem('raquel_study_topics');
     if (!saved) return defaultTopics;
     const parsed: StudyTopic[] = JSON.parse(saved);
-    // Garantir que os tópicos do curso de inglês estejam presentes no estado
-    const englishDefaults = defaultTopics.filter(t => t.notebookId === 'english');
-    const existingEngIds = new Set(parsed.filter(t => t.notebookId === 'english').map(t => t.id));
-    const missingEnglishTopics = englishDefaults.filter(t => !existingEngIds.has(t.id));
-    return [...missingEnglishTopics, ...parsed];
+    
+    // Garantir que os tópicos do curso de inglês e programação estejam presentes
+    const requiredDefaults = defaultTopics.filter(t => t.notebookId === 'english' || t.notebookId === '1');
+    const existingIds = new Set(parsed.map(t => t.id));
+    const missingTopics = requiredDefaults.filter(t => !existingIds.has(t.id));
+    return [...missingTopics, ...parsed];
   });
   const [studyPlans, setStudyPlans] = useState<StudyPlan[]>(() => {
     const saved = localStorage.getItem('raquel_study_plans');
@@ -6491,7 +6540,7 @@ export default function App() {
                             ))}
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             {/* Card Curso de Inglês */}
                             <div className="glass-card p-8 rounded-3xl border-blue-500/30 bg-gradient-to-br from-blue-500/10 via-slate-900/40 to-indigo-500/5 relative overflow-hidden flex flex-col justify-between">
                               <div>
@@ -6560,6 +6609,77 @@ export default function App() {
                                 className="mt-6 w-full py-2.5 bg-blue-500 hover:bg-blue-600 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
                               >
                                 Ver Caderno de Inglês <ArrowRight size={14} />
+                              </button>
+                            </div>
+
+                            {/* Card Curso Programação Avançada com IA */}
+                            <div className="glass-card p-8 rounded-3xl border-indigo-500/30 bg-gradient-to-br from-indigo-500/10 via-slate-900/40 to-purple-500/5 relative overflow-hidden flex flex-col justify-between">
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-3xl">💻</span>
+                                    <div>
+                                      <h4 className="text-lg font-bold text-white">Programação Avançada com IA</h4>
+                                      <p className="text-xs text-slate-400">Backend, Banco de Dados e Engenharia de Software com IA</p>
+                                    </div>
+                                  </div>
+                                  <span className="px-2.5 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-bold uppercase tracking-wider border border-indigo-500/30">Ativo</span>
+                                </div>
+                                <p className="text-xs text-slate-400 mb-6 italic leading-relaxed">
+                                  “Backend, Banco de Dados e Engenharia de Software com IA.”
+                                </p>
+                                <div className="space-y-4">
+                                  <div>
+                                    <div className="flex justify-between items-center text-xs font-bold mb-2">
+                                      <span className="text-slate-400">Progresso dos Tópicos</span>
+                                      <span className="text-indigo-400">
+                                        {studyTopics.filter(t => (t.notebookId === '1' || t.notebookId === 'programacao') && t.completed).length} / {studyTopics.filter(t => t.notebookId === '1' || t.notebookId === 'programacao').length} ({
+                                          studyTopics.filter(t => t.notebookId === '1' || t.notebookId === 'programacao').length > 0
+                                            ? Math.round((studyTopics.filter(t => (t.notebookId === '1' || t.notebookId === 'programacao') && t.completed).length / studyTopics.filter(t => t.notebookId === '1' || t.notebookId === 'programacao').length) * 100)
+                                            : 0
+                                        }%)
+                                      </span>
+                                    </div>
+                                    <div className="w-full bg-white/10 h-2.5 rounded-full overflow-hidden">
+                                      <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{
+                                          width: `${
+                                            studyTopics.filter(t => t.notebookId === '1' || t.notebookId === 'programacao').length > 0
+                                              ? (studyTopics.filter(t => (t.notebookId === '1' || t.notebookId === 'programacao') && t.completed).length / studyTopics.filter(t => t.notebookId === '1' || t.notebookId === 'programacao').length) * 100
+                                              : 0
+                                          }%`
+                                        }}
+                                        transition={{ duration: 0.8, ease: "easeOut" }}
+                                        className="bg-indigo-500 h-full rounded-full shadow-lg shadow-indigo-500/50"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 gap-3 pt-2">
+                                    <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Sessões Foco</p>
+                                      <p className="text-base font-bold text-white">
+                                        {studySessions.filter(s => s.notebookId === '1' || s.notebookId === 'programacao').length} sessões
+                                      </p>
+                                    </div>
+                                    <div className="p-3 bg-white/5 rounded-2xl border border-white/5">
+                                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Tempo Total</p>
+                                      <p className="text-base font-bold text-indigo-400">
+                                        {Math.floor(studySessions.filter(s => s.notebookId === '1' || s.notebookId === 'programacao').reduce((acc, s) => acc + s.duration, 0) / 60)}h {studySessions.filter(s => s.notebookId === '1' || s.notebookId === 'programacao').reduce((acc, s) => acc + s.duration, 0) % 60}m
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedNotebookId('1');
+                                  setActiveStudyTab('topics');
+                                }}
+                                className="mt-6 w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-all shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2"
+                              >
+                                Ver Caderno de Programação <ArrowRight size={14} />
                               </button>
                             </div>
 
@@ -6744,10 +6864,17 @@ export default function App() {
                                     📘 Curso de Inglês
                                   </span>
                                 )}
+                                {(selectedNotebookId === '1' || selectedNotebookId === 'programacao') && (
+                                  <span className="text-xs px-3 py-1 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 rounded-full font-bold">
+                                    💻 Programação Avançada com IA
+                                  </span>
+                                )}
                               </h3>
                               <p className="text-xs text-slate-400 mt-1">
                                 {selectedNotebookId === 'english'
                                   ? 'Lições, deveres de vocabulário, gramática, conversação e pronúncia'
+                                  : (selectedNotebookId === '1' || selectedNotebookId === 'programacao')
+                                  ? 'Backend, Banco de Dados e Engenharia de Software com IA'
                                   : 'Organize suas metas e prioridades de aprendizado'}
                               </p>
                             </div>
