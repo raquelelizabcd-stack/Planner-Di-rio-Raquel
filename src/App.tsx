@@ -1379,23 +1379,16 @@ export default function App() {
     if (!saved) return defaultTopics;
     const parsed: StudyTopic[] = JSON.parse(saved);
     
-    // Mesclar atualizações dos defaultTopics (como detailedLessons e metadata) com os dados salvos
+    // Sempre aplicar novos defaultTopics (detailedLessons, metadata, etc) sobre os dados salvos
     const defaultMap = new Map(defaultTopics.map(t => [t.id, t]));
     const mergedSaved = parsed.map(savedTopic => {
       const def = defaultMap.get(savedTopic.id);
       if (!def) return savedTopic;
       return {
-        ...def,
         ...savedTopic,
-        // Manter detailedLessons atualizado com novos conteúdos se o salvo estiver vazio ou incompleto
-        detailedLessons: (savedTopic.detailedLessons && savedTopic.detailedLessons.length > 0)
-          ? savedTopic.detailedLessons 
-          : def.detailedLessons,
-        description: savedTopic.description || def.description,
-        objective: savedTopic.objective || def.objective,
-        prerequisites: (savedTopic.prerequisites && savedTopic.prerequisites.length > 0) ? savedTopic.prerequisites : def.prerequisites,
-        technologies: (savedTopic.technologies && savedTopic.technologies.length > 0) ? savedTopic.technologies : def.technologies,
-        officialResources: (savedTopic.officialResources && savedTopic.officialResources.length > 0) ? savedTopic.officialResources : def.officialResources
+        ...def, // def sobrescreve com a versão mais recente contendo detailedLessons
+        completed: savedTopic.completed, // preservar status de conclusão do usuário
+        homeworks: savedTopic.homeworks || def.homeworks
       };
     });
 
