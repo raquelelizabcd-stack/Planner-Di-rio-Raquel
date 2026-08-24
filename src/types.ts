@@ -156,12 +156,12 @@ export interface StudyLessonDetail {
   bestPractices?: string;
   commonErrors?: string;
   securityAndPerformance?: string;
-  stepByStep: string[];
+  stepByStep?: string[];
   practicalExercise: string;
   challenge: string;
   completionCriteria: string;
   relatedRealProject: string;
-  reviewChecklist: string[];
+  reviewChecklist?: string[];
   githubUrl?: string;
   appUrl?: string;
   notes?: string;
