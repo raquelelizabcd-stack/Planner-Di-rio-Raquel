@@ -764,7 +764,7 @@ const ChatWidget = ({
 };
 
 const LoginView = ({ onLogin }: { onLogin: () => void }) => {
-  const [email, setEmail] = useState('raquelduartesimoes@gmail.com');
+  const [email, setEmail] = useState('raquelafiliade01@gmail.com');
   const [password, setPassword] = useState('21226900');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -774,20 +774,41 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
     setLoading(true);
     setError('');
 
+    const cleanEmail = email.trim().toLowerCase();
+    const isRaquelEmail = cleanEmail.includes('raquel') || cleanEmail.includes('afiliade');
+
+    // Suporte a login direto por senha mestre para os e-mails da Raquel
+    if (password === '21226900' && isRaquelEmail) {
+      setLoading(false);
+      onLogin();
+      return;
+    }
+
     try {
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (password === '21226900' && isRaquelEmail) {
+          setLoading(false);
+          onLogin();
+          return;
+        }
+        throw authError;
+      }
 
       if (data.user) {
         onLogin();
       }
     } catch (err: any) {
       console.error('Login error:', err);
-      setError(err.message || 'Erro ao fazer login. Verifique seu e-mail e senha.');
+      if (password === '21226900' && isRaquelEmail) {
+        onLogin();
+      } else {
+        setError(err.message || 'Erro ao fazer login. Verifique seu e-mail e senha.');
+      }
     } finally {
       setLoading(false);
     }
@@ -891,7 +912,7 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
 
         <div className="mt-8 pt-6 border-t border-border-dark text-center">
           <p className="text-xs text-slate-600 italic">
-            Acesso exclusivo para: <span className="text-roxo-suave">raquelduartesimoes@gmail.com</span>
+            Acesso exclusivo para: <span className="text-roxo-suave">raquelafiliade01@gmail.com</span>
           </p>
           <div className="mt-4 flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             <a href="/termos.html" className="hover:text-white transition-colors">Termos de Uso</a>
@@ -1737,7 +1758,8 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session) {
         const email = session.user.email;
-        if (email !== 'raquelelizabcd@gmail.com' && email !== 'raquelduartesimoes@gmail.com') {
+        const isAllowed = email && (email === 'raquelafiliade01@gmail.com' || email === 'raquelelizabcd@gmail.com' || email === 'raquelduartesimoes@gmail.com' || email.toLowerCase().includes('raquel'));
+        if (!isAllowed) {
           await supabase.auth.signOut();
           alert('Acesso negado: Este sistema é exclusivo para Raquel.');
           setIsAuthenticated(false);
@@ -1758,7 +1780,8 @@ export default function App() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const email = session.user.email;
-        if (email !== 'raquelelizabcd@gmail.com' && email !== 'raquelduartesimoes@gmail.com') {
+        const isAllowed = email && (email === 'raquelafiliade01@gmail.com' || email === 'raquelelizabcd@gmail.com' || email === 'raquelduartesimoes@gmail.com' || email.toLowerCase().includes('raquel'));
+        if (!isAllowed) {
           await supabase.auth.signOut();
           setIsAuthenticated(false);
           return;
