@@ -219,7 +219,17 @@ export interface StudyProgress {
 
 export type StudyTabType = 'general' | 'notes' | 'topics' | 'focus' | 'planning';
 
-export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies' | 'marketing';
+export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies' | 'marketing' | 'professora_marketing';
+
+export interface ProfessoraMarketingItem {
+  id: string;
+  title: string;
+  category: 'plano_aula' | 'material_didatico' | 'assistente_mercado' | 'slides' | 'sequencia_didatica' | 'folha_atividade' | 'ideias_atividades' | 'jogos_educativos' | 'quiz';
+  content: string;
+  metadata?: Record<string, any>;
+  createdAt: number;
+}
+
 
 // Central de Marketing Types
 export interface MarketingProject {

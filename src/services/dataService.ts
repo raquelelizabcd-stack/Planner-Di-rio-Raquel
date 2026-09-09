@@ -12,7 +12,8 @@ import {
   MarketingSocialAccount,
   MarketingIdea,
   MarketingAnalytics,
-  FinanceDashboardSummary
+  FinanceDashboardSummary,
+  ProfessoraMarketingItem
 } from '../types';
 
 export const dataService = {
@@ -654,5 +655,19 @@ export const dataService = {
       console.error('Erro ao buscar dados reais do Instagram:', err);
       return null;
     }
+  },
+
+  // Professora Marketing IA Items
+  async fetchProfessoraMarketingItems(): Promise<ProfessoraMarketingItem[]> {
+    return dataService.safeFetch<ProfessoraMarketingItem>('professora_marketing_items', 'raquel_professora_marketing_items', []);
+  },
+
+  async saveProfessoraMarketingItem(item: ProfessoraMarketingItem): Promise<void> {
+    return dataService.safeSave<ProfessoraMarketingItem>('professora_marketing_items', 'raquel_professora_marketing_items', item);
+  },
+
+  async deleteProfessoraMarketingItem(id: string): Promise<void> {
+    return dataService.safeDelete('professora_marketing_items', 'raquel_professora_marketing_items', id);
   }
 };
+

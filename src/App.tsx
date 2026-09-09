@@ -84,6 +84,7 @@ import {
   Filter,
   ArrowRight,
   Megaphone,
+  GraduationCap,
   Sliders,
   ArrowUpRight,
   ArrowDownRight,
@@ -136,6 +137,7 @@ import {
 } from './types';
 
 import CentralMarketing from './components/CentralMarketing';
+import ProfessoraMarketingTab from './components/ProfessoraMarketingTab';
 
 // Gauge Component using Canvas and Math.PI
 const Gauge = ({ 
@@ -2889,7 +2891,9 @@ export default function App() {
     { id: 'studies', label: 'Estudos', icon: BookOpen, color: 'text-indigo-400' },
     { id: 'diary', label: 'Diário Pessoal', icon: Smile, color: 'text-pink-400' },
     { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-orange-400' },
+    { id: 'professora_marketing', label: 'Professora Marketing IA', icon: GraduationCap, color: 'text-purple-400' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'text-slate-400' },
+
   ];
 
   const filteredProjects = projects.filter(p => 
@@ -7852,6 +7856,19 @@ export default function App() {
                 <CentralMarketing accentColor={accentColor} borderRadius={borderRadius} />
               </motion.div>
             )}
+
+            {activeTab === 'professora_marketing' && (
+              <motion.div
+                key="professora_marketing"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-7xl mx-auto space-y-8"
+              >
+                <ProfessoraMarketingTab accentColor={accentColor} borderRadius={borderRadius} />
+              </motion.div>
+            )}
+
 
             {activeTab === 'settings' && (
               <motion.div
