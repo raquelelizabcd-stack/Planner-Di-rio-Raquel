@@ -20,16 +20,21 @@ import {
   Search, 
   Eye, 
   X,
-  Layers,
-  ArrowRight,
-  Target,
-  Award,
-  Clock
+  Users,
+  Plus,
+  Edit2,
+  CopyPlus,
+  Link,
+  Unlink,
+  CheckCircle2,
+  FolderOpen,
+  School,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { GoogleGenAI } from '@google/genai';
-import { ProfessoraMarketingItem } from '../types';
+import { ProfessoraMarketingItem, ProfessoraClass } from '../types';
 import { dataService } from '../services/dataService';
 
 interface ProfessoraMarketingTabProps {
@@ -38,6 +43,7 @@ interface ProfessoraMarketingTabProps {
 }
 
 type SectionType = 
+  | 'turmas'
   | 'plano_aula'
   | 'material_didatico'
   | 'assistente_mercado'
@@ -50,16 +56,27 @@ type SectionType =
   | 'biblioteca';
 
 export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', borderRadius = 24 }: ProfessoraMarketingTabProps) {
-  const [activeSection, setActiveSection] = useState<SectionType>('plano_aula');
+  const [activeSection, setActiveSection] = useState<SectionType>('turmas');
   const [libraryItems, setLibraryItems] = useState<ProfessoraMarketingItem[]>([]);
+  const [classesList, setClassesList] = useState<ProfessoraClass[]>([]);
   const [loading, setLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [selectedLibraryItem, setSelectedLibraryItem] = useState<ProfessoraMarketingItem | null>(null);
+  const [selectedTurmaView, setSelectedTurmaView] = useState<ProfessoraClass | null>(null);
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<string>('all');
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
 
-  // Form States
+  // Turma Form State
+  const [turmaNome, setTurmaNome] = useState('');
+  const [turmaDisciplina, setTurmaDisciplina] = useState('');
+  const [turmaAnoEscolaridade, setTurmaAnoEscolaridade] = useState('3º Ano Técnico - EPTNM');
+  const [turmaDescricao, setTurmaDescricao] = useState('');
+  const [editingTurmaId, setEditingTurmaId] = useState<string | null>(null);
+  const [createdFeedback, setCreatedFeedback] = useState(false);
+
+  // Form States per Tool
   // 1. Plano de Aula
   const [planoTema, setPlanoTema] = useState('');
   const [planoDuracao, setPlanoDuracao] = useState('100 minutos (2 aulas)');
@@ -103,12 +120,16 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [generatedTitle, setGeneratedTitle] = useState<string>('');
 
   useEffect(() => {
-    loadLibrary();
+    loadData();
   }, []);
 
-  const loadLibrary = async () => {
-    const items = await dataService.fetchProfessoraMarketingItems();
+  const loadData = async () => {
+    const [items, classes] = await Promise.all([
+      dataService.fetchProfessoraMarketingItems(),
+      dataService.fetchProfessoraClasses()
+    ]);
     setLibraryItems(items || []);
+    setClassesList(classes || []);
   };
 
   const showToast = (msg: string) => {
@@ -148,6 +169,96 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
     return response.text || 'Não foi possível obter resposta da IA.';
   };
 
+  // --- TURMAS HANDLERS ---
+  const handleSaveTurma = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!turmaNome.trim() || !turmaDisciplina.trim()) {
+      showToast('Por favor, preencha o Nome da Turma e a Disciplina!');
+      return;
+    }
+
+    if (editingTurmaId) {
+      const updatedClass: ProfessoraClass = {
+        id: editingTurmaId,
+        name: turmaNome,
+        subject: turmaDisciplina,
+        gradeYear: turmaAnoEscolaridade,
+        description: turmaDescricao,
+        createdAt: Date.now()
+      };
+      await dataService.saveProfessoraClass(updatedClass);
+      setClassesList(prev => prev.map(c => c.id === editingTurmaId ? updatedClass : c));
+      showToast('Turma atualizada com sucesso! 🏫');
+      setEditingTurmaId(null);
+    } else {
+      const newClass: ProfessoraClass = {
+        id: Date.now().toString(),
+        name: turmaNome,
+        subject: turmaDisciplina,
+        gradeYear: turmaAnoEscolaridade,
+        description: turmaDescricao,
+        createdAt: Date.now()
+      };
+      await dataService.saveProfessoraClass(newClass);
+      setClassesList(prev => [newClass, ...prev]);
+      showToast(`Turma "${turmaNome}" criada com sucesso! 🎉`);
+    }
+
+    // Feedback Visual
+    setCreatedFeedback(true);
+    setTimeout(() => setCreatedFeedback(false), 2500);
+
+    // Reset Form
+    setTurmaNome('');
+    setTurmaDisciplina('');
+    setTurmaDescricao('');
+  };
+
+  const handleEditTurma = (turma: ProfessoraClass) => {
+    setEditingTurmaId(turma.id);
+    setTurmaNome(turma.name);
+    setTurmaDisciplina(turma.subject);
+    setTurmaAnoEscolaridade(turma.gradeYear);
+    setTurmaDescricao(turma.description || '');
+    window.scrollTo({ top: 200, behavior: 'smooth' });
+  };
+
+  const handleDuplicateTurma = async (turma: ProfessoraClass) => {
+    const duplicated: ProfessoraClass = {
+      id: Date.now().toString(),
+      name: `${turma.name} (Cópia)`,
+      subject: turma.subject,
+      gradeYear: turma.gradeYear,
+      description: turma.description,
+      createdAt: Date.now()
+    };
+    await dataService.saveProfessoraClass(duplicated);
+    setClassesList(prev => [duplicated, ...prev]);
+    showToast(`Turma "${duplicated.name}" duplicada! 📋`);
+  };
+
+  const handleDeleteTurma = async (id: string) => {
+    await dataService.deleteProfessoraClass(id);
+    setClassesList(prev => prev.filter(c => c.id !== id));
+    if (selectedTurmaView?.id === id) setSelectedTurmaView(null);
+    showToast('Turma excluída com sucesso.');
+  };
+
+  const handleToggleLinkItemToClass = async (itemId: string, classId: string | undefined) => {
+    const updated = libraryItems.map(item => {
+      if (item.id === itemId) {
+        const newClassId = item.classId === classId ? undefined : classId;
+        const newItem = { ...item, classId: newClassId };
+        dataService.saveProfessoraMarketingItem(newItem);
+        return newItem;
+      }
+      return item;
+    });
+    setLibraryItems(updated);
+    showToast('Vínculo de turma atualizado!');
+  };
+
+  // --- GENERATION HANDLER ---
   const handleGenerate = async (category: ProfessoraMarketingItem['category'], title: string, prompt: string) => {
     if (!title.trim()) {
       showToast('Por favor, preencha o tema/assunto principal!');
@@ -157,21 +268,27 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
     setGeneratedOutput('');
     setGeneratedTitle(title);
 
+    const targetClass = classesList.find(c => c.id === selectedClassId);
+    const classContext = targetClass 
+      ? `\nTurma Alvo: ${targetClass.name} | Disciplina: ${targetClass.subject} (${targetClass.gradeYear})`
+      : '';
+
     const systemInstruction = `Você é uma mentora especialista e professora sênior de Marketing para Educação Profissional Técnica de Nível Médio (EPTNM).
 Suas respostas devem ser estruturadas em Markdown impecável, pedagógicas, alinhadas à prática do mercado atual e com diretrizes reais da educação profissional técnica.
-Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino técnico.`;
+Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino técnico.${classContext}`;
 
     try {
       const result = await callGemini(prompt, systemInstruction);
       setGeneratedOutput(result);
       showToast('Conteúdo gerado com sucesso!');
       
-      // Auto-save to library
+      // Auto-save to library with class link if selected
       const newItem: ProfessoraMarketingItem = {
         id: Date.now().toString(),
         title,
         category,
         content: result,
+        classId: selectedClassId || undefined,
         createdAt: Date.now()
       };
       await dataService.saveProfessoraMarketingItem(newItem);
@@ -191,6 +308,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
       title: generatedTitle || 'Material Didático de Marketing',
       category: activeSection as ProfessoraMarketingItem['category'],
       content: generatedOutput,
+      classId: selectedClassId || undefined,
       createdAt: Date.now()
     };
     await dataService.saveProfessoraMarketingItem(newItem);
@@ -213,6 +331,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
   };
 
   const sectionsConfig = [
+    { id: 'turmas', label: 'Criar Turmas', icon: Users, color: 'text-purple-400', desc: 'Gestão e vínculos de turmas' },
     { id: 'plano_aula', label: 'Plano de Aula', icon: Brain, color: 'text-purple-400', desc: 'Gerador estruturado para EPTNM' },
     { id: 'material_didatico', label: 'Materiais Didáticos', icon: BookOpen, color: 'text-indigo-400', desc: 'Resumos, slides e guias práticos' },
     { id: 'assistente_mercado', label: 'Assistente de Mercado', icon: MessageSquare, color: 'text-cyan-400', desc: 'Exemplos reais e tendências atuais' },
@@ -269,7 +388,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
                 Professora Marketing IA
               </h2>
               <p className="text-sm text-slate-400 max-w-2xl mt-1">
-                Ambiente de apoio didático para o Ensino Técnico Profissionalizante de Nível Médio em Marketing. Crie planos, exercícios, quizzes e apresentações dinâmicas integrados ao mercado real.
+                Ambiente de apoio didático para o Ensino Técnico Profissionalizante em Marketing. Gerencie turmas, planos de aula, materiais didáticos, quizzes e apresentações dinâmicas.
               </p>
             </div>
           </div>
@@ -278,7 +397,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
       </div>
 
       {/* Sub-Tabs Grid Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
         {sectionsConfig.map((sec) => (
           <button
             key={sec.id}
@@ -294,6 +413,11 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
           >
             <div className="flex items-center justify-between mb-2">
               <sec.icon size={20} className={activeSection === sec.id ? sec.color : 'text-slate-500 group-hover:text-slate-300'} />
+              {sec.id === 'turmas' && (
+                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold">
+                  {classesList.length}
+                </span>
+              )}
               {sec.id === 'biblioteca' && (
                 <span className="text-[10px] bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded-full font-bold">
                   {libraryItems.length}
@@ -308,10 +432,239 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
         ))}
       </div>
 
-      {/* Main Feature Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left Form Column */}
-        {activeSection !== 'biblioteca' && (
+      {/* Selector of Target Class for AI Generators */}
+      {activeSection !== 'turmas' && activeSection !== 'biblioteca' && (
+        <div className="glass-card p-4 rounded-2xl border border-purple-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Users size={20} className="text-purple-400" />
+            <div>
+              <p className="text-xs font-bold text-white">Vincular Geração a uma Turma (Opcional)</p>
+              <p className="text-[10px] text-slate-400">O conteúdo gerado será associado à turma selecionada para fácil organização.</p>
+            </div>
+          </div>
+          <select
+            value={selectedClassId}
+            onChange={e => setSelectedClassId(e.target.value)}
+            className="w-full sm:w-72 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
+          >
+            <option value="">Nenhuma turma selecionada (Geral)</option>
+            {classesList.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name} ({c.gradeYear})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* MODULE 0: CRIAR E GERENCIAR TURMAS */}
+      {activeSection === 'turmas' && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Form Column */}
+            <div className="lg:col-span-5">
+              <form onSubmit={handleSaveTurma} className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20">
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-500/10 rounded-2xl text-purple-400 border border-purple-500/20">
+                      <Users size={22} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-display font-bold text-white">
+                        {editingTurmaId ? 'Editar Turma' : 'Criar Nova Turma'}
+                      </h3>
+                      <p className="text-xs text-slate-400">Cadastre suas turmas da EPTNM</p>
+                    </div>
+                  </div>
+                  {editingTurmaId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingTurmaId(null);
+                        setTurmaNome('');
+                        setTurmaDisciplina('');
+                        setTurmaDescricao('');
+                      }}
+                      className="text-xs text-slate-400 hover:text-white underline"
+                    >
+                      Cancelar Edição
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nome da Turma *</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Turma 3001 - Marketing Digital"
+                      value={turmaNome}
+                      onChange={e => setTurmaNome(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Disciplina / Módulo *</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Marketing de Conteúdo & Mídias Sociais"
+                      value={turmaDisciplina}
+                      onChange={e => setTurmaDisciplina(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Ano de Escolaridade / Período</label>
+                    <select
+                      value={turmaAnoEscolaridade}
+                      onChange={e => setTurmaAnoEscolaridade(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
+                    >
+                      <option value="1º Ano Técnico - EPTNM">1º Ano Técnico - EPTNM</option>
+                      <option value="2º Ano Técnico - EPTNM">2º Ano Técnico - EPTNM</option>
+                      <option value="3º Ano Técnico - EPTNM">3º Ano Técnico - EPTNM</option>
+                      <option value="Módulo Subsequente / Pós-Médio">Módulo Subsequente / Pós-Médio</option>
+                      <option value="Curso Livre / Extensão">Curso Livre / Extensão</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Descrição / Observações da Turma</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Ex: Horário das aulas, particularidades da turma, projetos em andamento..."
+                      value={turmaDescricao}
+                      onChange={e => setTurmaDescricao(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  {/* Highlighted Criar Turma Button */}
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    type="submit"
+                    className={`w-full py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-xl shadow-purple-600/30 flex items-center justify-center gap-3 transition-all relative overflow-hidden group border border-purple-400/30 ${
+                      createdFeedback ? 'ring-4 ring-emerald-500/50 from-emerald-600 to-teal-600' : ''
+                    }`}
+                  >
+                    {createdFeedback ? (
+                      <>
+                        <CheckCircle2 size={22} className="text-white animate-bounce" />
+                        <span>{editingTurmaId ? 'Turma Atualizada!' : 'Turma Cadastrada com Sucesso!'}</span>
+                      </>
+                    ) : (
+                      <>
+                        {editingTurmaId ? <Save size={20} /> : <Plus size={20} />}
+                        <span className="text-base font-display">{editingTurmaId ? 'Salvar Alterações da Turma' : '✨ Criar Turma'}</span>
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+              </form>
+            </div>
+
+            {/* List Column */}
+            <div className="lg:col-span-7 space-y-4">
+              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                <h3 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                  <School className="text-purple-400" size={22} />
+                  Turmas Cadastradas ({classesList.length})
+                </h3>
+                <span className="text-xs text-slate-400">Selecione uma turma para ver seus materiais vinculados</span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {classesList.length > 0 ? (
+                  classesList.map((turma) => {
+                    const linkedItems = libraryItems.filter(item => item.classId === turma.id);
+                    return (
+                      <div
+                        key={turma.id}
+                        className="glass-card p-6 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between space-y-4 group"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
+                                {turma.gradeYear}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
+                                {linkedItems.length} Materiais Vinculados
+                              </span>
+                            </div>
+                            <h4 className="text-xl font-display font-bold text-white group-hover:text-purple-300 transition-colors">
+                              {turma.name}
+                            </h4>
+                            <p className="text-sm text-purple-300 font-medium mt-0.5">
+                              📖 {turma.subject}
+                            </p>
+                            {turma.description && (
+                              <p className="text-xs text-slate-400 mt-2 bg-black/20 p-3 rounded-2xl border border-white/5">
+                                {turma.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleEditTurma(turma)}
+                              className="p-2.5 bg-white/5 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 rounded-xl transition-all"
+                              title="Editar Turma"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDuplicateTurma(turma)}
+                              className="p-2.5 bg-white/5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 rounded-xl transition-all"
+                              title="Duplicar Turma"
+                            >
+                              <CopyPlus size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteTurma(turma.id)}
+                              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
+                              title="Excluir Turma"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Linked Items Quick Overview */}
+                        <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+                          <button
+                            onClick={() => setSelectedTurmaView(turma)}
+                            className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
+                          >
+                            <FolderOpen size={16} /> Ver Planos & Materiais da Turma ({linkedItems.length})
+                          </button>
+                          <span className="text-[10px] text-slate-500">
+                            Criada em: {new Date(turma.createdAt).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-16 text-center space-y-3 glass-card rounded-3xl">
+                    <Users size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
+                    <p className="text-slate-400 text-sm">Nenhuma turma cadastrada ainda. Use o formulário ao lado para criar a primeira!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Feature Content Area (For Generators 1-9) */}
+      {activeSection !== 'turmas' && activeSection !== 'biblioteca' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          {/* Left Form Column */}
           <div className="lg:col-span-5 space-y-6">
             <div className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20">
               <div className="flex items-center gap-3 pb-3 border-b border-white/10">
@@ -783,11 +1136,9 @@ Formatos exigidos por questão:
               )}
             </div>
           </div>
-        )}
 
-        {/* Right Output Column or Library Full View */}
-        <div className={activeSection === 'biblioteca' ? 'lg:col-span-12 space-y-6' : 'lg:col-span-7 space-y-6'}>
-          {activeSection !== 'biblioteca' && (
+          {/* Right Output Column */}
+          <div className="lg:col-span-7 space-y-6">
             <div className="glass-card p-6 md:p-8 rounded-3xl space-y-4 border border-purple-500/20 min-h-[500px] flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
@@ -839,120 +1190,266 @@ Formatos exigidos por questão:
 
               {generatedOutput && (
                 <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-500">
-                  <span>Salvo automaticamente no seu histórico local.</span>
+                  <span>Salvo automaticamente na sua biblioteca local.</span>
                   <span className="text-emerald-400 flex items-center gap-1">
                     <Check size={14} /> Pronto para uso em sala
                   </span>
                 </div>
               )}
             </div>
-          )}
+          </div>
+        </div>
+      )}
 
-          {/* SECTION 10: BIBLIOTECA COMPLETA */}
-          {activeSection === 'biblioteca' && (
-            <div className="space-y-6">
-              {/* Search & Filter Bar */}
-              <div className="glass-card p-6 rounded-3xl border border-purple-500/20 flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div className="relative w-full md:w-96">
-                  <input
-                    type="text"
-                    placeholder="Pesquisar nos materiais salvos..."
-                    value={librarySearch}
-                    onChange={e => setLibrarySearch(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                  />
-                  <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                </div>
+      {/* SECTION 10: BIBLIOTECA COMPLETA */}
+      {activeSection === 'biblioteca' && (
+        <div className="space-y-6">
+          {/* Search & Filter Bar */}
+          <div className="glass-card p-6 rounded-3xl border border-purple-500/20 flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="relative w-full md:w-96">
+              <input
+                type="text"
+                placeholder="Pesquisar nos materiais salvos..."
+                value={librarySearch}
+                onChange={e => setLibrarySearch(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
+              />
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+            </div>
 
-                <div className="flex gap-2 w-full md:w-auto overflow-x-auto custom-scrollbar pb-1">
-                  <button
-                    onClick={() => setLibraryCategoryFilter('all')}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                      libraryCategoryFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                    }`}
+            <div className="flex gap-2 w-full md:w-auto overflow-x-auto custom-scrollbar pb-1">
+              <button
+                onClick={() => setLibraryCategoryFilter('all')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  libraryCategoryFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                }`}
+              >
+                Todos ({libraryItems.length})
+              </button>
+              {sectionsConfig.filter(s => s.id !== 'biblioteca' && s.id !== 'turmas').map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => setLibraryCategoryFilter(s.id)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                    libraryCategoryFilter === s.id ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Items List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredLibrary.length > 0 ? (
+              filteredLibrary.map((item) => {
+                const cfg = sectionsConfig.find(s => s.id === item.category);
+                const linkedClass = classesList.find(c => c.id === item.classId);
+                return (
+                  <div
+                    key={item.id}
+                    className="glass-card p-5 rounded-3xl border border-white/10 hover:border-purple-500/30 transition-all flex flex-col justify-between space-y-4 group"
                   >
-                    Todos ({libraryItems.length})
-                  </button>
-                  {sectionsConfig.filter(s => s.id !== 'biblioteca').map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => setLibraryCategoryFilter(s.id)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                        libraryCategoryFilter === s.id ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 bg-purple-500/10 text-purple-300 rounded-full border border-purple-500/20 flex items-center gap-1.5">
+                          {cfg?.icon && React.createElement(cfg.icon, { size: 12 })}
+                          {cfg?.label || item.category}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+
+                      {linkedClass && (
+                        <span className="inline-block text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded-md mb-2 border border-indigo-500/30">
+                          🏫 {linkedClass.name}
+                        </span>
+                      )}
+
+                      <h4 className="text-base font-display font-bold text-white line-clamp-2 mt-1">
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-slate-400 line-clamp-4 mt-2 font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
+                        {item.content.replace(/[#*`_]/g, '')}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                      <button
+                        onClick={() => setSelectedLibraryItem(item)}
+                        className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                      >
+                        <Eye size={14} /> Visualizar Completo
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copyToClipboard(item.content, item.id)}
+                          className="p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+                          title="Copiar"
+                        >
+                          {copiedId === item.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteLibraryItem(item.id)}
+                          className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
+                          title="Excluir"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="col-span-full py-16 text-center space-y-3 glass-card rounded-3xl">
+                <BookmarkCheck size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
+                <p className="text-slate-400 text-sm">Nenhum material encontrado na biblioteca.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal View Turma Details and Linked Items */}
+      <AnimatePresence>
+        {selectedTurmaView && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="relative w-full max-w-4xl bg-[#1e1e24] border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
+                      {selectedTurmaView.gradeYear}
+                    </span>
+                    <span className="text-xs text-purple-300 font-medium">
+                      {selectedTurmaView.subject}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-display font-bold text-white mt-1">
+                    {selectedTurmaView.name}
+                  </h3>
                 </div>
+                <button
+                  onClick={() => setSelectedTurmaView(null)}
+                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+                >
+                  <X size={20} />
+                </button>
               </div>
 
-              {/* Items List */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredLibrary.length > 0 ? (
-                  filteredLibrary.map((item) => {
-                    const cfg = sectionsConfig.find(s => s.id === item.category);
-                    return (
-                      <div
-                        key={item.id}
-                        className="glass-card p-5 rounded-3xl border border-white/10 hover:border-purple-500/30 transition-all flex flex-col justify-between space-y-4 group"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 bg-purple-500/10 text-purple-300 rounded-full border border-purple-500/20 flex items-center gap-1.5">
-                              {cfg?.icon && React.createElement(cfg.icon, { size: 12 })}
-                              {cfg?.label || item.category}
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                              {new Date(item.createdAt).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
-                          <h4 className="text-base font-display font-bold text-white line-clamp-2 mt-1">
-                            {item.title}
-                          </h4>
-                          <p className="text-xs text-slate-400 line-clamp-4 mt-2 font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
-                            {item.content.replace(/[#*`_]/g, '')}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                          <button
-                            onClick={() => setSelectedLibraryItem(item)}
-                            className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1"
-                          >
-                            <Eye size={14} /> Visualizar Completo
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => copyToClipboard(item.content, item.id)}
-                              className="p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
-                              title="Copiar"
-                            >
-                              {copiedId === item.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteLibraryItem(item.id)}
-                              className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
-                              title="Excluir"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="col-span-full py-16 text-center space-y-3 glass-card rounded-3xl">
-                    <BookmarkCheck size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
-                    <p className="text-slate-400 text-sm">Nenhum material encontrado na biblioteca.</p>
+              <div className="flex-1 overflow-y-auto py-6 space-y-6 custom-scrollbar">
+                {selectedTurmaView.description && (
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <p className="text-xs font-bold text-purple-300 uppercase tracking-widest mb-1">Observações da Turma:</p>
+                    <p className="text-sm text-slate-300">{selectedTurmaView.description}</p>
                   </div>
                 )}
+
+                <div>
+                  <h4 className="text-base font-display font-bold text-white mb-3 flex items-center gap-2">
+                    <FolderOpen size={18} className="text-purple-400" />
+                    Materiais, Planos e Atividades Vinculados nesta Turma
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {libraryItems.filter(i => i.classId === selectedTurmaView.id).length > 0 ? (
+                      libraryItems.filter(i => i.classId === selectedTurmaView.id).map(item => {
+                        const cfg = sectionsConfig.find(s => s.id === item.category);
+                        return (
+                          <div key={item.id} className="p-4 bg-black/30 rounded-2xl border border-white/10 flex flex-col justify-between space-y-3">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-purple-300 flex items-center gap-1">
+                                  {cfg?.icon && React.createElement(cfg.icon, { size: 12 })}
+                                  {cfg?.label || item.category}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+                                </span>
+                              </div>
+                              <p className="text-sm font-bold text-white line-clamp-1">{item.title}</p>
+                              <p className="text-xs text-slate-400 line-clamp-2 mt-1 font-mono">
+                                {item.content.replace(/[#*`_]/g, '')}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
+                              <button
+                                onClick={() => setSelectedLibraryItem(item)}
+                                className="text-xs font-bold text-purple-400 hover:underline flex items-center gap-1"
+                              >
+                                <Eye size={12} /> Ver Completo
+                              </button>
+                              <button
+                                onClick={() => handleToggleLinkItemToClass(item.id, selectedTurmaView.id)}
+                                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                              >
+                                <Unlink size={12} /> Desvincular
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="col-span-full py-8 text-center bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                        <p className="text-sm text-slate-400">Nenhum material vinculado a esta turma ainda.</p>
+                        <p className="text-xs text-slate-500">Ao criar planos ou atividades nas ferramentas ao lado, selecione esta turma no topo para vinculá-los automaticamente.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Attach Existing Unlinked Items */}
+                <div className="pt-4 border-t border-white/10">
+                  <h4 className="text-sm font-display font-bold text-white mb-3 flex items-center gap-2">
+                    <Link size={16} className="text-indigo-400" />
+                    Vincular Outros Materiais da Biblioteca a esta Turma
+                  </h4>
+                  <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                    {libraryItems.filter(i => i.classId !== selectedTurmaView.id).map(item => (
+                      <div key={item.id} className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-white line-clamp-1">{item.title}</p>
+                          <span className="text-[10px] text-slate-400 uppercase">
+                            {sectionsConfig.find(s => s.id === item.category)?.label}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleToggleLinkItemToClass(item.id, selectedTurmaView.id)}
+                          className="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg text-xs font-bold flex items-center gap-1 border border-purple-500/30 transition-all"
+                        >
+                          <Link size={12} /> Vincular
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
+
+              <div className="pt-4 border-t border-white/10 flex items-center justify-end">
+                <button
+                  onClick={() => setSelectedTurmaView(null)}
+                  className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl font-bold text-xs transition-all"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal View Library Item */}
       <AnimatePresence>
@@ -971,9 +1468,16 @@ Formatos exigidos por questão:
             >
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
-                    {sectionsConfig.find(s => s.id === selectedLibraryItem.category)?.label}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
+                      {sectionsConfig.find(s => s.id === selectedLibraryItem.category)?.label}
+                    </span>
+                    {selectedLibraryItem.classId && (
+                      <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
+                        🏫 {classesList.find(c => c.id === selectedLibraryItem.classId)?.name || 'Turma Vinculada'}
+                      </span>
+                    )}
+                  </div>
                   <h3 className="text-xl font-display font-bold text-white mt-2">
                     {selectedLibraryItem.title}
                   </h3>

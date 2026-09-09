@@ -221,14 +221,26 @@ export type StudyTabType = 'general' | 'notes' | 'topics' | 'focus' | 'planning'
 
 export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies' | 'marketing' | 'professora_marketing';
 
+export interface ProfessoraClass {
+  id: string;
+  name: string;
+  subject: string;
+  gradeYear: string;
+  description?: string;
+  linkedItemIds?: string[];
+  createdAt: number;
+}
+
 export interface ProfessoraMarketingItem {
   id: string;
   title: string;
   category: 'plano_aula' | 'material_didatico' | 'assistente_mercado' | 'slides' | 'sequencia_didatica' | 'folha_atividade' | 'ideias_atividades' | 'jogos_educativos' | 'quiz';
   content: string;
+  classId?: string;
   metadata?: Record<string, any>;
   createdAt: number;
 }
+
 
 
 // Central de Marketing Types
