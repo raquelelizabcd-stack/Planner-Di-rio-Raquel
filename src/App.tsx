@@ -2906,7 +2906,7 @@ export default function App() {
     ? allProjectedData 
     : allProjectedData.filter((_, idx) => idx === parseInt(selectedFinMonth));
 
-
+  // Menu de navegação lateral com a aba Agentes IA
   const sidebarItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'text-roxo-suave' },
     { id: 'reminders', label: 'Lembretes', icon: Bell, color: 'text-red-400' },
@@ -2919,9 +2919,8 @@ export default function App() {
     { id: 'professora_marketing', label: 'Professora Marketing IA', icon: GraduationCap, color: 'text-purple-400' },
     { id: 'agentes', label: 'Agentes IA', icon: Bot, color: 'text-indigo-400' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'text-slate-400' },
-
-
   ];
+
 
   const filteredProjects = projects.filter(p => 
     p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
