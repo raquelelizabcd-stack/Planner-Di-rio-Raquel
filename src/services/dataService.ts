@@ -686,7 +686,125 @@ export const dataService = {
 
   async deleteProfessoraClass(id: string): Promise<void> {
     return dataService.safeDelete('professora_classes', 'raquel_professora_classes', id);
+  },
+
+  // Agentes IA & Token Meter Supabase safe services
+  async fetchAgentStatuses(): Promise<AgentStatus[]> {
+    const defaultStatuses: AgentStatus[] = [
+      {
+        id: 'marketing',
+        name: 'Agente Marketing',
+        category: 'Notícias & Tendências MKT Digital',
+        active: true,
+        scheduleDescription: 'Terças e Sextas-feiras',
+        tokenLimit: 300,
+        tokensUsedThisWeek: 450,
+        tokensUsedThisMonth: 1800,
+        lastRun: Date.now() - 86400000
+      },
+      {
+        id: 'debug_ia',
+        name: 'Agente Debug IA',
+        category: 'Monitoramento & Correção de Bugs',
+        active: true,
+        scheduleDescription: 'Tempo Real / Contínuo',
+        tokenLimit: 1000,
+        tokensUsedThisWeek: 1200,
+        tokensUsedThisMonth: 4800,
+        lastRun: Date.now() - 3600000
+      },
+      {
+        id: 'suporte_pedagogico',
+        name: 'Agente Suporte Pedagógico',
+        category: 'Planos de Aula & Didática Técnica',
+        active: true,
+        scheduleDescription: 'Sob Demanda / Execução Manual',
+        tokenLimit: 1500,
+        tokensUsedThisWeek: 2100,
+        tokensUsedThisMonth: 8500,
+        lastRun: Date.now() - 7200000
+      }
+    ];
+    return dataService.safeFetch<AgentStatus>('agent_statuses', 'raquel_agent_statuses', defaultStatuses);
+  },
+
+  async saveAgentStatus(item: AgentStatus): Promise<void> {
+    return dataService.safeSave<AgentStatus>('agent_statuses', 'raquel_agent_statuses', item);
+  },
+
+  async fetchAgentLogs(): Promise<AgentExecutionLog[]> {
+    const defaultLogs: AgentExecutionLog[] = [
+      {
+        id: 'log-1',
+        agentId: 'marketing',
+        agentName: 'Agente Marketing',
+        timestamp: Date.now() - 86400000,
+        status: 'sucesso',
+        summary: '5 notícias de Marketing Digital compiladas em tópicos curtos',
+        details: 'Notícias extraídas de fontes de Marketing e resumidas com 270 tokens. Salvas na biblioteca do Planner.',
+        tokensUsed: 270
+      },
+      {
+        id: 'log-2',
+        agentId: 'debug_ia',
+        agentName: 'Agente Debug IA',
+        timestamp: Date.now() - 3600000,
+        status: 'sucesso',
+        summary: 'Varredura de logs executada. 0 erros críticos encontrados no sistema.',
+        details: 'Sistema operando normalmente. Conexão Supabase e RLS validados.',
+        tokensUsed: 150
+      }
+    ];
+    return dataService.safeFetch<AgentExecutionLog>('agent_execution_logs', 'raquel_agent_execution_logs', defaultLogs);
+  },
+
+  async saveAgentLog(log: AgentExecutionLog): Promise<void> {
+    return dataService.safeSave<AgentExecutionLog>('agent_execution_logs', 'raquel_agent_execution_logs', log);
+  },
+
+  async fetchTokenMeter(): Promise<AntigravityTokenMeter> {
+    const defaultMeter: AntigravityTokenMeter = {
+      planName: 'Google AI Pro (5 TB)',
+      totalMonthlyLimitTokens: 5000000,
+      weeklyUsedTokens: 3750,
+      monthlyUsedTokens: 15100,
+      realtimeTokensPerMin: 42,
+      usedByAgent: {
+        marketing: 1800,
+        debug_ia: 4800,
+        suporte_pedagogico: 8500
+      },
+      lastUpdated: Date.now()
+    };
+    const list = await dataService.safeFetch<AntigravityTokenMeter & { id: string }>('agent_token_meters', 'raquel_agent_token_meters', [{ ...defaultMeter, id: 'main_meter' }]);
+    return list[0] || defaultMeter;
+  },
+
+  async saveTokenMeter(meter: AntigravityTokenMeter): Promise<void> {
+    return dataService.safeSave<AntigravityTokenMeter & { id: string }>('agent_token_meters', 'raquel_agent_token_meters', { ...meter, id: 'main_meter' });
+  },
+
+  async fetchDebugIARecords(): Promise<DebugIARecord[]> {
+    const defaultBugs: DebugIARecord[] = [
+      {
+        id: 'bug-1',
+        timestamp: Date.now() - 172800000,
+        errorName: 'Warning: Missing key prop',
+        errorMessage: 'Warning: Each child in a list should have a unique "key" prop.',
+        componentOrModule: 'ProfessoraMarketingTab.tsx',
+        status: 'resolvido',
+        suggestedFix: 'Adicionar prop key={item.id} ao mapear lista de cartões de turmas.',
+        stepsToResolve: ['Verificar loop .map()', 'Incluir id único na renderização', 'Executar npm run build'],
+        createdAt: Date.now() - 172800000
+      }
+    ];
+    return dataService.safeFetch<DebugIARecord>('debug_ia_records', 'raquel_debug_ia_records', defaultBugs);
+  },
+
+  async saveDebugIARecord(bug: DebugIARecord): Promise<void> {
+    return dataService.safeSave<DebugIARecord>('debug_ia_records', 'raquel_debug_ia_records', bug);
   }
 };
+
 
 

@@ -138,6 +138,8 @@ import {
 
 import CentralMarketing from './components/CentralMarketing';
 import ProfessoraMarketingTab from './components/ProfessoraMarketingTab';
+import AgentesTab from './components/AgentesTab';
+
 
 // Gauge Component using Canvas and Math.PI
 const Gauge = ({ 
@@ -2915,7 +2917,9 @@ export default function App() {
     { id: 'diary', label: 'Diário Pessoal', icon: Smile, color: 'text-pink-400' },
     { id: 'marketing', label: 'Marketing', icon: Megaphone, color: 'text-orange-400' },
     { id: 'professora_marketing', label: 'Professora Marketing IA', icon: GraduationCap, color: 'text-purple-400' },
+    { id: 'agentes', label: 'Agentes IA', icon: Bot, color: 'text-indigo-400' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'text-slate-400' },
+
 
   ];
 
@@ -7891,6 +7895,19 @@ export default function App() {
                 <ProfessoraMarketingTab accentColor={accentColor} borderRadius={borderRadius} />
               </motion.div>
             )}
+
+            {activeTab === 'agentes' && (
+              <motion.div
+                key="agentes"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="max-w-7xl mx-auto space-y-8"
+              >
+                <AgentesTab accentColor={accentColor} borderRadius={borderRadius} />
+              </motion.div>
+            )}
+
 
 
             {activeTab === 'settings' && (

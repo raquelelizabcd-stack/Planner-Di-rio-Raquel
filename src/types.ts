@@ -219,7 +219,60 @@ export interface StudyProgress {
 
 export type StudyTabType = 'general' | 'notes' | 'topics' | 'focus' | 'planning';
 
-export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies' | 'marketing' | 'professora_marketing';
+export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'diary' | 'reminders' | 'settings' | 'studies' | 'marketing' | 'professora_marketing' | 'agentes';
+
+// Types dos Agentes e Antigravity Token Meter
+export interface AgentStatus {
+  id: 'marketing' | 'debug_ia' | 'suporte_pedagogico';
+  name: string;
+  category: string;
+  active: boolean;
+  scheduleDescription: string;
+  tokenLimit: number;
+  tokensUsedThisWeek: number;
+  tokensUsedThisMonth: number;
+  lastRun?: number;
+}
+
+export interface AgentExecutionLog {
+  id: string;
+  agentId: 'marketing' | 'debug_ia' | 'suporte_pedagogico';
+  agentName: string;
+  timestamp: number;
+  status: 'sucesso' | 'erro' | 'alerta';
+  summary: string;
+  details?: string;
+  tokensUsed: number;
+  classId?: string;
+  className?: string;
+}
+
+export interface AntigravityTokenMeter {
+  planName: string; // "Google AI Pro (5 TB)"
+  totalMonthlyLimitTokens: number; // ex: 5000000
+  weeklyUsedTokens: number;
+  monthlyUsedTokens: number;
+  realtimeTokensPerMin: number;
+  usedByAgent: {
+    marketing: number;
+    debug_ia: number;
+    suporte_pedagogico: number;
+  };
+  lastUpdated: number;
+}
+
+export interface DebugIARecord {
+  id: string;
+  timestamp: number;
+  errorName: string;
+  errorMessage: string;
+  componentOrModule: string;
+  status: 'pendente' | 'resolvido';
+  suggestedFix: string;
+  stepsToResolve: string[];
+  createdAt: number;
+}
+
 
 export interface ProfessoraClass {
   id: string;
