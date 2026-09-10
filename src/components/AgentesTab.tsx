@@ -198,6 +198,22 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
     await updateTokens(agentId, tokensUsed);
   };
 
+  const getApiKey = (): string => {
+    let key = process.env.GEMINI_API_KEY || '';
+    if (!key && typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('raquel_api_keys');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.gemini) key = parsed.gemini;
+        }
+      } catch (e) {
+        console.error('Erro ao buscar chave API:', e);
+      }
+    }
+    return key;
+  };
+
   // Execução Manual: Agente Marketing
   const runAgentMarketing = async () => {
     const agent = agents.find(a => a.id === 'marketing');
@@ -208,9 +224,10 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
 
     setRunningAgentId('marketing');
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = getApiKey();
       let resultText = '';
       let tokensEst = 280;
+
 
       if (apiKey) {
         const ai = new GoogleGenAI({ apiKey });
@@ -277,7 +294,7 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
 
     setRunningAgentId('debug_ia');
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = getApiKey();
       let analysisText = '';
       let tokensEst = 320;
 
@@ -347,7 +364,7 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
 
     setRunningAgentId('suporte_pedagogico');
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
+      const apiKey = getApiKey();
       const selectedClass = classes.find(c => c.id === selectedClassId);
       let planContent = '';
       let tokensEst = 450;
