@@ -24,8 +24,19 @@ import {
   ArrowRight,
   Eye,
   Check,
-  AlertCircle
+  AlertCircle,
+  Bot,
+  Linkedin,
+  Instagram,
+  Image as ImageIcon,
+  Lock,
+  Zap,
+  BarChart3,
+  ThumbsUp,
+  MessageCircle,
+  Award
 } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleGenAI } from '@google/genai';
 import { dataService } from '../services/dataService';
@@ -914,9 +925,10 @@ Chaves obrigatórias no JSON:
       </div>
 
       {/* Internal Navigation Menu (Grid style) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 mb-8 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
+      <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2 mb-8 bg-slate-50 p-1.5 rounded-2xl border border-slate-200">
         {[
           { id: 'dashboard', label: 'Dashboard', icon: Grid },
+          { id: 'agente-publicacao', label: 'Agente Publicação IA', icon: Bot },
           { id: 'ia-conteudo', label: 'Conteúdo IA', icon: Sparkles },
           { id: 'banco-ideias', label: 'Banco Ideias', icon: FolderKanban },
           { id: 'calendario', label: 'E-Editorial', icon: Calendar },
@@ -926,6 +938,7 @@ Chaves obrigatórias no JSON:
           { id: 'analytics', label: 'Analytics', icon: BarChart2 },
           { id: 'projetos', label: 'Projetos', icon: Database }
         ].map((t) => {
+
           const Icon = t.icon;
           const isSelected = subTab === t.id;
           return (
@@ -2521,8 +2534,115 @@ Chaves obrigatórias no JSON:
 
             </div>
           )}
+
+          {/* VIEW: AGENTE DE PUBLICAÇÃO IA NA CENTRAL DE MARKETING */}
+          {subTab === 'agente-publicacao' && (
+            <div className="space-y-6">
+              {/* Header da Seção */}
+              <div className="bg-slate-900/90 border border-purple-500/30 p-6 md:p-8 rounded-3xl space-y-6 shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl text-white shadow-lg shadow-purple-600/30">
+                      <Bot size={28} />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                        Agente de Publicação IA
+                        <span className="text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                          LinkedIn & Instagram API
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-400">
+                        Criação de infográficos no padrão visual Raquel Duarte, legendas com até 200 tokens e publicação oficial via OAuth Supabase.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs font-semibold bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-emerald-400">
+                    <Lock size={14} /> Tokens OAuth Supabase Ativos
+                  </div>
+                </div>
+
+                {/* PAINEL DE DESEMPENHO INTEGRADO */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-2">
+                  <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block mb-1">Alcance Total</span>
+                    <p className="text-xl font-display font-bold text-white">14.850</p>
+                    <span className="text-[9px] text-emerald-400 flex items-center gap-1 mt-1 font-semibold">
+                      <TrendingUp size={10} /> +18.4% esta semana
+                    </span>
+                  </div>
+
+                  <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block mb-1">Engajamento (Likes/Comentários)</span>
+                    <p className="text-xl font-display font-bold text-purple-300">1.240</p>
+                    <span className="text-[9px] text-purple-400 mt-1 font-semibold block">Postagens Neon no topo</span>
+                  </div>
+
+                  <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block mb-1">Leads de CRM Gerados</span>
+                    <p className="text-xl font-display font-bold text-pink-400">62</p>
+                    <span className="text-[9px] text-pink-300 mt-1 font-semibold block">Sincronizados no Supabase</span>
+                  </div>
+
+                  <div className="p-4 bg-black/40 border border-white/10 rounded-2xl">
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-widest block mb-1">Crescimento de Seguidores</span>
+                    <p className="text-xl font-display font-bold text-[#00B4D8]">+340</p>
+                    <span className="text-[9px] text-slate-400 mt-1 font-semibold block">LinkedIn & Instagram</span>
+                  </div>
+                </div>
+
+                {/* Bloco Infográfico no Padrão Visual Raquel Duarte */}
+                <div className="p-6 bg-[#0c0a14] border border-purple-500/40 rounded-2xl space-y-4 shadow-2xl">
+                  <div className="flex justify-between items-center text-xs font-bold text-purple-300 border-b border-white/10 pb-3">
+                    <span className="flex items-center gap-2">
+                      <Linkedin size={16} /> <Instagram size={16} /> Padrão Visual Neon Raquel Duarte
+                    </span>
+                    <span className="text-emerald-400 text-[10px] font-mono">2 Imagens Gratuitas/Dia (1 LK / 1 IG)</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                    <div className="p-5 bg-gradient-to-br from-[#120e24] to-[#1c1538] border border-[#7B2CBF]/50 rounded-2xl space-y-3 shadow-xl">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-[#FF4D6D]" />
+                        <span className="w-3 h-3 rounded-full bg-[#00B4D8]" />
+                        <span className="w-3 h-3 rounded-full bg-[#FFD166]" />
+                        <span className="text-[10px] font-mono text-slate-400 ml-auto">Paleta Neon #7B2CBF</span>
+                      </div>
+                      <h4 className="text-base font-display font-bold text-white leading-snug">
+                        5 Estratégias de IA para Multiplicar Leads no Marketing Digital
+                      </h4>
+                      <div className="p-3 bg-black/60 rounded-xl border border-[#00B4D8]/30 text-[11px] text-slate-300 font-sans">
+                        Infográfico com Títulos Curtos, Fundo Roxo-Grafite Escuro e Tipografia Clara Sans-serif.
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 text-xs text-slate-300">
+                      <div className="p-3 bg-white/5 rounded-xl border border-white/5">
+                        <span className="font-semibold text-white block mb-1">Legenda Profissional (Máx 2 parágrafos):</span>
+                        <p className="text-slate-400 leading-relaxed text-[11px]">
+                          A automação aliada ao design estratégico de alta visibilidade transforma visualizações em oportunidades reais de negócios. Infográficos claros orientam a tomada de decisão.\n\nAcompanhe os tópicos em destaque e aplique na sua instituição ou projeto de marketing digital.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {['#MarketingDigital', '#InteligenciaArtificial', '#Inovacao', '#Educacao', '#RaquelDuarte'].map((h, i) => (
+                          <span key={i} className="text-[10px] font-bold text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30">
+                            {h}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
       )}
+
 
     </div>
   );
