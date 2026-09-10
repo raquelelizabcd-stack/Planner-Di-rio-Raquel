@@ -723,6 +723,17 @@ export const dataService = {
         tokensUsedThisWeek: 2100,
         tokensUsedThisMonth: 8500,
         lastRun: Date.now() - 7200000
+      },
+      {
+        id: 'publicacao_ia',
+        name: 'Agente de Publicação IA',
+        category: 'Postagens, Infográficos & Mídias Sociais',
+        active: true,
+        scheduleDescription: 'Diário / Agendado & Manual',
+        tokenLimit: 200,
+        tokensUsedThisWeek: 600,
+        tokensUsedThisMonth: 2400,
+        lastRun: Date.now() - 14400000
       }
     ];
     return dataService.safeFetch<AgentStatus>('agent_statuses', 'raquel_agent_statuses', defaultStatuses);
@@ -753,6 +764,16 @@ export const dataService = {
         summary: 'Varredura de logs executada. 0 erros críticos encontrados no sistema.',
         details: 'Sistema operando normalmente. Conexão Supabase e RLS validados.',
         tokensUsed: 150
+      },
+      {
+        id: 'log-3',
+        agentId: 'publicacao_ia',
+        agentName: 'Agente de Publicação IA',
+        timestamp: Date.now() - 14400000,
+        status: 'sucesso',
+        summary: 'Post Infográfico e Legenda gerados para LinkedIn e Instagram',
+        details: 'Imagens no padrão neon geradas (200 tokens utilizados). Post agendado com sucesso.',
+        tokensUsed: 195
       }
     ];
     return dataService.safeFetch<AgentExecutionLog>('agent_execution_logs', 'raquel_agent_execution_logs', defaultLogs);
@@ -766,13 +787,14 @@ export const dataService = {
     const defaultMeter: AntigravityTokenMeter = {
       planName: 'Google AI Pro (5 TB)',
       totalMonthlyLimitTokens: 5000000,
-      weeklyUsedTokens: 3750,
-      monthlyUsedTokens: 15100,
+      weeklyUsedTokens: 4350,
+      monthlyUsedTokens: 17500,
       realtimeTokensPerMin: 42,
       usedByAgent: {
         marketing: 1800,
         debug_ia: 4800,
-        suporte_pedagogico: 8500
+        suporte_pedagogico: 8500,
+        publicacao_ia: 2400
       },
       lastUpdated: Date.now()
     };
@@ -803,8 +825,74 @@ export const dataService = {
 
   async saveDebugIARecord(bug: DebugIARecord): Promise<void> {
     return dataService.safeSave<DebugIARecord>('debug_ia_records', 'raquel_debug_ia_records', bug);
+  },
+
+  // Services do Agente de Publicação IA (Posts, OAuth Supabase e Relatórios)
+  async fetchAgentPosts(): Promise<any[]> {
+    const defaultPosts = [
+      {
+        id: 'post-1',
+        title: '5 Tendências de IA no Marketing Digital para 2026',
+        themeCategory: 'Inteligência Artificial',
+        targetPlatform: 'both',
+        caption: 'A Inteligência Artificial está transformando a criação de conteúdo e a automação de vendas. Quem domina essas ferramentas lidera o mercado com vantagem competitiva.\n\nConfira o infográfico completo com os pilares essenciais de inovação técnica para a sua jornada profissional.',
+        hashtags: ['#MarketingDigital', '#IA', '#Inovacao', '#EducacaoTecnica', '#RaquelDuarte'],
+        status: 'publicado',
+        publishedAt: Date.now() - 86400000,
+        tokensUsed: 190,
+        dailyImageCountUsed: 2,
+        analytics: {
+          likes: 142,
+          comments: 28,
+          shares: 19,
+          reach: 2450,
+          leadsGenerated: 14
+        },
+        createdAt: Date.now() - 86400000
+      }
+    ];
+    return dataService.safeFetch<any>('agent_publicacao_posts', 'raquel_agent_publicacao_posts', defaultPosts);
+  },
+
+  async saveAgentPost(post: any): Promise<void> {
+    return dataService.safeSave<any>('agent_publicacao_posts', 'raquel_agent_publicacao_posts', post);
+  },
+
+  async fetchOAuthTokens(): Promise<any[]> {
+    const defaultTokens = [
+      { id: 'token-linkedin', platform: 'linkedin', accessToken: 'lk_oauth_token_active', expiresAt: Date.now() + 2592000000, accountName: 'Raquel Duarte', updatedAt: Date.now() },
+      { id: 'token-instagram', platform: 'instagram', accessToken: 'ig_oauth_token_active', expiresAt: Date.now() + 2592000000, accountName: '@raquel.marketing.ed', updatedAt: Date.now() }
+    ];
+    return dataService.safeFetch<any>('agent_oauth_tokens', 'raquel_agent_oauth_tokens', defaultTokens);
+  },
+
+  async saveOAuthToken(token: any): Promise<void> {
+    return dataService.safeSave<any>('agent_oauth_tokens', 'raquel_agent_oauth_tokens', token);
+  },
+
+  async fetchWeeklyReports(): Promise<any[]> {
+    const defaultReports = [
+      {
+        id: 'report-1',
+        weekStartDate: '2026-09-01',
+        weekEndDate: '2026-09-07',
+        totalReach: 12400,
+        totalLikes: 890,
+        totalComments: 174,
+        totalLeads: 48,
+        topPerformingPostTitle: '5 Tendências de IA no Marketing Digital para 2026',
+        summary: 'Excelente engajamento nos posts sobre IA e Inovação no LinkedIn e Instagram. Taxa de conversão de leads em 3.8%.',
+        generatedAt: Date.now() - 172800000
+      }
+    ];
+    return dataService.safeFetch<any>('weekly_engagement_reports', 'raquel_weekly_engagement_reports', defaultReports);
+  },
+
+  async saveWeeklyReport(report: any): Promise<void> {
+    return dataService.safeSave<any>('weekly_engagement_reports', 'raquel_weekly_engagement_reports', report);
   }
 };
+
 
 
 

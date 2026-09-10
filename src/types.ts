@@ -223,7 +223,7 @@ export type TabType = 'dashboard' | 'finance' | 'calendar' | 'programmer' | 'dia
 
 // Types dos Agentes e Antigravity Token Meter
 export interface AgentStatus {
-  id: 'marketing' | 'debug_ia' | 'suporte_pedagogico';
+  id: 'marketing' | 'debug_ia' | 'suporte_pedagogico' | 'publicacao_ia';
   name: string;
   category: string;
   active: boolean;
@@ -236,7 +236,7 @@ export interface AgentStatus {
 
 export interface AgentExecutionLog {
   id: string;
-  agentId: 'marketing' | 'debug_ia' | 'suporte_pedagogico';
+  agentId: 'marketing' | 'debug_ia' | 'suporte_pedagogico' | 'publicacao_ia';
   agentName: string;
   timestamp: number;
   status: 'sucesso' | 'erro' | 'alerta';
@@ -257,9 +257,58 @@ export interface AntigravityTokenMeter {
     marketing: number;
     debug_ia: number;
     suporte_pedagogico: number;
+    publicacao_ia?: number;
   };
   lastUpdated: number;
 }
+
+export interface AgentPublicacaoPost {
+  id: string;
+  title: string;
+  themeCategory: 'Marketing Digital' | 'Educação' | 'Inovação' | 'Inteligência Artificial';
+  targetPlatform: 'linkedin' | 'instagram' | 'both';
+  caption: string; // até 2 parágrafos
+  hashtags: string[]; // até 5 hashtags
+  imageUrl?: string;
+  imagePrompt?: string;
+  status: 'rascunho' | 'agendado' | 'publicado' | 'erro';
+  scheduledDate?: string;
+  publishedAt?: number;
+  tokensUsed: number;
+  dailyImageCountUsed: number; // máx 2 gratuitas por dia (1 LinkedIn, 1 Instagram)
+  analytics?: {
+    likes: number;
+    comments: number;
+    shares: number;
+    reach: number;
+    leadsGenerated: number;
+  };
+  createdAt: number;
+}
+
+export interface OAuthTokensSupabase {
+  id: string;
+  platform: 'linkedin' | 'instagram';
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: number;
+  accountName?: string;
+  updatedAt: number;
+}
+
+export interface WeeklyEngagementReport {
+  id: string;
+  weekStartDate: string;
+  weekEndDate: string;
+  totalReach: number;
+  totalLikes: number;
+  totalComments: number;
+  totalLeads: number;
+  topPerformingPostTitle: string;
+  summary: string;
+  generatedAt: number;
+}
+
 
 export interface DebugIARecord {
   id: string;
