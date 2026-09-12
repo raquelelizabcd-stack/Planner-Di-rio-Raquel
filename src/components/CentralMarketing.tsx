@@ -198,7 +198,7 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
         setLeads(dbLeads);
         setCampaigns(dbCampaigns);
         const defaultSocialAccounts: MarketingSocialAccount[] = [
-          { id: 'acc-insta', platform: 'instagram', status: 'Não conectado', handle: '@raqueldevfullstack', followers: 3 },
+          { id: 'acc-insta', platform: 'instagram', status: 'Não conectado', handle: '@raqueldevfullstack', followers: 34 },
           { id: 'acc-linked', platform: 'linkedin', status: 'Não conectado', handle: 'in/raquelduartemkt', followers: 2310 },
           { id: 'acc-fb', platform: 'facebook', status: 'Não conectado', handle: '/raquelduartemkt', followers: 480 },
           { id: 'acc-tiktok', platform: 'tiktok', status: 'Não conectado', handle: '@raquelduarte.mkt', followers: 120 },
@@ -916,7 +916,7 @@ Chaves obrigatórias no JSON:
             </div>
             <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 text-[10px] text-emerald-700 font-semibold shadow-xs">
               <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-              <span className="font-mono">Seguidores sincronizados com dados reais</span>
+              <span className="font-mono">Seguidores sincronizados com dados reais (34)</span>
             </div>
           </div>
       </div>
@@ -1076,12 +1076,12 @@ Chaves obrigatórias no JSON:
                         <AreaChart
                           data={
                             activeNetwork === 'instagram' ? [
-                              { name: '10/06', seguidores: 1 },
-                              { name: '11/06', seguidores: 1 },
-                              { name: '12/06', seguidores: 2 },
-                              { name: '13/06', seguidores: 2 },
-                              { name: '14/06', seguidores: 3 },
-                              { name: '15/06', seguidores: (socialAccounts.find(s => s.platform === 'instagram')?.followers || 3) }
+                              { name: '10/06', seguidores: 28 },
+                              { name: '11/06', seguidores: 29 },
+                              { name: '12/06', seguidores: 31 },
+                              { name: '13/06', seguidores: 32 },
+                              { name: '14/06', seguidores: 33 },
+                              { name: '15/06', seguidores: (socialAccounts.find(s => s.platform === 'instagram')?.followers || 34) }
                             ] : activeNetwork === 'linkedin' ? [
                               { name: '10/06', seguidores: 2210 },
                               { name: '11/06', seguidores: 2230 },
