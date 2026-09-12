@@ -275,7 +275,31 @@ REGRAS RÍGIDAS DE GERAÇÃO:
 2. EXATAMENTE 5 HASHTAGS ESTRATÉGICAS ao final (ex: #MarketingDigital #InteligenciaArtificial #Educacao #Inovacao #RaquelDuarte).
 3. Mantenha o texto estritamente dentro do limite de 200 tokens.`;
 
-      if (apiKey) {
+      const openaiKey = process.env.OPENAI_API_KEY;
+      if (openaiKey) {
+        try {
+          const res = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openaiKey}`
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o-mini',
+              messages: [{ role: 'user', content: promptText }],
+              max_tokens: 200
+            })
+          });
+          const data = await res.json();
+          if (data?.choices?.[0]?.message?.content) {
+            captionText = data.choices[0].message.content;
+          }
+        } catch (openaiErr) {
+          console.error('Erro na chamada da API ChatGPT (OpenAI):', openaiErr);
+        }
+      }
+
+      if (!captionText && apiKey) {
         const ai = new GoogleGenAI({ apiKey });
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',

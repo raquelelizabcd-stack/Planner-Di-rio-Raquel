@@ -14,7 +14,11 @@ import {
   MarketingAnalytics,
   FinanceDashboardSummary,
   ProfessoraMarketingItem,
-  ProfessoraClass
+  ProfessoraClass,
+  AgentStatus,
+  AgentExecutionLog,
+  AntigravityTokenMeter,
+  DebugIARecord
 } from '../types';
 
 export const dataService = {
@@ -520,8 +524,8 @@ export const dataService = {
       if (data.error && data.error.type === 'OAuthException') {
         console.warn('OAuthException detectada, iniciando renovação de token...');
         
-        const clientId = (import.meta as any).env.VITE_META_CLIENT_ID;
-        const clientSecret = (import.meta as any).env.VITE_META_CLIENT_SECRET;
+        const clientId = (import.meta as any).env.VITE_INSTAGRAM_APP_ID || (process.env as any).INSTAGRAM_APP_ID;
+        const clientSecret = (import.meta as any).env.VITE_INSTAGRAM_APP_SECRET || (process.env as any).INSTAGRAM_APP_SECRET;
         
         if (clientId && clientSecret) {
           const refreshUrl = `https://graph.facebook.com/v19.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${clientId}&client_secret=${clientSecret}&fb_exchange_token=${token}`;

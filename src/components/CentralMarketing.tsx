@@ -580,8 +580,8 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
     const target = socialAccounts.find(s => s.id === id || s.platform.toLowerCase() === id.toLowerCase());
     if (!target) return;
 
-    const clientId = (import.meta as any).env.VITE_META_CLIENT_ID || (typeof process !== 'undefined' ? (process.env as any).VITE_META_CLIENT_ID : '') || '3414939135346093';
-    const clientSecret = (import.meta as any).env.VITE_META_CLIENT_SECRET || (typeof process !== 'undefined' ? (process.env as any).VITE_META_CLIENT_SECRET : '') || 'ea7532fde3b76e904e6cab7fd3ee2c00';
+    const clientId = (import.meta as any).env.VITE_INSTAGRAM_APP_ID || (typeof process !== 'undefined' ? (process.env as any).INSTAGRAM_APP_ID || (process.env as any).VITE_INSTAGRAM_APP_ID : '') || '2302705103880371';
+    const clientSecret = (import.meta as any).env.VITE_INSTAGRAM_APP_SECRET || (typeof process !== 'undefined' ? (process.env as any).INSTAGRAM_APP_SECRET || (process.env as any).VITE_INSTAGRAM_APP_SECRET : '') || 'ede4e04dcb642c625ac07773e2ee603f';
 
     if (target.status === 'Conectado') {
       const updated: MarketingSocialAccount = { 

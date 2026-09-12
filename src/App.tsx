@@ -8140,7 +8140,7 @@ export default function App() {
                     Informações do Sistema
                   </h3>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
                     <div className="p-4 bg-roxo-suave/10 rounded-2xl border border-roxo-suave/30">
                       <p className="text-[10px] font-bold text-roxo-suave uppercase tracking-widest mb-1">Versão</p>
                       <p className="text-lg font-display font-bold text-white">v2.5.0-supabase-fix</p>
@@ -8150,6 +8150,22 @@ export default function App() {
                       <div className="flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         <p className="text-lg font-display font-bold text-white">Conectado</p>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-white/5 rounded-2xl border border-border-dark">
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">OpenAI (ChatGPT)</p>
+                      <div className="flex items-center gap-2">
+                        {process.env.OPENAI_API_KEY ? (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            <p className="text-lg font-display font-bold text-emerald-400">Conectado à OpenAI</p>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-2 h-2 rounded-full bg-red-500" />
+                            <p className="text-sm font-display font-bold text-red-400">Erro: OPENAI_API_KEY não configurada. Por favor, verifique a chave de API.</p>
+                          </>
+                        )}
                       </div>
                     </div>
                     <div className="p-4 bg-white/5 rounded-2xl border border-border-dark">
