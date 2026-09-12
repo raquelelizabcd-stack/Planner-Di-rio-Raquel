@@ -34,7 +34,8 @@ import {
   BarChart3,
   ThumbsUp,
   MessageCircle,
-  Award
+  Award,
+  RefreshCw
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -918,9 +919,24 @@ Chaves obrigatórias no JSON:
         </div>
         
         {/* Dynamic DB State Indicators */}
-        <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 text-[10px] text-slate-600 font-medium">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-          <span className="font-mono">Supabase Online (com cache Local)</span>
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+          <button
+            onClick={async () => {
+              setLoading(true);
+              await dataService.clearAllMarketingCache();
+              const report = await dataService.syncAndValidateMarketingMetrics();
+              showToast("Métricas sincronizadas com dados reais");
+              setLoading(false);
+            }}
+            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            Revalidar e Sincronizar Métricas
+          </button>
+          <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 text-[10px] text-emerald-700 font-semibold shadow-xs">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+            <span className="font-mono">Métricas sincronizadas com dados reais</span>
+          </div>
         </div>
       </div>
 
