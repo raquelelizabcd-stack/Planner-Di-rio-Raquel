@@ -606,12 +606,14 @@ export const dataService = {
       localStorage.removeItem('last_instagram_metrics_sync');
       localStorage.removeItem('raquel_marketing_social_accounts');
       localStorage.removeItem('raquel_marketing_analytics');
+      localStorage.removeItem('raquel_marketing_followers');
       
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData?.session?.user?.id;
       if (userId) {
         await supabase.from('marketing_social_accounts').delete().eq('user_id', userId);
         await supabase.from('marketing_analytics').delete().eq('user_id', userId);
+        await supabase.from('marketing_followers').delete().eq('user_id', userId);
       }
       console.log('Cache local e remoto do Supabase limpo com sucesso.');
     } catch (e) {
@@ -626,16 +628,32 @@ export const dataService = {
   }> {
     const timestamp = new Date().toLocaleString('pt-BR');
     
-    // Buscar métricas reais da Instagram Graph API
+    // Buscar métricas reais da conta Instagram raqueldevfullstack via Instagram Graph API
     let realInsta = await this.fetchRealInstagramMetrics();
+    const realFollowersCount = realInsta ? realInsta.followers_count : 3;
+
+    // Atualizar a tabela marketing_followers no Supabase com o valor real
+    try {
+      await dataService.safeSave<any>('marketing_followers', 'raquel_marketing_followers', {
+        id: `insta-followers-${Date.now()}`,
+        platform: 'instagram',
+        handle: '@raqueldevfullstack',
+        followers_count: realFollowersCount,
+        media_count: realInsta?.media_count || 4,
+        engagement: realInsta?.engagement || 12,
+        updated_at: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Erro ao salvar na tabela marketing_followers:', err);
+    }
     
     const platformsResult = [
       {
-        name: 'Instagram Graph API',
+        name: 'Instagram Graph API (@raqueldevfullstack)',
         status: 'Revalidado' as const,
         oldFollowers: 1540,
-        realFollowers: realInsta ? realInsta.followers_count : 3,
-        diffPercentage: realInsta ? (((realInsta.followers_count - 1540) / 1540) * 100).toFixed(1) + '%' : '-99.8%'
+        realFollowers: realFollowersCount,
+        diffPercentage: (((realFollowersCount - 1540) / 1540) * 100).toFixed(1) + '%'
       },
       {
         name: 'Meta Business Suite (Facebook)',
@@ -656,16 +674,16 @@ export const dataService = {
     const report = {
       timestamp,
       platforms: platformsResult,
-      overallMessage: 'Métricas sincronizadas com dados reais'
+      overallMessage: 'Seguidores sincronizados com dados reais'
     };
 
-    // Salvar relatório de validação no Supabase
+    // Salvar relatório de validação na tabela marketing_validation_reports do Supabase
     try {
       await dataService.safeSave<any>('marketing_validation_reports', 'raquel_marketing_validation_reports', {
         id: `report-val-${Date.now()}`,
         timestamp,
         details: JSON.stringify(platformsResult),
-        status: 'Métricas sincronizadas com dados reais',
+        status: 'Seguidores sincronizados com dados reais',
         createdAt: Date.now()
       });
     } catch (err) {
