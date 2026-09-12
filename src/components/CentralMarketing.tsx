@@ -262,50 +262,41 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
     loadAllMarketingData();
   }, []);
 
-  // Cron Job do Cliente: Executa a sincronização com a Meta Marketing API a cada 24 horas
+  const [lastAutoSyncTime, setLastAutoSyncTime] = useState<string>(() => {
+    return localStorage.getItem('last_auto_sync_time') || new Date().toLocaleString('pt-BR');
+  });
+
+  // Cron Job do Cliente: Executa a sincronização e revalidação automática a cada 6 horas (21600000 ms)
   useEffect(() => {
-    const cronInterval = setInterval(async () => {
-      const lastSync = localStorage.getItem('last_instagram_metrics_sync');
+    const runAutoSyncJob = async () => {
+      const lastSync = localStorage.getItem('last_auto_sync_timestamp');
       const now = Date.now();
-      const twentyFourHours = 24 * 60 * 60 * 1000;
+      const sixHours = 6 * 60 * 60 * 1000;
 
-      if (!lastSync || now - parseInt(lastSync) > twentyFourHours) {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const userId = sessionData?.session?.user?.id;
-        if (!userId) return;
-
-        const { data: dbSocial } = await supabase
-          .from("marketing_social_accounts")
-          .select("*")
-          .eq("user_id", userId);
-
-        const instaDbAcc = dbSocial?.find((s: any) => s.platform.toLowerCase() === 'instagram');
-        if (instaDbAcc && instaDbAcc.status === 'Conectado') {
-          try {
-            const realInfo = await dataService.fetchRealInstagramMetrics();
-            if (realInfo) {
-              const updated = {
-                id: 'acc-insta',
-                platform: 'instagram' as const,
-                status: 'Conectado' as const,
-                handle: `@${realInfo.username}`,
-                followers: realInfo.followers_count,
-                posts_count: realInfo.media_count,
-                engagement: realInfo.engagement
-              };
-              await dataService.saveMarketingSocialAccount(updated);
-              setSocialAccounts(prev => prev.map(s => s.platform === 'instagram' ? { ...s, ...updated } : s));
-              localStorage.setItem('last_instagram_metrics_sync', now.toString());
-              console.log('Cron Job: Sincronização diária do Instagram concluída com sucesso.');
-            }
-          } catch (e) {
-            console.error('Cron Job: Erro ao sincronizar métricas do Instagram', e);
-          }
+      if (!lastSync || now - parseInt(lastSync) >= sixHours) {
+        try {
+          // 1. Limpar cache local e remoto
+          await dataService.clearAllMarketingCache();
+          
+          // 2. Revalidar conexões OAuth e sincronizar métricas salvando no Supabase
+          const report = await dataService.syncAndValidateMarketingMetrics();
+          
+          const formattedDate = new Date().toLocaleString('pt-BR');
+          localStorage.setItem('last_auto_sync_timestamp', now.toString());
+          localStorage.setItem('last_auto_sync_time', formattedDate);
+          setLastAutoSyncTime(formattedDate);
+          
+          console.log('Job de 6 horas: Sincronização e revalidação automática concluída:', report);
+        } catch (err) {
+          console.error('Erro ao executar job automático de 6h:', err);
         }
       }
-    }, 60 * 60 * 1000); // Executa verificação a cada 1 hora
+    };
 
-    return () => clearInterval(cronInterval);
+    runAutoSyncJob();
+    const interval = setInterval(runAutoSyncJob, 15 * 60 * 1000); // Checa a cada 15 min se o intervalo de 6h passou
+
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -918,26 +909,16 @@ Chaves obrigatórias no JSON:
           </div>
         </div>
         
-        {/* Dynamic DB State Indicators */}
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-          <button
-            onClick={async () => {
-              setLoading(true);
-              await dataService.clearAllMarketingCache();
-              const report = await dataService.syncAndValidateMarketingMetrics();
-              showToast("Métricas sincronizadas com dados reais");
-              setLoading(false);
-            }}
-            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-          >
-            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-            Revalidar e Sincronizar Métricas
-          </button>
-          <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 text-[10px] text-emerald-700 font-semibold shadow-xs">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-            <span className="font-mono">Métricas sincronizadas com dados reais</span>
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+            <div className="flex items-center gap-2 bg-indigo-50/80 px-3 py-1.5 rounded-xl border border-indigo-200 text-[10px] text-indigo-700 font-semibold shadow-xs">
+              <Clock size={12} className="text-indigo-600 animate-pulse" />
+              <span className="font-mono">Última sincronização automática: {lastAutoSyncTime}</span>
+            </div>
+            <div className="flex items-center gap-2 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 text-[10px] text-emerald-700 font-semibold shadow-xs">
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+              <span className="font-mono">Métricas sincronizadas com dados reais</span>
+            </div>
           </div>
-        </div>
       </div>
 
       {/* Internal Navigation Menu (Grid style) */}
