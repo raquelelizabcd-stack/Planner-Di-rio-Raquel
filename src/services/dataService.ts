@@ -780,15 +780,15 @@ export const dataService = {
       { id: 'turma-1', name: 'Turma 3001 - MKT Digital', subject: 'Marketing de Conteúdo & Mídias Sociais', gradeYear: '3º Ano Técnico', description: 'Turma do vespertino focada em campanhas de redes sociais', createdAt: Date.now() },
       { id: 'turma-2', name: 'Turma 2002 - Vendas & Inbound', subject: 'Inbound Marketing e Funil de Vendas', gradeYear: '2º Ano Técnico', description: 'Turma do matutino focada em qualificação de leads', createdAt: Date.now() }
     ];
-    return dataService.safeFetch<ProfessoraClass>('professora_classes', 'raquel_professora_classes', initialClasses);
+    return dataService.safeFetch<ProfessoraClass>('professora_marketing_ia', 'raquel_professora_classes', initialClasses);
   },
 
   async saveProfessoraClass(item: ProfessoraClass): Promise<void> {
-    return dataService.safeSave<ProfessoraClass>('professora_classes', 'raquel_professora_classes', item);
+    return dataService.safeSave<ProfessoraClass>('professora_marketing_ia', 'raquel_professora_classes', item);
   },
 
   async deleteProfessoraClass(id: string): Promise<void> {
-    return dataService.safeDelete('professora_classes', 'raquel_professora_classes', id);
+    return dataService.safeDelete('professora_marketing_ia', 'raquel_professora_classes', id);
   },
 
   // Agentes IA & Token Meter Supabase safe services
