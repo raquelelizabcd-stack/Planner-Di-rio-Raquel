@@ -330,7 +330,17 @@ export interface ProfessoraClass {
   gradeYear: string;
   description?: string;
   linkedItemIds?: string[];
+  status?: 'ativa' | 'inativa';
   createdAt: number;
+  updatedAt?: number;
+  stats?: {
+    aulasConcluidas?: number;
+    aulasPendentes?: number;
+    materiaisVinculados?: number;
+    slidesGerados?: number;
+    progressoMedioAlunos?: number;
+    taxaConclusaoProjetos?: number;
+  };
 }
 
 export interface ProfessoraMarketingItem {

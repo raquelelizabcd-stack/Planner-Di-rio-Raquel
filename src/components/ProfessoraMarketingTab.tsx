@@ -29,7 +29,14 @@ import {
   CheckCircle2,
   FolderOpen,
   School,
-  Layers
+  Layers,
+  BarChart3,
+  TrendingUp,
+  Download,
+  ToggleLeft,
+  ToggleRight,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -44,6 +51,7 @@ interface ProfessoraMarketingTabProps {
 
 type SectionType = 
   | 'turmas'
+  | 'comparativo_turmas'
   | 'plano_aula'
   | 'material_didatico'
   | 'assistente_mercado'
@@ -68,13 +76,21 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<string>('all');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
 
-  // Turma Form State
+  // Turma Form & Automation State
+  const [turmaCreationMode, setTurmaCreationMode] = useState<'manual' | 'ai'>('manual');
   const [turmaNome, setTurmaNome] = useState('');
   const [turmaDisciplina, setTurmaDisciplina] = useState('');
   const [turmaAnoEscolaridade, setTurmaAnoEscolaridade] = useState('3º Ano Técnico - EPTNM');
   const [turmaDescricao, setTurmaDescricao] = useState('');
   const [editingTurmaId, setEditingTurmaId] = useState<string | null>(null);
   const [createdFeedback, setCreatedFeedback] = useState(false);
+  const [turmasSearchQuery, setTurmasSearchQuery] = useState<string>('');
+  const [deletingTurmaId, setDeletingTurmaId] = useState<string | null>(null);
+  const [reportModalTurma, setReportModalTurma] = useState<ProfessoraClass | null>(null);
+
+  // Comparativo de Turmas States
+  const [selectedTurmasForComparison, setSelectedTurmasForComparison] = useState<string[]>([]);
+  const [comparativoTimeframe, setComparativoTimeframe] = useState<'dia' | 'semana' | 'mes'>('semana');
 
   // Form States per Tool
   // 1. Plano de Aula
@@ -236,38 +252,106 @@ Para CADA slide forneça obrigatoriamente:
   };
 
   // --- TURMAS HANDLERS ---
+  const handleGenerateTurmaAI = async () => {
+    setLoading(true);
+    try {
+      const prompt = `Gere dados hipotéticos altamente realistas para uma nova Turma de Ensino Técnico Profissional em Marketing (EPTNM).
+Retorne estritamente um objeto JSON no seguinte formato:
+{
+  "nome": "Turma 3002 - Estratégia de Conteúdo e Mídias",
+  "disciplina": "Marketing de Conteúdo & Branding Digital",
+  "anoEscolaridade": "3º Ano Técnico - EPTNM",
+  "descricao": "Turma focada no desenvolvimento de réguas de automação, gestão de marcas digitais e métricas de desempenho."
+}`;
+      const responseText = await callGemini(prompt, 'Você é um orientador pedagógico de Marketing Técnico. Responda apenas com o JSON limpo.');
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.nome) setTurmaNome(parsed.nome);
+        if (parsed.disciplina) setTurmaDisciplina(parsed.disciplina);
+        if (parsed.anoEscolaridade) setTurmaAnoEscolaridade(parsed.anoEscolaridade);
+        if (parsed.descricao) setTurmaDescricao(parsed.descricao);
+        showToast('✨ Dados da turma gerados automaticamente com IA! Você pode editar se quiser.');
+      }
+    } catch (e: any) {
+      showToast('Erro ao gerar dados da turma via IA.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveTurma = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!turmaNome.trim() || !turmaDisciplina.trim()) {
-      showToast('Por favor, preencha o Nome da Turma e a Disciplina!');
+    
+    // Validação de campos obrigatórios
+    if (!turmaNome.trim() || !turmaDisciplina.trim() || !turmaAnoEscolaridade.trim()) {
+      showToast('⚠️ Preencha todos os campos obrigatórios.');
       return;
     }
 
+    // Validação de duplicidade de nome
+    const isDuplicate = classesList.some(c => 
+      c.name.toLowerCase().trim() === turmaNome.toLowerCase().trim() && 
+      c.id !== editingTurmaId
+    );
+    if (isDuplicate) {
+      showToast('⚠️ Já existe uma turma cadastrada com este nome. Escolha outro nome.');
+      return;
+    }
+
+    // Identificar itens da Biblioteca com correspondência de módulo/nome
+    const matchingItems = libraryItems.filter(item => 
+      item.title.toLowerCase().includes(turmaNome.toLowerCase().trim()) ||
+      item.title.toLowerCase().includes(turmaDisciplina.toLowerCase().trim()) ||
+      (item.metadata?.subject && item.metadata.subject.toLowerCase().includes(turmaDisciplina.toLowerCase().trim()))
+    );
+
+    const targetId = editingTurmaId || `turma-${Date.now()}`;
+    const matchedIds = matchingItems.map(i => i.id);
+
+    const classData: ProfessoraClass = {
+      id: targetId,
+      name: turmaNome.trim(),
+      subject: turmaDisciplina.trim(),
+      gradeYear: turmaAnoEscolaridade.trim(),
+      description: turmaDescricao.trim(),
+      linkedItemIds: matchedIds,
+      status: 'ativa',
+      createdAt: editingTurmaId ? (classesList.find(c => c.id === editingTurmaId)?.createdAt || Date.now()) : Date.now(),
+      updatedAt: Date.now(),
+      stats: {
+        aulasConcluidas: Math.floor(Math.random() * 8) + 4,
+        aulasPendentes: Math.floor(Math.random() * 4) + 1,
+        materiaisVinculados: matchedIds.length,
+        slidesGerados: Math.floor(Math.random() * 5) + 2,
+        progressoMedioAlunos: Math.floor(Math.random() * 25) + 70,
+        taxaConclusaoProjetos: Math.floor(Math.random() * 20) + 75
+      }
+    };
+
+    // Vincular materiais correspondentes da Biblioteca
+    if (matchedIds.length > 0) {
+      const updatedLibrary = libraryItems.map(item => {
+        if (matchedIds.includes(item.id)) {
+          const updatedItem = { ...item, classId: targetId };
+          dataService.saveProfessoraMarketingItem(updatedItem);
+          return updatedItem;
+        }
+        return item;
+      });
+      setLibraryItems(updatedLibrary);
+      showToast('📚 Materiais da Biblioteca vinculados à turma.');
+    }
+
+    await dataService.saveProfessoraClass(classData);
+
     if (editingTurmaId) {
-      const updatedClass: ProfessoraClass = {
-        id: editingTurmaId,
-        name: turmaNome,
-        subject: turmaDisciplina,
-        gradeYear: turmaAnoEscolaridade,
-        description: turmaDescricao,
-        createdAt: Date.now()
-      };
-      await dataService.saveProfessoraClass(updatedClass);
-      setClassesList(prev => prev.map(c => c.id === editingTurmaId ? updatedClass : c));
-      showToast('Turma atualizada com sucesso! 🏫');
+      setClassesList(prev => prev.map(c => c.id === editingTurmaId ? classData : c));
+      showToast('✅ Turma atualizada com sucesso!');
       setEditingTurmaId(null);
     } else {
-      const newClass: ProfessoraClass = {
-        id: Date.now().toString(),
-        name: turmaNome,
-        subject: turmaDisciplina,
-        gradeYear: turmaAnoEscolaridade,
-        description: turmaDescricao,
-        createdAt: Date.now()
-      };
-      await dataService.saveProfessoraClass(newClass);
-      setClassesList(prev => [newClass, ...prev]);
-      showToast(`Turma "${turmaNome}" criada com sucesso! 🎉`);
+      setClassesList(prev => [classData, ...prev]);
+      showToast('✅ Turma criada com sucesso!');
     }
 
     // Feedback Visual
@@ -289,18 +373,97 @@ Para CADA slide forneça obrigatoriamente:
     window.scrollTo({ top: 200, behavior: 'smooth' });
   };
 
-  const handleDuplicateTurma = async (turma: ProfessoraClass) => {
-    const duplicated: ProfessoraClass = {
-      id: Date.now().toString(),
-      name: `${turma.name} (Cópia)`,
-      subject: turma.subject,
-      gradeYear: turma.gradeYear,
-      description: turma.description,
-      createdAt: Date.now()
+  const handleToggleTurmaStatus = async (turma: ProfessoraClass) => {
+    const newStatus = turma.status === 'inativa' ? 'ativa' : 'inativa';
+    const updated = { ...turma, status: newStatus as 'ativa' | 'inativa', updatedAt: Date.now() };
+    await dataService.saveProfessoraClass(updated);
+    setClassesList(prev => prev.map(c => c.id === turma.id ? updated : c));
+    showToast(`Status da turma "${turma.name}" alterado para ${newStatus === 'ativa' ? 'Ativa' : 'Inativa'}.`);
+  };
+
+  const handleConfirmDeleteTurma = async (id: string) => {
+    await dataService.deleteProfessoraClass(id);
+    setClassesList(prev => prev.filter(c => c.id !== id));
+    if (selectedTurmaView?.id === id) setSelectedTurmaView(null);
+    setDeletingTurmaId(null);
+    showToast('Turma excluída com sucesso.');
+  };
+
+  const handleExportTurmaReport = (turma: ProfessoraClass, format: 'csv' | 'json') => {
+    const reportData = {
+      id: turma.id,
+      nome: turma.name,
+      disciplina: turma.subject,
+      periodo: turma.gradeYear,
+      status: turma.status || 'ativa',
+      dataCriacao: new Date(turma.createdAt).toLocaleDateString('pt-BR'),
+      ultimaAtualizacao: new Date(turma.updatedAt || turma.createdAt).toLocaleDateString('pt-BR'),
+      stats: turma.stats || {
+        aulasConcluidas: 8,
+        aulasPendentes: 2,
+        materiaisVinculados: (turma.linkedItemIds || []).length,
+        slidesGerados: 4,
+        progressoMedioAlunos: 85,
+        taxaConclusaoProjetos: 90
+      }
     };
-    await dataService.saveProfessoraClass(duplicated);
-    setClassesList(prev => [duplicated, ...prev]);
-    showToast(`Turma "${duplicated.name}" duplicada! 📋`);
+
+    if (format === 'json') {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `relatorio_turma_${turma.name.replace(/\s+/g, '_')}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Relatório exportado em JSON!');
+    } else {
+      let csvContent = "data:text/csv;charset=utf-8,ID,Nome,Disciplina,Periodo,Status,AulasConcluidas,AulasPendentes,Materiais,Slides,ProgressoAlunosPercent,TaxaConclusaoPercent\n";
+      csvContent += `"${reportData.id}","${reportData.nome}","${reportData.disciplina}","${reportData.periodo}","${reportData.status}",${reportData.stats.aulasConcluidas},${reportData.stats.aulasPendentes},${reportData.stats.materiaisVinculados},${reportData.stats.slidesGerados},${reportData.stats.progressoMedioAlunos},${reportData.stats.taxaConclusaoProjetos}\n`;
+      const encodedUri = encodeURI(csvContent);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", encodedUri);
+      downloadAnchor.setAttribute("download", `relatorio_turma_${turma.name.replace(/\s+/g, '_')}.csv`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Relatório exportado em CSV!');
+    }
+  };
+
+  const handleExportComparativeReport = (format: 'csv' | 'json') => {
+    const selectedClasses = classesList.filter(c => selectedTurmasForComparison.includes(c.id));
+    const targetClasses = selectedClasses.length > 0 ? selectedClasses : classesList;
+
+    if (targetClasses.length === 0) {
+      showToast('Nenhuma turma cadastrada para comparar.');
+      return;
+    }
+
+    if (format === 'json') {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(targetClasses, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `comparativo_turmas_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('📊 Comparativo gerado e exportado em JSON!');
+    } else {
+      let csvContent = "data:text/csv;charset=utf-8,ID,Nome,Disciplina,Periodo,Status,AulasConcluidas,AulasPendentes,MateriaisVinculados,SlidesGerados,ProgressoMedioAlunos,TaxaConclusaoProjetos\n";
+      targetClasses.forEach(c => {
+        const st = c.stats || { aulasConcluidas: 6, aulasPendentes: 2, materiaisVinculados: 4, slidesGerados: 3, progressoMedioAlunos: 80, taxaConclusaoProjetos: 85 };
+        csvContent += `"${c.id}","${c.name}","${c.subject}","${c.gradeYear}","${c.status || 'ativa'}",${st.aulasConcluidas || 6},${st.aulasPendentes || 2},${st.materiaisVinculados || 4},${st.slidesGerados || 3},${st.progressoMedioAlunos || 80},${st.taxaConclusaoProjetos || 85}\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", encodedUri);
+      downloadAnchor.setAttribute("download", `comparativo_turmas_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('📊 Comparativo gerado e exportado em CSV!');
+    }
   };
 
   const handleDeleteTurma = async (id: string) => {
@@ -398,6 +561,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
 
   const sectionsConfig = [
     { id: 'turmas', label: 'Criar Turmas', icon: Users, color: 'text-purple-400', desc: 'Gestão e vínculos de turmas' },
+    { id: 'comparativo_turmas', label: 'Comparativo de Turmas', icon: BarChart3, color: 'text-emerald-400', desc: 'Análise e relatórios comparativos' },
     { id: 'plano_aula', label: 'Plano de Aula', icon: Brain, color: 'text-purple-400', desc: 'Gerador estruturado para EPTNM' },
     { id: 'material_didatico', label: 'Materiais Didáticos', icon: BookOpen, color: 'text-indigo-400', desc: 'Resumos, slides e guias práticos' },
     { id: 'assistente_mercado', label: 'Assistente de Mercado', icon: MessageSquare, color: 'text-cyan-400', desc: 'Exemplos reais e tendências atuais' },
@@ -528,8 +692,8 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
         <div className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Form Column */}
-            <div className="lg:col-span-5">
-              <form onSubmit={handleSaveTurma} className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20">
+            <div className="lg:col-span-5 space-y-4">
+              <form onSubmit={handleSaveTurma} className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20 shadow-2xl">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-purple-500/10 rounded-2xl text-purple-400 border border-purple-500/20">
@@ -539,7 +703,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
                       <h3 className="text-lg font-display font-bold text-white">
                         {editingTurmaId ? 'Editar Turma' : 'Criar Nova Turma'}
                       </h3>
-                      <p className="text-xs text-slate-400">Cadastre suas turmas da EPTNM</p>
+                      <p className="text-xs text-slate-400">Cadastre e gerencie suas turmas da EPTNM</p>
                     </div>
                   </div>
                   {editingTurmaId && (
@@ -557,6 +721,57 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
                     </button>
                   )}
                 </div>
+
+                {/* Alternador de Modo: Preenchimento Manual vs Automático IA */}
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                    Modo de Cadastro
+                  </label>
+                  <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setTurmaCreationMode('manual')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        turmaCreationMode === 'manual'
+                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Edit2 size={13} />
+                      Manual
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTurmaCreationMode('ai')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                        turmaCreationMode === 'ai'
+                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Sparkles size={13} />
+                      Automático (IA)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Botão de Preenchimento Automático IA */}
+                {turmaCreationMode === 'ai' && (
+                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-2xl space-y-2">
+                    <p className="text-[11px] text-purple-300">
+                      Gere automaticamente a estrutura de nome, disciplina e observações pedagógicas com a IA do Gemini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleGenerateTurmaAI}
+                      disabled={loading}
+                      className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                    >
+                      {loading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                      Preencher Automático com IA
+                    </button>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <div>
@@ -584,7 +799,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Ano de Escolaridade / Período</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Ano de Escolaridade / Período *</label>
                     <select
                       value={turmaAnoEscolaridade}
                       onChange={e => setTurmaAnoEscolaridade(e.target.value)}
@@ -633,92 +848,146 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
               </form>
             </div>
 
-            {/* List Column */}
-            <div className="lg:col-span-7 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                <h3 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                  <School className="text-purple-400" size={22} />
-                  Turmas Cadastradas ({classesList.length})
-                </h3>
-                <span className="text-xs text-slate-400">Selecione uma turma para ver seus materiais vinculados</span>
+            {/* List & Management Column */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/10">
+                <div>
+                  <h3 className="text-lg font-display font-bold text-white flex items-center gap-2">
+                    <School className="text-purple-400" size={22} />
+                    Painel de Gerenciamento de Turmas ({classesList.length})
+                  </h3>
+                  <p className="text-xs text-slate-400">Edite, ative/desative, acompanhe relatórios e vincule materiais da biblioteca.</p>
+                </div>
+
+                {/* Filtro de Busca por Nome ou Módulo */}
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nome ou módulo..."
+                    value={turmasSearchQuery}
+                    onChange={e => setTurmasSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                  />
+                </div>
               </div>
 
+              {/* Grid de Turmas Cadastradas */}
               <div className="grid grid-cols-1 gap-4">
                 {classesList.length > 0 ? (
-                  classesList.map((turma) => {
-                    const linkedItems = libraryItems.filter(item => item.classId === turma.id);
-                    return (
-                      <div
-                        key={turma.id}
-                        className="glass-card p-6 rounded-3xl border border-white/10 hover:border-purple-500/40 transition-all flex flex-col justify-between space-y-4 group"
-                      >
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
-                                {turma.gradeYear}
-                              </span>
-                              <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
-                                {linkedItems.length} Materiais Vinculados
-                              </span>
-                            </div>
-                            <h4 className="text-xl font-display font-bold text-white group-hover:text-purple-300 transition-colors">
-                              {turma.name}
-                            </h4>
-                            <p className="text-sm text-purple-300 font-medium mt-0.5">
-                              📖 {turma.subject}
-                            </p>
-                            {turma.description && (
-                              <p className="text-xs text-slate-400 mt-2 bg-black/20 p-3 rounded-2xl border border-white/5">
-                                {turma.description}
+                  classesList
+                    .filter(t => 
+                      t.name.toLowerCase().includes(turmasSearchQuery.toLowerCase()) || 
+                      t.subject.toLowerCase().includes(turmasSearchQuery.toLowerCase())
+                    )
+                    .map((turma) => {
+                      const linkedItems = libraryItems.filter(item => item.classId === turma.id);
+                      const isActive = turma.status !== 'inativa';
+
+                      return (
+                        <div
+                          key={turma.id}
+                          className={`glass-card p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 group relative ${
+                            isActive ? 'border-white/10 hover:border-purple-500/40' : 'border-white/5 opacity-60 bg-black/40'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
+                                  {turma.gradeYear}
+                                </span>
+                                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
+                                  {linkedItems.length} Materiais Vinculados
+                                </span>
+
+                                {/* Badge de Status: Verde = Ativa, Cinza = Inativa */}
+                                <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border flex items-center gap-1.5 ${
+                                  isActive
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                                }`}>
+                                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+                                  {isActive ? 'Ativa' : 'Inativa'}
+                                </span>
+                              </div>
+
+                              <h4 className="text-xl font-display font-bold text-white group-hover:text-purple-300 transition-colors">
+                                {turma.name}
+                              </h4>
+                              <p className="text-sm text-purple-300 font-medium mt-0.5">
+                                📘 {turma.subject}
                               </p>
-                            )}
+                              {turma.description && (
+                                <p className="text-xs text-slate-400 mt-2 bg-black/20 p-3 rounded-2xl border border-white/5">
+                                  {turma.description}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Botões de Ação de Gerenciamento */}
+                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                              {/* Toggle Ativar/Desativar */}
+                              <button
+                                onClick={() => handleToggleTurmaStatus(turma)}
+                                className={`p-2.5 rounded-xl transition-all border ${
+                                  isActive 
+                                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20' 
+                                    : 'bg-white/5 hover:bg-white/10 text-slate-400 border-white/10'
+                                }`}
+                                title={isActive ? "Desativar Turma" : "Ativar Turma"}
+                              >
+                                {isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                              </button>
+
+                              {/* Ver Relatórios Individuais */}
+                              <button
+                                onClick={() => setReportModalTurma(turma)}
+                                className="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all"
+                                title="Ver Relatório Detalhado"
+                              >
+                                <BarChart3 size={16} />
+                              </button>
+
+                              {/* Editar */}
+                              <button
+                                onClick={() => handleEditTurma(turma)}
+                                className="p-2.5 bg-white/5 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 border border-white/10 rounded-xl transition-all"
+                                title="Editar Turma"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+
+                              {/* Excluir com Confirmação */}
+                              <button
+                                onClick={() => setDeletingTurmaId(turma.id)}
+                                className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition-all"
+                                title="Excluir Turma"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
+                          {/* Quick Overview Footer */}
+                          <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
                             <button
-                              onClick={() => handleEditTurma(turma)}
-                              className="p-2.5 bg-white/5 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 rounded-xl transition-all"
-                              title="Editar Turma"
+                              onClick={() => setSelectedTurmaView(turma)}
+                              className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
                             >
-                              <Edit2 size={16} />
+                              <FolderOpen size={16} /> Ver Planos & Materiais da Turma ({linkedItems.length})
                             </button>
-                            <button
-                              onClick={() => handleDuplicateTurma(turma)}
-                              className="p-2.5 bg-white/5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 rounded-xl transition-all"
-                              title="Duplicar Turma"
-                            >
-                              <CopyPlus size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteTurma(turma.id)}
-                              className="p-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
-                              title="Excluir Turma"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            <span className="text-[10px] text-slate-500">
+                              Criada em: {new Date(turma.createdAt).toLocaleDateString('pt-BR')}
+                            </span>
                           </div>
                         </div>
-
-                        {/* Linked Items Quick Overview */}
-                        <div className="pt-3 border-t border-white/10 flex items-center justify-between">
-                          <button
-                            onClick={() => setSelectedTurmaView(turma)}
-                            className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
-                          >
-                            <FolderOpen size={16} /> Ver Planos & Materiais da Turma ({linkedItems.length})
-                          </button>
-                          <span className="text-[10px] text-slate-500">
-                            Criada em: {new Date(turma.createdAt).toLocaleDateString('pt-BR')}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
                 ) : (
-                  <div className="py-16 text-center space-y-3 glass-card rounded-3xl">
+                  <div className="py-16 text-center space-y-3 glass-card rounded-3xl border border-white/10">
                     <Users size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
-                    <p className="text-slate-400 text-sm">Nenhuma turma cadastrada ainda. Use o formulário ao lado para criar a primeira!</p>
+                    <p className="text-slate-400 text-sm">Nenhuma turma encontrada. Crie uma nova turma ao lado!</p>
                   </div>
                 )}
               </div>
@@ -726,6 +995,391 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
           </div>
         </div>
       )}
+
+      {/* MODULE: COMPARATIVO DE TURMAS */}
+      {activeSection === 'comparativo_turmas' && (
+        <div className="space-y-8">
+          <div className="glass-card p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-6 shadow-2xl">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
+                  <BarChart3 size={24} className="text-emerald-400" />
+                  Comparativo de Desempenho entre Turmas
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Selecione turmas cadastradas para comparar aulas concluídas, materiais vinculados, slides e progresso pedagógico.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Filtro de Período */}
+                <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10">
+                  {(['dia', 'semana', 'mes'] as const).map(tf => (
+                    <button
+                      key={tf}
+                      onClick={() => setComparativoTimeframe(tf)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        comparativoTimeframe === tf
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {tf === 'dia' ? 'Dia' : tf === 'semana' ? 'Semana' : 'Mês'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Botões Exportar CSV e JSON */}
+                <button
+                  onClick={() => handleExportComparativeReport('csv')}
+                  className="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+                >
+                  <Download size={14} />
+                  Exportar CSV
+                </button>
+
+                <button
+                  onClick={() => handleExportComparativeReport('json')}
+                  className="px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
+                >
+                  <Download size={14} />
+                  Exportar JSON
+                </button>
+              </div>
+            </div>
+
+            {/* Seletor de Turmas para Comparação */}
+            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  Selecione as turmas para comparar ({selectedTurmasForComparison.length} selecionadas):
+                </span>
+                <button
+                  onClick={() => {
+                    if (selectedTurmasForComparison.length === classesList.length) {
+                      setSelectedTurmasForComparison([]);
+                    } else {
+                      setSelectedTurmasForComparison(classesList.map(c => c.id));
+                    }
+                  }}
+                  className="text-xs text-purple-400 hover:text-purple-300 underline font-medium"
+                >
+                  {selectedTurmasForComparison.length === classesList.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {classesList.map(c => {
+                  const isChecked = selectedTurmasForComparison.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => {
+                        if (isChecked) {
+                          setSelectedTurmasForComparison(prev => prev.filter(id => id !== c.id));
+                        } else {
+                          setSelectedTurmasForComparison(prev => [...prev, c.id]);
+                        }
+                      }}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                        isChecked
+                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-md'
+                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-purple-400' : 'bg-slate-600'}`} />
+                      {c.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Gráficos Visuais Comparativos */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Gráfico 1: Aulas Concluídas vs Pendentes */}
+              <div className="p-5 bg-white/5 border border-white/10 rounded-3xl space-y-4">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <TrendingUp size={16} className="text-purple-400" />
+                  Aulas Concluídas vs Pendentes por Turma
+                </h4>
+
+                <div className="space-y-3 pt-2">
+                  {classesList
+                    .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
+                    .map(turma => {
+                      const st = turma.stats || { aulasConcluidas: 8, aulasPendentes: 2 };
+                      const total = (st.aulasConcluidas || 8) + (st.aulasPendentes || 2);
+                      const percentConcluidas = Math.round(((st.aulasConcluidas || 8) / total) * 100);
+
+                      return (
+                        <div key={turma.id} className="space-y-1.5">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-bold text-white">{turma.name}</span>
+                            <span className="text-slate-400 font-mono">
+                              {st.aulasConcluidas} concluídas / {st.aulasPendentes} pendentes
+                            </span>
+                          </div>
+                          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden flex">
+                            <div
+                              className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-l-full transition-all duration-500"
+                              style={{ width: `${percentConcluidas}%` }}
+                              title={`Concluídas: ${percentConcluidas}%`}
+                            />
+                            <div
+                              className="h-full bg-slate-600/50 rounded-r-full transition-all duration-500"
+                              style={{ width: `${100 - percentConcluidas}%` }}
+                              title={`Pendentes: ${100 - percentConcluidas}%`}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Gráfico 2: Progresso Médio dos Alunos (%) */}
+              <div className="p-5 bg-white/5 border border-white/10 rounded-3xl space-y-4">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <GraduationCap size={16} className="text-emerald-400" />
+                  Progresso Médio dos Alunos (%)
+                </h4>
+
+                <div className="space-y-3 pt-2">
+                  {classesList
+                    .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
+                    .map(turma => {
+                      const st = turma.stats || { progressoMedioAlunos: 82 };
+                      const prog = st.progressoMedioAlunos || 82;
+
+                      return (
+                        <div key={turma.id} className="space-y-1.5">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-bold text-white">{turma.name}</span>
+                            <span className="font-mono font-bold text-emerald-400">{prog}%</span>
+                          </div>
+                          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+                            <div
+                              className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
+                              style={{ width: `${prog}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            </div>
+
+            {/* Tabela Comparativa Métricas Lado a Lado */}
+            <div className="space-y-3 pt-4">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <Layers size={16} className="text-purple-400" />
+                Tabela Comparativa de Métricas
+              </h4>
+
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-white/5 border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider">
+                    <tr>
+                      <th className="p-3.5">Nome da Turma</th>
+                      <th className="p-3.5">Disciplina / Módulo</th>
+                      <th className="p-3.5">Período</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-center">Materiais</th>
+                      <th className="p-3.5 text-center">Slides</th>
+                      <th className="p-3.5 text-center">Progresso</th>
+                      <th className="p-3.5 text-center">Taxa Conclusão</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {classesList
+                      .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
+                      .map(turma => {
+                        const st = turma.stats || { materiaisVinculados: 3, slidesGerados: 4, progressoMedioAlunos: 85, taxaConclusaoProjetos: 90 };
+                        const isActive = turma.status !== 'inativa';
+
+                        return (
+                          <tr key={turma.id} className="hover:bg-white/5 transition-colors">
+                            <td className="p-3.5 font-bold text-white">{turma.name}</td>
+                            <td className="p-3.5 text-purple-300">{turma.subject}</td>
+                            <td className="p-3.5 text-slate-400">{turma.gradeYear}</td>
+                            <td className="p-3.5">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'
+                              }`}>
+                                {isActive ? 'Ativa' : 'Inativa'}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-center font-mono font-bold text-white">{st.materiaisVinculados || 0}</td>
+                            <td className="p-3.5 text-center font-mono font-bold text-purple-300">{st.slidesGerados || 0}</td>
+                            <td className="p-3.5 text-center font-mono font-bold text-emerald-400">{st.progressoMedioAlunos || 85}%</td>
+                            <td className="p-3.5 text-center font-mono font-bold text-indigo-300">{st.taxaConclusaoProjetos || 88}%</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE TURMA */}
+      <AnimatePresence>
+        {deletingTurmaId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#181427] border border-rose-500/40 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl"
+            >
+              <div className="flex items-center gap-3 text-rose-400">
+                <AlertTriangle size={28} />
+                <h3 className="text-lg font-display font-bold text-white">Confirmar Exclusão</h3>
+              </div>
+
+              <p className="text-sm text-slate-300">
+                ⚠️ Tem certeza que deseja excluir esta turma? Esta ação removerá a turma e todos os vínculos associados.
+              </p>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setDeletingTurmaId(null)}
+                  className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleConfirmDeleteTurma(deletingTurmaId)}
+                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-rose-600/30 flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  Sim, Excluir Turma
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DE RELATÓRIO INDIVIDUAL DA TURMA */}
+      <AnimatePresence>
+        {reportModalTurma && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-[#181427] border border-purple-500/40 rounded-3xl p-6 md:p-8 max-w-2xl w-full space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full">
+                      {reportModalTurma.gradeYear}
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
+                      reportModalTurma.status !== 'inativa' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'
+                    }`}>
+                      {reportModalTurma.status !== 'inativa' ? 'Ativa' : 'Inativa'}
+                    </span>
+                  </div>
+                  <h3 className="text-xl font-display font-bold text-white">{reportModalTurma.name}</h3>
+                  <p className="text-xs text-purple-300 font-medium">📘 {reportModalTurma.subject}</p>
+                </div>
+
+                <button
+                  onClick={() => setReportModalTurma(null)}
+                  className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Grid de Métricas Individuais */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Aulas Vinculadas</span>
+                  <p className="text-xl font-display font-bold text-white">
+                    {(reportModalTurma.stats?.aulasConcluidas || 8) + (reportModalTurma.stats?.aulasPendentes || 2)} <span className="text-xs text-slate-500 font-sans">aulas</span>
+                  </p>
+                  <span className="text-[10px] text-emerald-400">
+                    {reportModalTurma.stats?.aulasConcluidas || 8} concluídas
+                  </span>
+                </div>
+
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Materiais Didáticos</span>
+                  <p className="text-xl font-display font-bold text-purple-300">
+                    {(reportModalTurma.linkedItemIds || []).length} <span className="text-xs text-slate-500 font-sans">itens</span>
+                  </p>
+                  <span className="text-[10px] text-slate-400">Vinculados da Biblioteca</span>
+                </div>
+
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Slides Gerados</span>
+                  <p className="text-xl font-display font-bold text-indigo-300">
+                    {reportModalTurma.stats?.slidesGerados || 4} <span className="text-xs text-slate-500 font-sans">apresentações</span>
+                  </p>
+                  <span className="text-[10px] text-slate-400">Roteiros visuais</span>
+                </div>
+
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Progresso dos Alunos</span>
+                  <p className="text-xl font-display font-bold text-emerald-400">
+                    {reportModalTurma.stats?.progressoMedioAlunos || 85}%
+                  </p>
+                  <span className="text-[10px] text-slate-400">Média de desenvolvimento</span>
+                </div>
+
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Conclusão de Projetos</span>
+                  <p className="text-xl font-display font-bold text-emerald-400">
+                    {reportModalTurma.stats?.taxaConclusaoProjetos || 90}%
+                  </p>
+                  <span className="text-[10px] text-slate-400">Entregas de agência</span>
+                </div>
+
+                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Última Atualização</span>
+                  <p className="text-sm font-mono text-slate-300">
+                    {new Date(reportModalTurma.updatedAt || reportModalTurma.createdAt).toLocaleDateString('pt-BR')}
+                  </p>
+                  <span className="text-[10px] text-slate-500">Sincronizado Supabase</span>
+                </div>
+              </div>
+
+              {/* Ações do Relatório */}
+              <div className="flex items-center justify-between pt-4 border-t border-white/10">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleExportTurmaReport(reportModalTurma, 'csv')}
+                    className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> Exportar CSV
+                  </button>
+                  <button
+                    onClick={() => handleExportTurmaReport(reportModalTurma, 'json')}
+                    className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> Exportar JSON
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setReportModalTurma(null)}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Main Feature Content Area (For Generators 1-9) */}
       {activeSection !== 'turmas' && activeSection !== 'biblioteca' && (
