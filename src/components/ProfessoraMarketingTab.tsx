@@ -91,9 +91,13 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [assistenteTopico, setAssistenteTopico] = useState('');
   const [assistenteContexto, setAssistenteContexto] = useState('B2C Digital / Redes Sociais');
 
-  // 4. Apresentacao de Slides
+  // 4. Apresentacao de Slides (com Integração à Biblioteca)
   const [slidesTema, setSlidesTema] = useState('');
   const [slidesQtd, setSlidesQtd] = useState('5 a 7 slides');
+  const [slidesSourceMode, setSlidesSourceMode] = useState<'library' | 'manual'>('manual');
+  const [slidesSelectedLibraryItemId, setSlidesSelectedLibraryItemId] = useState<string>('');
+  const [slidesLibrarySearch, setSlidesLibrarySearch] = useState<string>('');
+  const [slidesLoadedContent, setSlidesLoadedContent] = useState<string>('');
 
   // 5. Sequencia Didatica
   const [sequenciaTema, setSequenciaTema] = useState('');
@@ -123,6 +127,13 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
     loadData();
   }, []);
 
+  // Sincronização automática com a Biblioteca ao alternar para Apresentação Slides
+  useEffect(() => {
+    if (activeSection === 'slides') {
+      loadData();
+    }
+  }, [activeSection]);
+
   const loadData = async () => {
     const [items, classes] = await Promise.all([
       dataService.fetchProfessoraMarketingItems(),
@@ -130,6 +141,61 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
     ]);
     setLibraryItems(items || []);
     setClassesList(classes || []);
+  };
+
+  const handleSelectLibraryItemForSlides = (itemId: string) => {
+    setSlidesSelectedLibraryItemId(itemId);
+    const item = libraryItems.find(i => i.id === itemId);
+    if (item) {
+      setSlidesTema(item.title);
+      setSlidesLoadedContent(item.content);
+      showToast(`Tema "${item.title}" carregado da Biblioteca! 📚`);
+    } else {
+      setSlidesLoadedContent('');
+    }
+  };
+
+  const handleGenerateSlides = async () => {
+    if (!slidesTema.trim()) {
+      showToast('Por favor, defina o Tema da Apresentação!');
+      return;
+    }
+
+    const isFromLibrary = slidesSourceMode === 'library' && slidesLoadedContent.trim().length > 0;
+
+    const promptText = isFromLibrary 
+      ? `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing com base no CONTEÚDO SALVO DA BIBLIOTECA DA PROFESSORA.
+
+Tema da Apresentação: ${slidesTema}
+Quantidade estimada: ${slidesQtd}
+
+CONTEÚDO BASE EXTRAÍDO DA BIBLIOTECA:
+"""
+${slidesLoadedContent}
+"""
+
+Para CADA slide forneça obrigatoriamente:
+- **Slide X: [Título do Slide]**
+- 📌 **Conteúdo do Slide (Bullet points curtos)**
+- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
+- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
+- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`
+      : `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing.
+Tema: ${slidesTema}
+Quantidade estimada: ${slidesQtd}
+
+Para CADA slide forneça obrigatoriamente:
+- **Slide X: [Título do Slide]**
+- 📌 **Conteúdo do Slide (Bullet points curtos)**
+- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
+- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
+- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`;
+
+    await handleGenerate('slides', `Roteiro de Slides: ${slidesTema}`, promptText);
+
+    if (isFromLibrary) {
+      showToast('✅ Slides gerados com base no tema da Biblioteca.');
+    }
   };
 
   const showToast = (msg: string) => {
@@ -862,19 +928,182 @@ Forneça:
 
               {/* SECTION 4: APRESENTAÇÃO DE SLIDES */}
               {activeSection === 'slides' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tema da Apresentação *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Métricas de Marketing Digital (CAC, LTV, ROI)"
-                      value={slidesTema}
-                      onChange={e => setSlidesTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
+                <div className="space-y-5">
+                  {/* Seletor de Modo de Tema */}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+                      Origem do Tema da Apresentação
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                      <button
+                        type="button"
+                        onClick={() => setSlidesSourceMode('manual')}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                          slidesSourceMode === 'manual'
+                            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <Edit2 size={14} />
+                        Digitar novo tema manualmente
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSlidesSourceMode('library');
+                          loadData();
+                        }}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                          slidesSourceMode === 'library'
+                            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                      >
+                        <BookOpen size={14} />
+                        Selecionar tema salvo na Biblioteca
+                      </button>
+                    </div>
                   </div>
+
+                  {/* MODO BIBLIOTECA */}
+                  {slidesSourceMode === 'library' ? (
+                    <div className="p-5 bg-white/5 border border-purple-500/20 rounded-2xl space-y-4 shadow-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+                        <div className="flex items-center gap-2">
+                          <BookOpen size={18} className="text-purple-400" />
+                          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                            Temas Salvos na Biblioteca
+                            <span className="group relative cursor-help">
+                              <HelpCircle size={13} className="text-slate-400 hover:text-purple-300" />
+                              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-60 p-2.5 bg-[#0f0c1b] border border-purple-500/40 text-[10px] text-slate-200 rounded-lg shadow-xl text-center z-30 font-normal">
+                                Selecione um tema salvo na Biblioteca para gerar slides automaticamente.
+                              </span>
+                            </span>
+                          </h4>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await loadData();
+                            showToast('Lista de temas da Biblioteca atualizada! 🔄');
+                          }}
+                          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-[11px] font-bold transition-all border border-white/10 flex items-center gap-1.5 self-start sm:self-auto"
+                        >
+                          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+                          Atualizar Lista de Temas
+                        </button>
+                      </div>
+
+                      {/* Busca por Nome do Tema */}
+                      <div className="relative">
+                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar tema salvo na biblioteca por nome..."
+                          value={slidesLibrarySearch}
+                          onChange={e => setSlidesLibrarySearch(e.target.value)}
+                          className="w-full bg-black/20 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+
+                      {/* Lista de Seleção de Temas */}
+                      {libraryItems.length === 0 ? (
+                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center space-y-1">
+                          <p className="text-xs text-amber-300 font-bold">Nenhum tema encontrado na Biblioteca.</p>
+                          <p className="text-[11px] text-slate-400">Crie um novo tema para começar.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                          {libraryItems
+                            .filter(item => item.title.toLowerCase().includes(slidesLibrarySearch.toLowerCase()))
+                            .map(item => {
+                              const isSelected = slidesSelectedLibraryItemId === item.id;
+                              return (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => handleSelectLibraryItemForSlides(item.id)}
+                                  className={`w-full text-left p-3 rounded-xl border transition-all flex items-start justify-between gap-3 ${
+                                    isSelected
+                                      ? 'bg-purple-600/20 border-purple-500 text-white'
+                                      : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
+                                  }`}
+                                >
+                                  <div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-white">{item.title}</span>
+                                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-white/10 text-slate-300 uppercase">
+                                        {item.category.replace('_', ' ')}
+                                      </span>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                                      {item.content.slice(0, 100)}...
+                                    </p>
+                                  </div>
+                                  {isSelected && <CheckCircle2 size={16} className="text-purple-400 shrink-0 mt-0.5" />}
+                                </button>
+                              );
+                            })}
+                        </div>
+                      )}
+
+                      {/* Campo editável do Tema Selecionado */}
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                          Tema Selecionado (Editável) *
+                        </label>
+                        <div className="relative">
+                          <BookOpen size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
+                          <input
+                            type="text"
+                            placeholder="Selecione um tema acima ou edite aqui..."
+                            value={slidesTema}
+                            onChange={e => setSlidesTema(e.target.value)}
+                            className="w-full bg-black/20 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Preview / Edição do Conteúdo Carregado */}
+                      {slidesLoadedContent && (
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                            Conteúdo Base da Biblioteca (Carregado para Alimentar a IA)
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={slidesLoadedContent}
+                            onChange={e => setSlidesLoadedContent(e.target.value)}
+                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-xs text-slate-300 focus:outline-none focus:border-purple-500 font-mono"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* MODO MANUAL */
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1 flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-purple-400" />
+                        Tema da Apresentação *
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Ex: Métricas de Marketing Digital (CAC, LTV, ROI)"
+                          value={slidesTema}
+                          onChange={e => setSlidesTema(e.target.value)}
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Quantidade de Slides */}
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Quantidade de Slides</label>
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
+                      Quantidade de Slides
+                    </label>
                     <input
                       type="text"
                       value={slidesQtd}
@@ -882,23 +1111,12 @@ Forneça:
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
                     />
                   </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'slides',
-                      `Roteiro de Slides: ${slidesTema}`,
-                      `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing.
-Tema: ${slidesTema}
-Quantidade estimada: ${slidesQtd}
 
-Para CADA slide forneça obrigatoriamente:
-- **Slide X: [Título do Slide]**
-- 📌 **Conteúdo do Slide (Bullet points curtos)**
-- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
-- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
-- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`
-                    )}
+                  {/* Botão Gerar Roteiro de Slides */}
+                  <button
+                    onClick={handleGenerateSlides}
                     disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.99]"
                   >
                     {loading ? <RefreshCw className="animate-spin" size={18} /> : <Presentation size={18} />}
                     Gerar Roteiro de Slides Visual
