@@ -43,6 +43,7 @@ import Markdown from 'react-markdown';
 import { GoogleGenAI } from '@google/genai';
 import { ProfessoraMarketingItem, ProfessoraClass } from '../types';
 import { dataService } from '../services/dataService';
+import { supabase } from '../lib/supabase';
 
 interface ProfessoraMarketingTabProps {
   accentColor?: string;
@@ -329,39 +330,63 @@ Retorne estritamente um objeto JSON no seguinte formato:
       }
     };
 
-    // Vincular materiais correspondentes da Biblioteca
-    if (matchedIds.length > 0) {
-      const updatedLibrary = libraryItems.map(item => {
-        if (matchedIds.includes(item.id)) {
-          const updatedItem = { ...item, classId: targetId };
-          dataService.saveProfessoraMarketingItem(updatedItem);
-          return updatedItem;
+    try {
+      // Se for edição de turma existente, atualizar no Supabase com os nomes de colunas do banco
+      if (editingTurmaId) {
+        const { error: supabaseError } = await supabase
+          .from('professora_marketing_ia')
+          .update({
+            nome_turma: turmaNome.trim(),
+            modulo: turmaDisciplina.trim(),
+            periodo: turmaAnoEscolaridade.trim(),
+            descricao: turmaDescricao.trim(),
+            ultima_atualizacao: new Date().toISOString()
+          })
+          .eq('id', editingTurmaId);
+
+        if (supabaseError) {
+          console.warn('Alerta ao atualizar turma no Supabase:', supabaseError);
         }
-        return item;
-      });
-      setLibraryItems(updatedLibrary);
-      showToast('📚 Materiais da Biblioteca vinculados à turma.');
+      }
+
+      // Vincular materiais correspondentes da Biblioteca
+      if (matchedIds.length > 0) {
+        const updatedLibrary = libraryItems.map(item => {
+          if (matchedIds.includes(item.id)) {
+            const updatedItem = { ...item, classId: targetId };
+            dataService.saveProfessoraMarketingItem(updatedItem);
+            return updatedItem;
+          }
+          return item;
+        });
+        setLibraryItems(updatedLibrary);
+        showToast('📚 Materiais da Biblioteca vinculados à turma.');
+      }
+
+      await dataService.saveProfessoraClass(classData);
+
+      if (editingTurmaId) {
+        setClassesList(prev => prev.map(c => c.id === editingTurmaId ? classData : c));
+        showToast('✅ Alterações salvas com sucesso!');
+        setEditingTurmaId(null);
+      } else {
+        setClassesList(prev => [classData, ...prev]);
+        showToast('✅ Turma criada com sucesso!');
+      }
+
+      // Feedback Visual
+      setCreatedFeedback(true);
+      setTimeout(() => setCreatedFeedback(false), 2500);
+
+      // Reset Form
+      setTurmaNome('');
+      setTurmaDisciplina('');
+      setTurmaAnoEscolaridade('');
+      setTurmaDescricao('');
+    } catch (err) {
+      console.error('Erro ao salvar turma:', err);
+      showToast('⚠️ Erro ao salvar alterações.');
     }
-
-    await dataService.saveProfessoraClass(classData);
-
-    if (editingTurmaId) {
-      setClassesList(prev => prev.map(c => c.id === editingTurmaId ? classData : c));
-      showToast('✅ Turma atualizada com sucesso!');
-      setEditingTurmaId(null);
-    } else {
-      setClassesList(prev => [classData, ...prev]);
-      showToast('✅ Turma criada com sucesso!');
-    }
-
-    // Feedback Visual
-    setCreatedFeedback(true);
-    setTimeout(() => setCreatedFeedback(false), 2500);
-
-    // Reset Form
-    setTurmaNome('');
-    setTurmaDisciplina('');
-    setTurmaDescricao('');
   };
 
   const handleEditTurma = (turma: ProfessoraClass) => {
