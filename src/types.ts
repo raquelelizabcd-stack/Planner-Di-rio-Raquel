@@ -449,3 +449,44 @@ export interface FinanceDashboardSummary {
   crescimento_saldo?: number;
 }
 
+// Painel Multi-IA & Token Meter Types
+export type AIProviderId = 'gemini' | 'chatgpt' | 'claude' | 'mistral' | 'perplexity' | 'copilot';
+
+export interface AIProviderConfig {
+  id: AIProviderId;
+  name: string;
+  providerLabel: string;
+  iconName: string;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+  apiKey: string;
+  encryptedKey?: string;
+  isConnected: boolean;
+  totalTokensAvailable: number;
+  consumedTokens: number;
+  lastTested?: number;
+  endpointUrl?: string;
+}
+
+export interface AITokenHistoryRecord {
+  id: string;
+  providerId: AIProviderId;
+  providerName: string;
+  timestamp: number;
+  dateStr: string; // YYYY-MM-DD
+  tokensUsed: number;
+  action: string;
+  promptSample?: string;
+  costEstimateUSD?: number;
+}
+
+export interface AIOptimizationSettings {
+  cacheEnabled: boolean;
+  reuseResponses: boolean;
+  reduceUnnecessaryCalls: boolean;
+  savedTokensCount: number;
+  cachedResponsesCount: number;
+}
+
+

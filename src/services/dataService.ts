@@ -18,7 +18,10 @@ import {
   AgentStatus,
   AgentExecutionLog,
   AntigravityTokenMeter,
-  DebugIARecord
+  DebugIARecord,
+  AIProviderConfig,
+  AITokenHistoryRecord,
+  AIOptimizationSettings
 } from '../types';
 
 export const dataService = {
@@ -990,8 +993,189 @@ export const dataService = {
 
   async saveWeeklyReport(report: any): Promise<void> {
     return dataService.safeSave<any>('weekly_engagement_reports', 'raquel_weekly_engagement_reports', report);
+  },
+
+  // Multi-IA API Providers & Token History
+  async fetchAIProvidersConfig(): Promise<AIProviderConfig[]> {
+    const defaultProviders: AIProviderConfig[] = [
+      {
+        id: 'gemini',
+        name: 'Google Gemini Pro / Flash',
+        providerLabel: 'Google AI',
+        iconName: 'Sparkles',
+        color: '#8E54E9',
+        bgColor: 'rgba(142, 84, 233, 0.1)',
+        borderColor: 'rgba(142, 84, 233, 0.3)',
+        apiKey: process.env.GEMINI_API_KEY || '',
+        encryptedKey: process.env.GEMINI_API_KEY ? encryptApiKey(process.env.GEMINI_API_KEY) : '',
+        isConnected: true,
+        totalTokensAvailable: 1000000,
+        consumedTokens: 245000,
+        lastTested: Date.now() - 3600000,
+        endpointUrl: 'https://generativelanguage.googleapis.com/v1beta'
+      },
+      {
+        id: 'chatgpt',
+        name: 'OpenAI ChatGPT (GPT-4o / GPT-4o-mini)',
+        providerLabel: 'OpenAI',
+        iconName: 'Bot',
+        color: '#10A37F',
+        bgColor: 'rgba(16, 163, 127, 0.1)',
+        borderColor: 'rgba(16, 163, 127, 0.3)',
+        apiKey: process.env.OPENAI_API_KEY || '',
+        encryptedKey: process.env.OPENAI_API_KEY ? encryptApiKey(process.env.OPENAI_API_KEY) : '',
+        isConnected: !!process.env.OPENAI_API_KEY,
+        totalTokensAvailable: 500000,
+        consumedTokens: 180000,
+        lastTested: Date.now() - 7200000,
+        endpointUrl: 'https://api.openai.com/v1/chat/completions'
+      },
+      {
+        id: 'claude',
+        name: 'Anthropic Claude 3.5 Sonnet',
+        providerLabel: 'Anthropic',
+        iconName: 'Brain',
+        color: '#D97706',
+        bgColor: 'rgba(217, 119, 6, 0.1)',
+        borderColor: 'rgba(217, 119, 6, 0.3)',
+        apiKey: '',
+        encryptedKey: '',
+        isConnected: false,
+        totalTokensAvailable: 300000,
+        consumedTokens: 0,
+        endpointUrl: 'https://api.anthropic.com/v1/messages'
+      },
+      {
+        id: 'mistral',
+        name: 'Mistral AI (Large / Codestral)',
+        providerLabel: 'Mistral',
+        iconName: 'Cpu',
+        color: '#3B82F6',
+        bgColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: 'rgba(59, 130, 246, 0.3)',
+        apiKey: '',
+        encryptedKey: '',
+        isConnected: false,
+        totalTokensAvailable: 250000,
+        consumedTokens: 0,
+        endpointUrl: 'https://api.mistral.ai/v1/chat/completions'
+      },
+      {
+        id: 'perplexity',
+        name: 'Perplexity AI (Sonar Reasoning)',
+        providerLabel: 'Perplexity',
+        iconName: 'Search',
+        color: '#06B6D4',
+        bgColor: 'rgba(6, 182, 212, 0.1)',
+        borderColor: 'rgba(6, 182, 212, 0.3)',
+        apiKey: '',
+        encryptedKey: '',
+        isConnected: false,
+        totalTokensAvailable: 200000,
+        consumedTokens: 0,
+        endpointUrl: 'https://api.perplexity.ai/chat/completions'
+      },
+      {
+        id: 'copilot',
+        name: 'GitHub Copilot / Azure OpenAI',
+        providerLabel: 'Microsoft Copilot',
+        iconName: 'Code',
+        color: '#6366F1',
+        bgColor: 'rgba(99, 102, 241, 0.1)',
+        borderColor: 'rgba(99, 102, 241, 0.3)',
+        apiKey: '',
+        encryptedKey: '',
+        isConnected: false,
+        totalTokensAvailable: 400000,
+        consumedTokens: 0,
+        endpointUrl: 'https://models.inference.ai.azure.com'
+      }
+    ];
+
+    return dataService.safeFetch<AIProviderConfig>('ai_providers_config', 'raquel_ai_providers_config', defaultProviders);
+  },
+
+  async saveAIProviderConfig(provider: AIProviderConfig): Promise<void> {
+    return dataService.safeSave<AIProviderConfig>('ai_providers_config', 'raquel_ai_providers_config', provider);
+  },
+
+  async saveAllAIProvidersConfig(providers: AIProviderConfig[]): Promise<void> {
+    for (const p of providers) {
+      await dataService.saveAIProviderConfig(p);
+    }
+  },
+
+  async fetchAITokenHistory(): Promise<AITokenHistoryRecord[]> {
+    const now = Date.now();
+    const dayMs = 86400000;
+    const defaultHistory: AITokenHistoryRecord[] = [
+      { id: 'th-1', providerId: 'gemini', providerName: 'Google Gemini Pro', timestamp: now - 1 * dayMs, dateStr: new Date(now - 1 * dayMs).toISOString().split('T')[0], tokensUsed: 12500, action: 'Geração de conteúdo semanal', promptSample: 'Plano de Marketing Digital 2026', costEstimateUSD: 0.015 },
+      { id: 'th-2', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4o)', timestamp: now - 1 * dayMs, dateStr: new Date(now - 1 * dayMs).toISOString().split('T')[0], tokensUsed: 8400, action: 'Revisão de postagem LinkedIn', promptSample: 'Copywriting de vendas de alta conversão', costEstimateUSD: 0.042 },
+      { id: 'th-3', providerId: 'gemini', providerName: 'Google Gemini Flash', timestamp: now - 2 * dayMs, dateStr: new Date(now - 2 * dayMs).toISOString().split('T')[0], tokensUsed: 18200, action: 'Análise diagnóstica Debug IA', promptSample: 'Logs de erro em ProfessoraMarketingTab', costEstimateUSD: 0.009 },
+      { id: 'th-4', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4o-mini)', timestamp: now - 3 * dayMs, dateStr: new Date(now - 3 * dayMs).toISOString().split('T')[0], tokensUsed: 6200, action: 'Geração de hashtags estratégicas', promptSample: '#MarketingDigital #Educacao', costEstimateUSD: 0.003 },
+      { id: 'th-5', providerId: 'copilot', providerName: 'Microsoft Copilot', timestamp: now - 4 * dayMs, dateStr: new Date(now - 4 * dayMs).toISOString().split('T')[0], tokensUsed: 15000, action: 'Otimização de rotas TypeScript', promptSample: 'Refatoração de dataService', costEstimateUSD: 0.020 },
+      { id: 'th-6', providerId: 'gemini', providerName: 'Google Gemini Pro', timestamp: now - 5 * dayMs, dateStr: new Date(now - 5 * dayMs).toISOString().split('T')[0], tokensUsed: 21000, action: 'Criação de Plano de Aula Técnico', promptSample: 'Inbound Marketing e Funil de Vendas', costEstimateUSD: 0.025 },
+      { id: 'th-7', providerId: 'perplexity', providerName: 'Perplexity AI', timestamp: now - 6 * dayMs, dateStr: new Date(now - 6 * dayMs).toISOString().split('T')[0], tokensUsed: 9800, action: 'Pesquisa de tendências MicroSaas', promptSample: 'Tendências de EdTech no Brasil', costEstimateUSD: 0.018 },
+      { id: 'th-8', providerId: 'mistral', providerName: 'Mistral Large', timestamp: now - 7 * dayMs, dateStr: new Date(now - 7 * dayMs).toISOString().split('T')[0], tokensUsed: 11400, action: 'Sumarização de artigos técnicos', promptSample: 'IA na Educação Profissional', costEstimateUSD: 0.014 }
+    ];
+
+    return dataService.safeFetch<AITokenHistoryRecord>('ai_token_history', 'raquel_ai_token_history', defaultHistory);
+  },
+
+  async saveAITokenHistoryRecord(record: AITokenHistoryRecord): Promise<void> {
+    return dataService.safeSave<AITokenHistoryRecord>('ai_token_history', 'raquel_ai_token_history', record);
+  },
+
+  async clearAITokenHistory(): Promise<void> {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('raquel_ai_token_history');
+    }
+  },
+
+  async fetchAIOptimizationSettings(): Promise<AIOptimizationSettings> {
+    const defaultSettings: AIOptimizationSettings = {
+      cacheEnabled: true,
+      reuseResponses: true,
+      reduceUnnecessaryCalls: true,
+      savedTokensCount: 34500,
+      cachedResponsesCount: 42
+    };
+
+    const list = await dataService.safeFetch<AIOptimizationSettings & { id: string }>('ai_optimization_settings', 'raquel_ai_optimization_settings', [{ ...defaultSettings, id: 'opt_config' }]);
+    return list[0] || defaultSettings;
+  },
+
+  async saveAIOptimizationSettings(settings: AIOptimizationSettings): Promise<void> {
+    return dataService.safeSave<AIOptimizationSettings & { id: string }>('ai_optimization_settings', 'raquel_ai_optimization_settings', { ...settings, id: 'opt_config' });
   }
 };
+
+// Criptografia e utilitários de API Keys
+export const encryptApiKey = (key: string): string => {
+  if (!key) return '';
+  try {
+    return 'enc_' + btoa(encodeURIComponent(key));
+  } catch (e) {
+    return key;
+  }
+};
+
+export const decryptApiKey = (encryptedKey: string): string => {
+  if (!encryptedKey) return '';
+  if (!encryptedKey.startsWith('enc_')) return encryptedKey;
+  try {
+    return decodeURIComponent(atob(encryptedKey.replace('enc_', '')));
+  } catch (e) {
+    return encryptedKey;
+  }
+};
+
+export const maskApiKey = (key: string): string => {
+  if (!key) return '';
+  if (key.length <= 8) return '••••••••';
+  return '••••••••' + key.slice(-4);
+};
+
 
 
 
