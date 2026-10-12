@@ -322,6 +322,22 @@ export const dataService = {
         delete dbPayload.engagement;
         delete dbPayload.posts_count;
       }
+      if (tableName === 'professora_marketing_ia') {
+        const p = payload as any;
+        dbPayload.nome_turma = p.name || p.nome_turma;
+        dbPayload.modulo = p.subject || p.modulo;
+        dbPayload.periodo = p.gradeYear || p.periodo;
+        dbPayload.descricao = p.description || p.descricao;
+        dbPayload.status = p.status || 'Ativa';
+        delete dbPayload.name;
+        delete dbPayload.subject;
+        delete dbPayload.gradeYear;
+        delete dbPayload.description;
+        delete dbPayload.linkedItemIds;
+        delete dbPayload.createdAt;
+        delete dbPayload.updatedAt;
+        delete dbPayload.stats;
+      }
       const { error } = await supabase.from(tableName).upsert(dbPayload);
       if (error) {
         console.warn(`Upsert on ${tableName} failed. Saving to localStorage.`, error);
@@ -780,7 +796,26 @@ export const dataService = {
       { id: 'turma-1', name: 'Turma 3001 - MKT Digital', subject: 'Marketing de Conteúdo & Mídias Sociais', gradeYear: '3º Ano Técnico', description: 'Turma do vespertino focada em campanhas de redes sociais', createdAt: Date.now() },
       { id: 'turma-2', name: 'Turma 2002 - Vendas & Inbound', subject: 'Inbound Marketing e Funil de Vendas', gradeYear: '2º Ano Técnico', description: 'Turma do matutino focada em qualificação de leads', createdAt: Date.now() }
     ];
-    return dataService.safeFetch<ProfessoraClass>('professora_marketing_ia', 'raquel_professora_classes', initialClasses);
+    const rawList = await dataService.safeFetch<any>('professora_marketing_ia', 'raquel_professora_classes', initialClasses);
+    return rawList.map((item: any) => ({
+      id: item.id || `turma-${Date.now()}`,
+      name: item.name || item.nome_turma || 'Turma Sem Nome',
+      subject: item.subject || item.modulo || 'Geral',
+      gradeYear: item.gradeYear || item.periodo || '1º Ano',
+      description: item.description || item.descricao || '',
+      status: (item.status === 'inativa' || item.status === 'Inativa') ? 'inativa' : 'ativa',
+      linkedItemIds: item.linkedItemIds || [],
+      createdAt: typeof item.createdAt === 'number' ? item.createdAt : (item.data_criacao ? new Date(item.data_criacao).getTime() : Date.now()),
+      updatedAt: typeof item.updatedAt === 'number' ? item.updatedAt : (item.ultima_atualizacao ? new Date(item.ultima_atualizacao).getTime() : Date.now()),
+      stats: item.stats || {
+        aulasConcluidas: 6,
+        aulasPendentes: 2,
+        materiaisVinculados: 3,
+        slidesGerados: 4,
+        progressoMedioAlunos: 82,
+        taxaConclusaoProjetos: 88
+      }
+    }));
   },
 
   async saveProfessoraClass(item: ProfessoraClass): Promise<void> {

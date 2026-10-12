@@ -390,12 +390,22 @@ Retorne estritamente um objeto JSON no seguinte formato:
   };
 
   const handleEditTurma = (turma: ProfessoraClass) => {
+    setActiveSection('turmas');
     setEditingTurmaId(turma.id);
     setTurmaNome(turma.name);
     setTurmaDisciplina(turma.subject);
     setTurmaAnoEscolaridade(turma.gradeYear);
     setTurmaDescricao(turma.description || '');
-    window.scrollTo({ top: 200, behavior: 'smooth' });
+    showToast(`✏️ Editando turma: ${turma.name}`);
+    
+    setTimeout(() => {
+      const el = document.getElementById('turma-form-container');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        window.scrollTo({ top: 150, behavior: 'smooth' });
+      }
+    }, 100);
   };
 
   const handleToggleTurmaStatus = async (turma: ProfessoraClass) => {
@@ -718,7 +728,7 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Form Column */}
             <div className="lg:col-span-5 space-y-4">
-              <form onSubmit={handleSaveTurma} className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20 shadow-2xl">
+              <form id="turma-form-container" onSubmit={handleSaveTurma} className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20 shadow-2xl">
                 <div className="flex items-center justify-between pb-3 border-b border-white/10">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-purple-500/10 rounded-2xl text-purple-400 border border-purple-500/20">
