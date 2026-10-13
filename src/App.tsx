@@ -139,6 +139,7 @@ import {
 import CentralMarketing from './components/CentralMarketing';
 import ProfessoraMarketingTab from './components/ProfessoraMarketingTab';
 import AgentesTab from './components/AgentesTab';
+import { SupabaseSessionStatusCard } from './components/SupabaseSessionStatusCard';
 
 
 // Gauge Component using Canvas and Math.PI
@@ -8132,6 +8133,9 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Status de Sessão e Conexão */}
+                <SupabaseSessionStatusCard onNotify={showToastWithMsg} />
 
                 {/* Informações do Sistema */}
                 <div className="glass-card p-6 md:p-8 rounded-3xl">

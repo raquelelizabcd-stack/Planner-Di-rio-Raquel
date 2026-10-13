@@ -22,3 +22,6 @@ if (typeof window !== 'undefined') {
   (window as any).__SUPABASE_KEY_SET = !!key;
 }
 export const supabase = createClient(url, key);
+if (typeof window !== 'undefined') {
+  (window as any).supabase = supabase;
+}
