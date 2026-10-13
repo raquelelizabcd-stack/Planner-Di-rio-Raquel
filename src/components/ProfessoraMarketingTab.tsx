@@ -23,7 +23,6 @@ import {
   Users,
   Plus,
   Edit2,
-  CopyPlus,
   Link,
   Unlink,
   CheckCircle2,
@@ -36,7 +35,14 @@ import {
   ToggleLeft,
   ToggleRight,
   AlertTriangle,
-  CheckCircle
+  Sun,
+  Moon,
+  Send,
+  ArrowRight,
+  Clock,
+  Compass,
+  CheckCircle,
+  LayoutDashboard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -50,22 +56,60 @@ interface ProfessoraMarketingTabProps {
   borderRadius?: number;
 }
 
-type SectionType = 
-  | 'turmas'
-  | 'comparativo_turmas'
+// Navegação principal do Ateliê
+type AtelieSection = 'visao_geral' | 'turmas' | 'materiais' | 'ia_assistente' | 'relatorios';
+
+// Ferramentas da IA Assistente
+type GeneratorTool = 
   | 'plano_aula'
-  | 'material_didatico'
-  | 'assistente_mercado'
   | 'slides'
+  | 'material_didatico'
   | 'sequencia_didatica'
   | 'folha_atividade'
   | 'ideias_atividades'
   | 'jogos_educativos'
   | 'quiz'
-  | 'biblioteca';
+  | 'assistente_mercado';
 
 export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', borderRadius = 24 }: ProfessoraMarketingTabProps) {
-  const [activeSection, setActiveSection] = useState<SectionType>('turmas');
+  // --- MODO DE VISUALIZAÇÃO: PROFESSOR (🎓) vs ALUNO (📘) ---
+  const [viewMode, setViewMode] = useState<'professor' | 'aluno'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('atelie_view_mode');
+      if (saved === 'aluno' || saved === 'professor') return saved;
+    }
+    return 'professor';
+  });
+
+  // --- TEMA HÍBRIDO (CLARO LAVANDA / ESCURO ATELIÊ) ---
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('atelie_theme_mode');
+      if (saved === 'dark' || saved === 'light') return saved;
+    }
+    return 'light'; // Padrão: Claro Lavanda inspirado no Ateliê de Aulas
+  });
+
+  // Salvar preferências no localStorage
+  const handleToggleViewMode = (mode: 'professor' | 'aluno') => {
+    setViewMode(mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('atelie_view_mode', mode);
+    }
+    showToast(`Modo alterado para ${mode === 'professor' ? '🎓 Professor' : '📘 Aluno'}`);
+  };
+
+  const handleToggleTheme = () => {
+    const next = themeMode === 'light' ? 'dark' : 'light';
+    setThemeMode(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('atelie_theme_mode', next);
+    }
+  };
+
+  // --- NAVEGAÇÃO E DADOS PRINCIPAIS ---
+  const [currentSection, setCurrentSection] = useState<AtelieSection>('visao_geral');
+  const [activeGenerator, setActiveGenerator] = useState<GeneratorTool>('plano_aula');
   const [libraryItems, setLibraryItems] = useState<ProfessoraMarketingItem[]>([]);
   const [classesList, setClassesList] = useState<ProfessoraClass[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,7 +121,7 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<string>('all');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
 
-  // Turma Form & Automation State
+  // --- TURMAS: FORM & ESTADO ---
   const [turmaCreationMode, setTurmaCreationMode] = useState<'manual' | 'ai'>('manual');
   const [turmaNome, setTurmaNome] = useState('');
   const [turmaDisciplina, setTurmaDisciplina] = useState('');
@@ -89,11 +133,11 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [deletingTurmaId, setDeletingTurmaId] = useState<string | null>(null);
   const [reportModalTurma, setReportModalTurma] = useState<ProfessoraClass | null>(null);
 
-  // Comparativo de Turmas States
+  // --- COMPARATIVO DE TURMAS ---
   const [selectedTurmasForComparison, setSelectedTurmasForComparison] = useState<string[]>([]);
   const [comparativoTimeframe, setComparativoTimeframe] = useState<'dia' | 'semana' | 'mes'>('semana');
 
-  // Form States per Tool
+  // --- ESTADOS DOS GERADORES PEDAGÓGICOS ---
   // 1. Plano de Aula
   const [planoTema, setPlanoTema] = useState('');
   const [planoDuracao, setPlanoDuracao] = useState('100 minutos (2 aulas)');
@@ -108,7 +152,7 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [assistenteTopico, setAssistenteTopico] = useState('');
   const [assistenteContexto, setAssistenteContexto] = useState('B2C Digital / Redes Sociais');
 
-  // 4. Apresentacao de Slides (com Integração à Biblioteca)
+  // 4. Apresentação de Slides (Integração com Biblioteca ou Manual)
   const [slidesTema, setSlidesTema] = useState('');
   const [slidesQtd, setSlidesQtd] = useState('5 a 7 slides');
   const [slidesSourceMode, setSlidesSourceMode] = useState<'library' | 'manual'>('manual');
@@ -116,7 +160,7 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [slidesLibrarySearch, setSlidesLibrarySearch] = useState<string>('');
   const [slidesLoadedContent, setSlidesLoadedContent] = useState<string>('');
 
-  // 5. Sequencia Didatica
+  // 5. Sequência Didática
   const [sequenciaTema, setSequenciaTema] = useState('');
   const [sequenciaCargaHoraria, setSequenciaCargaHoraria] = useState('4 horas/aula');
 
@@ -136,20 +180,31 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [quizTema, setQuizTema] = useState('');
   const [quizQtd, setQuizQtd] = useState('5 questões de múltipla escolha');
 
-  // Generated Content State per Tool
+  // Saída Gerada
   const [generatedOutput, setGeneratedOutput] = useState<string>('');
   const [generatedTitle, setGeneratedTitle] = useState<string>('');
+
+  // --- ESTADOS DO MODO ALUNO ---
+  const [studentFilterTurma, setStudentFilterTurma] = useState<string>('all');
+  const [studentSearch, setStudentSearch] = useState<string>('');
+  const [studentQuestion, setStudentQuestion] = useState<string>('');
+  const [studentAiAnswer, setStudentAiAnswer] = useState<string>('');
+  const [studentAiLoading, setStudentAiLoading] = useState<boolean>(false);
+  const [completedLessons, setCompletedLessons] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('atelie_completed_lessons');
+        if (saved) return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return [];
+  });
 
   useEffect(() => {
     loadData();
   }, []);
-
-  // Sincronização automática com a Biblioteca ao alternar para Apresentação Slides
-  useEffect(() => {
-    if (activeSection === 'slides') {
-      loadData();
-    }
-  }, [activeSection]);
 
   const loadData = async () => {
     const [items, classes] = await Promise.all([
@@ -158,61 +213,6 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
     ]);
     setLibraryItems(items || []);
     setClassesList(classes || []);
-  };
-
-  const handleSelectLibraryItemForSlides = (itemId: string) => {
-    setSlidesSelectedLibraryItemId(itemId);
-    const item = libraryItems.find(i => i.id === itemId);
-    if (item) {
-      setSlidesTema(item.title);
-      setSlidesLoadedContent(item.content);
-      showToast(`Tema "${item.title}" carregado da Biblioteca! 📚`);
-    } else {
-      setSlidesLoadedContent('');
-    }
-  };
-
-  const handleGenerateSlides = async () => {
-    if (!slidesTema.trim()) {
-      showToast('Por favor, defina o Tema da Apresentação!');
-      return;
-    }
-
-    const isFromLibrary = slidesSourceMode === 'library' && slidesLoadedContent.trim().length > 0;
-
-    const promptText = isFromLibrary 
-      ? `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing com base no CONTEÚDO SALVO DA BIBLIOTECA DA PROFESSORA.
-
-Tema da Apresentação: ${slidesTema}
-Quantidade estimada: ${slidesQtd}
-
-CONTEÚDO BASE EXTRAÍDO DA BIBLIOTECA:
-"""
-${slidesLoadedContent}
-"""
-
-Para CADA slide forneça obrigatoriamente:
-- **Slide X: [Título do Slide]**
-- 📌 **Conteúdo do Slide (Bullet points curtos)**
-- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
-- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
-- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`
-      : `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing.
-Tema: ${slidesTema}
-Quantidade estimada: ${slidesQtd}
-
-Para CADA slide forneça obrigatoriamente:
-- **Slide X: [Título do Slide]**
-- 📌 **Conteúdo do Slide (Bullet points curtos)**
-- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
-- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
-- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`;
-
-    await handleGenerate('slides', `Roteiro de Slides: ${slidesTema}`, promptText);
-
-    if (isFromLibrary) {
-      showToast('✅ Slides gerados com base no tema da Biblioteca.');
-    }
   };
 
   const showToast = (msg: string) => {
@@ -239,7 +239,7 @@ Para CADA slide forneça obrigatoriamente:
   const callGemini = async (prompt: string, systemInstruction: string): Promise<string> => {
     const apiKey = getApiKey();
     if (!apiKey) {
-      throw new Error('Chave da API Gemini não encontrada. Por favor, adicione sua chave nas Configurações.');
+      throw new Error('Chave da API Gemini não configurada. Por favor, adicione sua chave nas Configurações.');
     }
     const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
@@ -252,17 +252,17 @@ Para CADA slide forneça obrigatoriamente:
     return response.text || 'Não foi possível obter resposta da IA.';
   };
 
-  // --- TURMAS HANDLERS ---
+  // --- HANDLERS: TURMAS ---
   const handleGenerateTurmaAI = async () => {
     setLoading(true);
     try {
-      const prompt = `Gere dados hipotéticos altamente realistas para uma nova Turma de Ensino Técnico Profissional em Marketing (EPTNM).
-Retorne estritamente um objeto JSON no seguinte formato:
+      const prompt = `Gere dados pedagógicos altamente realistas para uma nova Turma de Ensino Técnico Profissional em Marketing (EPTNM).
+Retorne estritamente um objeto JSON com formato:
 {
   "nome": "Turma 3002 - Estratégia de Conteúdo e Mídias",
   "disciplina": "Marketing de Conteúdo & Branding Digital",
   "anoEscolaridade": "3º Ano Técnico - EPTNM",
-  "descricao": "Turma focada no desenvolvimento de réguas de automação, gestão de marcas digitais e métricas de desempenho."
+  "descricao": "Turma com foco em réguas de automação, gestão de canais digitais e métricas de desempenho para negócios locais."
 }`;
       const responseText = await callGemini(prompt, 'Você é um orientador pedagógico de Marketing Técnico. Responda apenas com o JSON limpo.');
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -272,7 +272,7 @@ Retorne estritamente um objeto JSON no seguinte formato:
         if (parsed.disciplina) setTurmaDisciplina(parsed.disciplina);
         if (parsed.anoEscolaridade) setTurmaAnoEscolaridade(parsed.anoEscolaridade);
         if (parsed.descricao) setTurmaDescricao(parsed.descricao);
-        showToast('✨ Dados da turma gerados automaticamente com IA! Você pode editar se quiser.');
+        showToast('✨ Dados da turma gerados com IA!');
       }
     } catch (e: any) {
       showToast('Erro ao gerar dados da turma via IA.');
@@ -284,23 +284,20 @@ Retorne estritamente um objeto JSON no seguinte formato:
   const handleSaveTurma = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
-    // Validação de campos obrigatórios
     if (!turmaNome.trim() || !turmaDisciplina.trim() || !turmaAnoEscolaridade.trim()) {
-      showToast('⚠️ Preencha todos os campos obrigatórios.');
+      showToast('⚠️ Preencha os campos obrigatórios.');
       return;
     }
 
-    // Validação de duplicidade de nome
     const isDuplicate = classesList.some(c => 
       c.name.toLowerCase().trim() === turmaNome.toLowerCase().trim() && 
       c.id !== editingTurmaId
     );
     if (isDuplicate) {
-      showToast('⚠️ Já existe uma turma cadastrada com este nome. Escolha outro nome.');
+      showToast('⚠️ Já existe uma turma com este nome.');
       return;
     }
 
-    // Identificar itens da Biblioteca com correspondência de módulo/nome
     const matchingItems = libraryItems.filter(item => 
       item.title.toLowerCase().includes(turmaNome.toLowerCase().trim()) ||
       item.title.toLowerCase().includes(turmaDisciplina.toLowerCase().trim()) ||
@@ -331,7 +328,6 @@ Retorne estritamente um objeto JSON no seguinte formato:
     };
 
     try {
-      // Se for edição de turma existente, atualizar no Supabase com os nomes de colunas do banco
       if (editingTurmaId) {
         const { error: supabaseError } = await supabase
           .from('professora_marketing_ia')
@@ -349,7 +345,6 @@ Retorne estritamente um objeto JSON no seguinte formato:
         }
       }
 
-      // Vincular materiais correspondentes da Biblioteca
       if (matchedIds.length > 0) {
         const updatedLibrary = libraryItems.map(item => {
           if (matchedIds.includes(item.id)) {
@@ -360,51 +355,45 @@ Retorne estritamente um objeto JSON no seguinte formato:
           return item;
         });
         setLibraryItems(updatedLibrary);
-        showToast('📚 Materiais da Biblioteca vinculados à turma.');
+        showToast('📚 Materiais vinculados automaticamente à turma!');
       }
 
       await dataService.saveProfessoraClass(classData);
 
       if (editingTurmaId) {
         setClassesList(prev => prev.map(c => c.id === editingTurmaId ? classData : c));
-        showToast('✅ Alterações salvas com sucesso!');
+        showToast('✅ Turma atualizada com sucesso!');
         setEditingTurmaId(null);
       } else {
         setClassesList(prev => [classData, ...prev]);
-        showToast('✅ Turma criada com sucesso!');
+        showToast('✅ Turma criada no Ateliê com sucesso!');
       }
 
-      // Feedback Visual
       setCreatedFeedback(true);
       setTimeout(() => setCreatedFeedback(false), 2500);
 
-      // Reset Form
       setTurmaNome('');
       setTurmaDisciplina('');
-      setTurmaAnoEscolaridade('');
+      setTurmaAnoEscolaridade('3º Ano Técnico - EPTNM');
       setTurmaDescricao('');
     } catch (err) {
       console.error('Erro ao salvar turma:', err);
-      showToast('⚠️ Erro ao salvar alterações.');
+      showToast('⚠️ Erro ao salvar turma.');
     }
   };
 
   const handleEditTurma = (turma: ProfessoraClass) => {
-    setActiveSection('turmas');
+    setCurrentSection('turmas');
     setEditingTurmaId(turma.id);
     setTurmaNome(turma.name);
     setTurmaDisciplina(turma.subject);
     setTurmaAnoEscolaridade(turma.gradeYear);
     setTurmaDescricao(turma.description || '');
-    showToast(`✏️ Editando turma: ${turma.name}`);
+    showToast(`✏️ Editando: ${turma.name}`);
     
     setTimeout(() => {
       const el = document.getElementById('turma-form-container');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        window.scrollTo({ top: 150, behavior: 'smooth' });
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
   };
 
@@ -413,7 +402,7 @@ Retorne estritamente um objeto JSON no seguinte formato:
     const updated = { ...turma, status: newStatus as 'ativa' | 'inativa', updatedAt: Date.now() };
     await dataService.saveProfessoraClass(updated);
     setClassesList(prev => prev.map(c => c.id === turma.id ? updated : c));
-    showToast(`Status da turma "${turma.name}" alterado para ${newStatus === 'ativa' ? 'Ativa' : 'Inativa'}.`);
+    showToast(`Turma "${turma.name}" agora está ${newStatus === 'ativa' ? 'Ativa' : 'Inativa'}.`);
   };
 
   const handleConfirmDeleteTurma = async (id: string) => {
@@ -421,7 +410,7 @@ Retorne estritamente um objeto JSON no seguinte formato:
     setClassesList(prev => prev.filter(c => c.id !== id));
     if (selectedTurmaView?.id === id) setSelectedTurmaView(null);
     setDeletingTurmaId(null);
-    showToast('Turma excluída com sucesso.');
+    showToast('Turma removida com sucesso.');
   };
 
   const handleExportTurmaReport = (turma: ProfessoraClass, format: 'csv' | 'json') => {
@@ -447,7 +436,7 @@ Retorne estritamente um objeto JSON no seguinte formato:
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `relatorio_turma_${turma.name.replace(/\s+/g, '_')}.json`);
+      downloadAnchor.setAttribute("download", `relatorio_${turma.name.replace(/\s+/g, '_')}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -458,7 +447,7 @@ Retorne estritamente um objeto JSON no seguinte formato:
       const encodedUri = encodeURI(csvContent);
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", encodedUri);
-      downloadAnchor.setAttribute("download", `relatorio_turma_${turma.name.replace(/\s+/g, '_')}.csv`);
+      downloadAnchor.setAttribute("download", `relatorio_${turma.name.replace(/\s+/g, '_')}.csv`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -483,7 +472,7 @@ Retorne estritamente um objeto JSON no seguinte formato:
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
-      showToast('📊 Comparativo gerado e exportado em JSON!');
+      showToast('📊 Comparativo exportado em JSON!');
     } else {
       let csvContent = "data:text/csv;charset=utf-8,ID,Nome,Disciplina,Periodo,Status,AulasConcluidas,AulasPendentes,MateriaisVinculados,SlidesGerados,ProgressoMedioAlunos,TaxaConclusaoProjetos\n";
       targetClasses.forEach(c => {
@@ -497,15 +486,8 @@ Retorne estritamente um objeto JSON no seguinte formato:
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
-      showToast('📊 Comparativo gerado e exportado em CSV!');
+      showToast('📊 Comparativo exportado em CSV!');
     }
-  };
-
-  const handleDeleteTurma = async (id: string) => {
-    await dataService.deleteProfessoraClass(id);
-    setClassesList(prev => prev.filter(c => c.id !== id));
-    if (selectedTurmaView?.id === id) setSelectedTurmaView(null);
-    showToast('Turma excluída com sucesso.');
   };
 
   const handleToggleLinkItemToClass = async (itemId: string, classId: string | undefined) => {
@@ -522,10 +504,65 @@ Retorne estritamente um objeto JSON no seguinte formato:
     showToast('Vínculo de turma atualizado!');
   };
 
-  // --- GENERATION HANDLER ---
+  // --- GERADORES DA IA ---
+  const handleSelectLibraryItemForSlides = (itemId: string) => {
+    setSlidesSelectedLibraryItemId(itemId);
+    const item = libraryItems.find(i => i.id === itemId);
+    if (item) {
+      setSlidesTema(item.title);
+      setSlidesLoadedContent(item.content);
+      showToast(`Tema "${item.title}" carregado do Ateliê! 📚`);
+    } else {
+      setSlidesLoadedContent('');
+    }
+  };
+
+  const handleGenerateSlides = async () => {
+    if (!slidesTema.trim()) {
+      showToast('Defina o Tema da Apresentação!');
+      return;
+    }
+
+    const isFromLibrary = slidesSourceMode === 'library' && slidesLoadedContent.trim().length > 0;
+
+    const promptText = isFromLibrary 
+      ? `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing com base no CONTEÚDO SALVO DO ATELIÊ DA PROFESSORA.
+
+Tema da Apresentação: ${slidesTema}
+Quantidade estimada: ${slidesQtd}
+
+CONTEÚDO BASE EXTRAÍDO DO ATELIÊ:
+"""
+${slidesLoadedContent}
+"""
+
+Para CADA slide forneça obrigatoriamente:
+- **Slide X: [Título do Slide]**
+- 📌 **Conteúdo do Slide (Bullet points objetivos)**
+- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
+- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
+- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`
+      : `Crie o roteiro detalhado para uma Apresentação de Slides para aula técnica em Marketing.
+Tema: ${slidesTema}
+Quantidade estimada: ${slidesQtd}
+
+Para CADA slide forneça obrigatoriamente:
+- **Slide X: [Título do Slide]**
+- 📌 **Conteúdo do Slide (Bullet points objetivos)**
+- 🗣️ **Fala do Professor (Roteiro verbal explicativo)**
+- 💡 **Recurso Visual Recomendado (Imagem, gráfico ou diagrama)**
+- ❓ **Pergunta de Checagem Rápida (para interação com a turma)**`;
+
+    await handleGenerate('slides', `Roteiro de Slides: ${slidesTema}`, promptText);
+
+    if (isFromLibrary) {
+      showToast('✅ Slides gerados com base no material do Ateliê.');
+    }
+  };
+
   const handleGenerate = async (category: ProfessoraMarketingItem['category'], title: string, prompt: string) => {
     if (!title.trim()) {
-      showToast('Por favor, preencha o tema/assunto principal!');
+      showToast('Por favor, preencha o assunto ou tema principal!');
       return;
     }
     setLoading(true);
@@ -546,7 +583,6 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
       setGeneratedOutput(result);
       showToast('Conteúdo gerado com sucesso!');
       
-      // Auto-save to library with class link if selected
       const newItem: ProfessoraMarketingItem = {
         id: Date.now().toString(),
         title,
@@ -570,14 +606,14 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
     const newItem: ProfessoraMarketingItem = {
       id: Date.now().toString(),
       title: generatedTitle || 'Material Didático de Marketing',
-      category: activeSection as ProfessoraMarketingItem['category'],
+      category: activeGenerator as ProfessoraMarketingItem['category'],
       content: generatedOutput,
       classId: selectedClassId || undefined,
       createdAt: Date.now()
     };
     await dataService.saveProfessoraMarketingItem(newItem);
     setLibraryItems(prev => [newItem, ...prev]);
-    showToast('Salvo na Biblioteca do Planner com sucesso! 💾');
+    showToast('Salvo no Ateliê com sucesso! 💾');
   };
 
   const copyToClipboard = (text: string, id: string = 'output') => {
@@ -591,24 +627,67 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
     await dataService.deleteProfessoraMarketingItem(id);
     setLibraryItems(prev => prev.filter(i => i.id !== id));
     if (selectedLibraryItem?.id === id) setSelectedLibraryItem(null);
-    showToast('Item removido da Biblioteca.');
+    showToast('Item removido do Ateliê.');
   };
 
-  const sectionsConfig = [
-    { id: 'turmas', label: 'Criar Turmas', icon: Users, color: 'text-purple-400', desc: 'Gestão e vínculos de turmas' },
-    { id: 'comparativo_turmas', label: 'Comparativo de Turmas', icon: BarChart3, color: 'text-emerald-400', desc: 'Análise e relatórios comparativos' },
-    { id: 'plano_aula', label: 'Plano de Aula', icon: Brain, color: 'text-purple-400', desc: 'Gerador estruturado para EPTNM' },
-    { id: 'material_didatico', label: 'Materiais Didáticos', icon: BookOpen, color: 'text-indigo-400', desc: 'Resumos, slides e guias práticos' },
-    { id: 'assistente_mercado', label: 'Assistente de Mercado', icon: MessageSquare, color: 'text-cyan-400', desc: 'Exemplos reais e tendências atuais' },
-    { id: 'slides', label: 'Apresentação Slides', icon: Presentation, color: 'text-blue-400', desc: 'Roteiro visual e fala do professor' },
-    { id: 'sequencia_didatica', label: 'Sequência Didática', icon: FileText, color: 'text-emerald-400', desc: 'Estruturação da aula em 4 etapas' },
-    { id: 'folha_atividade', label: 'Folha de Atividade', icon: ClipboardList, color: 'text-amber-400', desc: 'Exercícios práticos com gabarito' },
-    { id: 'ideias_atividades', label: 'Ideias de Atividades', icon: Lightbulb, color: 'text-yellow-400', desc: 'Dinâmicas e agências simuladas' },
-    { id: 'jogos_educativos', label: 'Jogos Educativos', icon: Gamepad2, color: 'text-rose-400', desc: 'Gamificação e desafios de marca' },
-    { id: 'quiz', label: 'Quiz Interativo', icon: HelpCircle, color: 'text-pink-400', desc: 'Avaliação rápida com gabarito' },
-    { id: 'biblioteca', label: 'Biblioteca Salva', icon: BookmarkCheck, color: 'text-teal-400', desc: 'Todos os seus materiais salvos' },
+  // --- MODO ALUNO: TIRA-DÚVIDAS IA & CHECKLIST ---
+  const handleAskStudentAi = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!studentQuestion.trim()) return;
+
+    setStudentAiLoading(true);
+    setStudentAiAnswer('');
+
+    const targetClass = classesList.find(c => c.id === studentFilterTurma);
+    const context = targetClass 
+      ? `O aluno está matriculado na disciplina "${targetClass.subject}" (${targetClass.name}).`
+      : 'O estudante cursa formação técnica em Marketing (EPTNM).';
+
+    const prompt = `Pergunta do estudante: "${studentQuestion}"
+Contexto: ${context}
+Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas reais no Brasil. Ajude-o a entender o conceito e aplicar na prática.`;
+
+    const systemInstruction = `Você é o tutor virtual amigável do Ateliê de Marketing. Responda em Markdown claro, encorajador, pontual e fácil de assimilar por estudantes do ensino técnico profissional.`;
+
+    try {
+      const resp = await callGemini(prompt, systemInstruction);
+      setStudentAiAnswer(resp);
+      showToast('💡 Resposta gerada pela IA de apoio!');
+    } catch (err: any) {
+      setStudentAiAnswer('Não foi possível responder no momento. Tente novamente em instantes.');
+      showToast('Erro ao consultar IA.');
+    } finally {
+      setStudentAiLoading(false);
+    }
+  };
+
+  const handleToggleLessonCompleted = (lessonId: string) => {
+    let updated: string[];
+    if (completedLessons.includes(lessonId)) {
+      updated = completedLessons.filter(id => id !== lessonId);
+    } else {
+      updated = [...completedLessons, lessonId];
+    }
+    setCompletedLessons(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('atelie_completed_lessons', JSON.stringify(updated));
+    }
+  };
+
+  // --- CONFIGURAÇÃO DAS FERRAMENTAS PEDAGÓGICAS ---
+  const toolsConfig: { id: GeneratorTool; label: string; icon: any; desc: string; duration: string }[] = [
+    { id: 'plano_aula', label: 'Plano de Aula', icon: Brain, desc: 'Estruturação pedagógica completa EPTNM', duration: '50 min' },
+    { id: 'slides', label: 'Apresentação de Slides', icon: Presentation, desc: 'Roteiro visual e fala do professor com IA', duration: '40 min' },
+    { id: 'material_didatico', label: 'Material Didático', icon: BookOpen, desc: 'Resumos, conceitos-chave e guias práticos', duration: '30 min' },
+    { id: 'sequencia_didatica', label: 'Sequência Didática', icon: FileText, desc: 'Organização didática estruturada em 4 etapas', duration: '4 aulas' },
+    { id: 'folha_atividade', label: 'Folha de Atividade', icon: ClipboardList, desc: 'Exercícios práticos com gabarito comentado', duration: '30 min' },
+    { id: 'ideias_atividades', label: 'Ideias de Atividades', icon: Lightbulb, desc: 'Dinâmicas ativas e agência simulada', duration: '45 min' },
+    { id: 'jogos_educativos', label: 'Jogos Educativos', icon: Gamepad2, desc: 'Gamificação e desafios de marca em equipe', duration: '50 min' },
+    { id: 'quiz', label: 'Quiz Interativo', icon: HelpCircle, desc: 'Questões de fixação com justificativas', duration: '20 min' },
+    { id: 'assistente_mercado', label: 'Assistente de Mercado', icon: MessageSquare, desc: 'Casos reais, marcas brasileiras e tendências', duration: '15 min' }
   ];
 
+  // Itens filtrados da biblioteca
   const filteredLibrary = libraryItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(librarySearch.toLowerCase()) || 
                           item.content.toLowerCase().includes(librarySearch.toLowerCase());
@@ -616,875 +695,1001 @@ Use tom acolhedor, altamente profissional e dinâmico para os alunos do ensino t
     return matchesSearch && matchesCategory;
   });
 
+  // Métricas do Ateliê
+  const totalMateriais = libraryItems.length;
+  const totalDisciplinas = classesList.length;
+  const turmasAtivasCount = classesList.filter(c => c.status !== 'inativa').length;
+
+  // Variáveis de Estilo Híbrido: Claro Lavanda (Ateliê) vs Escuro Elegante
+  const isDark = themeMode === 'dark';
+  
+  const themeClasses = {
+    container: isDark ? 'bg-[#12101b] text-slate-100' : 'bg-[#faf8fe] text-slate-800',
+    card: isDark ? 'bg-[#1b172a] border-[#2e2646] shadow-black/20' : 'bg-white border-[#ebe4f7] shadow-sm shadow-purple-500/5',
+    cardMuted: isDark ? 'bg-[#161324] border-[#28213f]' : 'bg-[#f7f4fd] border-[#ede8f8]',
+    border: isDark ? 'border-[#2e2646]' : 'border-[#ebe4f7]',
+    title: isDark ? 'text-white' : 'text-[#1e1538]',
+    subtitle: isDark ? 'text-slate-400' : 'text-[#645c7b]',
+    heroBg: isDark ? 'bg-gradient-to-br from-[#241c3d] via-[#1c1630] to-[#161228] border-purple-500/30' : 'bg-gradient-to-r from-[#f4effa] via-[#f7f2fc] to-[#ede5f9] border-[#e2d9f3]',
+    accentPill: isDark ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-[#ede5fa] text-[#6d28d9] border-[#ded3f5]',
+    inputBg: isDark ? 'bg-[#151222] border-[#2e2646] text-white' : 'bg-white border-[#e3dcf0] text-[#1e1538]',
+    tabActive: isDark ? 'bg-purple-600/30 text-purple-200 border-purple-500/50' : 'bg-[#ede5fa] text-[#6d28d9] border-[#d8c8f5] shadow-xs'
+  };
+
   return (
-    <div className="space-y-8 pb-16">
+    <div className={`transition-colors duration-300 rounded-3xl p-4 sm:p-6 md:p-8 space-y-8 ${themeClasses.container}`}>
       {/* Toast Notification */}
       <AnimatePresence>
         {toastMsg && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="fixed top-20 right-6 z-[9999] bg-purple-900/90 text-white border border-purple-500/30 px-6 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 text-sm font-medium"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="fixed top-20 right-6 z-[9999] bg-[#3a2068] text-white border border-purple-400/40 px-5 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 text-xs md:text-sm font-semibold"
           >
-            <Sparkles size={18} className="text-yellow-300 animate-spin" />
+            <Sparkles size={18} className="text-yellow-300 animate-pulse" />
             <span>{toastMsg}</span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl p-6 md:p-8 bg-gradient-to-r from-purple-950 via-slate-900 to-indigo-950 border border-purple-500/20 shadow-2xl">
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3.5 bg-purple-500/10 rounded-2xl border border-purple-500/20 text-purple-300">
-              <GraduationCap size={32} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-[10px] font-bold uppercase tracking-widest border border-purple-500/30">
-                  EPTNM - Nível Médio Técnico
-                </span>
-                <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full text-[10px] font-bold uppercase tracking-widest border border-indigo-500/30">
-                  Docência & IA
-                </span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-display font-black text-white mt-1">
-                Professora Marketing IA
-              </h2>
-              <p className="text-sm text-slate-400 max-w-2xl mt-1">
-                Ambiente de apoio didático para o Ensino Técnico Profissionalizante em Marketing. Gerencie turmas, planos de aula, materiais didáticos, quizzes e apresentações dinâmicas.
-              </p>
-            </div>
-          </div>
+      {/* TOP BAR: BREADCRUMBS + SELETOR MODO PROFESSOR/ALUNO + TEMA HÍBRIDO */}
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-purple-500/10">
+        {/* Breadcrumb estilo Ateliê de Aulas */}
+        <div className="flex items-center gap-2 text-xs font-medium text-[#7c7297]">
+          <span className="flex items-center gap-1.5 font-semibold text-[#8b5cf6]">
+            <Compass size={14} /> Meu espaço
+          </span>
+          <span>&gt;</span>
+          <span className={`capitalize font-bold ${isDark ? 'text-white' : 'text-[#2a1e4a]'}`}>
+            {viewMode === 'aluno' 
+              ? 'Área do Aluno' 
+              : currentSection === 'visao_geral' ? 'Visão geral'
+              : currentSection === 'turmas' ? 'Turmas'
+              : currentSection === 'materiais' ? 'Meus materiais'
+              : currentSection === 'ia_assistente' ? 'IA Assistente'
+              : 'Relatórios'}
+          </span>
         </div>
-        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-80 h-80 bg-purple-500/10 blur-[120px] rounded-full pointer-events-none" />
-      </div>
 
-      {/* Sub-Tabs Grid Navigation */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-        {sectionsConfig.map((sec) => (
+        {/* Controles de Topo: Alternador Modo Professor/Aluno + Tema Híbrido */}
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+          {/* Alternador de Modo de Visualização */}
+          <div className={`flex items-center p-1 rounded-2xl border ${themeClasses.border} ${themeClasses.cardMuted}`}>
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 text-[#7d759a] hidden sm:inline">
+              Modo:
+            </span>
+            <button
+              onClick={() => handleToggleViewMode('professor')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'professor'
+                  ? 'bg-[#7c3aed] text-white shadow-sm shadow-purple-500/30'
+                  : 'text-[#6f678e] hover:text-[#7c3aed]'
+              }`}
+              title="Modo Professor: Gestão completa de turmas, materiais e relatórios"
+            >
+              <span>🎓</span> Professor
+            </button>
+            <button
+              onClick={() => handleToggleViewMode('aluno')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                viewMode === 'aluno'
+                  ? 'bg-[#2563eb] text-white shadow-sm shadow-blue-500/30'
+                  : 'text-[#6f678e] hover:text-[#2563eb]'
+              }`}
+              title="Modo Aluno: Conteúdos didáticos, planos de estudo e assistente de dúvidas"
+            >
+              <span>📘</span> Aluno
+            </button>
+          </div>
+
+          {/* Botão de Alternância Tema Híbrido (Claro Lavanda / Escuro) */}
           <button
-            key={sec.id}
-            onClick={() => {
-              setActiveSection(sec.id as SectionType);
-              setGeneratedOutput('');
-            }}
-            className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between group ${
-              activeSection === sec.id
-                ? 'bg-purple-900/30 border-purple-500/50 text-white shadow-lg shadow-purple-500/10 scale-[1.02]'
-                : 'bg-white/5 border-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200'
-            }`}
+            onClick={handleToggleTheme}
+            className={`p-2 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${themeClasses.card} ${themeClasses.border} hover:border-purple-400`}
+            title={`Alternar para tema ${isDark ? 'Claro Lavanda' : 'Escuro'}`}
           >
-            <div className="flex items-center justify-between mb-2">
-              <sec.icon size={20} className={activeSection === sec.id ? sec.color : 'text-slate-500 group-hover:text-slate-300'} />
-              {sec.id === 'turmas' && (
-                <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full font-bold">
-                  {classesList.length}
-                </span>
-              )}
-              {sec.id === 'biblioteca' && (
-                <span className="text-[10px] bg-teal-500/20 text-teal-300 px-2 py-0.5 rounded-full font-bold">
-                  {libraryItems.length}
-                </span>
-              )}
-            </div>
-            <div>
-              <p className="text-xs font-bold font-display line-clamp-1">{sec.label}</p>
-              <p className="text-[10px] text-slate-500 line-clamp-1">{sec.desc}</p>
-            </div>
+            {isDark ? <Sun size={15} className="text-amber-400" /> : <Moon size={15} className="text-purple-600" />}
+            <span className="hidden sm:inline">{isDark ? 'Claro' : 'Escuro'}</span>
           </button>
-        ))}
-      </div>
 
-      {/* Selector of Target Class for AI Generators */}
-      {activeSection !== 'turmas' && activeSection !== 'biblioteca' && (
-        <div className="glass-card p-4 rounded-2xl border border-purple-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Users size={20} className="text-purple-400" />
-            <div>
-              <p className="text-xs font-bold text-white">Vincular Geração a uma Turma (Opcional)</p>
-              <p className="text-[10px] text-slate-400">O conteúdo gerado será associado à turma selecionada para fácil organização.</p>
-            </div>
-          </div>
-          <select
-            value={selectedClassId}
-            onChange={e => setSelectedClassId(e.target.value)}
-            className="w-full sm:w-72 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
-          >
-            <option value="">Nenhuma turma selecionada (Geral)</option>
-            {classesList.map(c => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.gradeYear})
-              </option>
-            ))}
-          </select>
+          {/* Botão Ação Rápida Ateliê */}
+          {viewMode === 'professor' && (
+            <button
+              onClick={() => {
+                setCurrentSection('ia_assistente');
+                setActiveGenerator('plano_aula');
+              }}
+              className="px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-purple-600/30 active:scale-95"
+            >
+              <Plus size={15} />
+              <span>+ Novo material</span>
+            </button>
+          )}
         </div>
+      </header>
+
+      {/* NAVEGAÇÃO SECUNDÁRIA ESTILO ATELIÊ DE AULAS */}
+      {viewMode === 'professor' ? (
+        <nav className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          {[
+            { id: 'visao_geral', label: 'Visão geral', icon: LayoutDashboard },
+            { id: 'turmas', label: 'Turmas', icon: Users, badge: classesList.length },
+            { id: 'materiais', label: 'Meus materiais', icon: BookOpen, badge: libraryItems.length },
+            { id: 'ia_assistente', label: 'IA Assistente', icon: Sparkles },
+            { id: 'relatorios', label: 'Relatórios & Comparativo', icon: BarChart3 }
+          ].map(tab => {
+            const isActive = currentSection === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setCurrentSection(tab.id as AtelieSection);
+                  setGeneratedOutput('');
+                }}
+                className={`px-4 py-2.5 rounded-2xl border text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap ${
+                  isActive
+                    ? themeClasses.tabActive
+                    : `${themeClasses.card} text-[#6c6488] hover:border-purple-300`
+                }`}
+              >
+                <Icon size={16} className={isActive ? 'text-[#7c3aed]' : 'text-[#8f87a8]'} />
+                <span>{tab.label}</span>
+                {typeof tab.badge === 'number' && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    isActive ? 'bg-[#7c3aed] text-white' : 'bg-purple-500/10 text-purple-600'
+                  }`}>
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+      ) : (
+        /* Navegação Modo Aluno */
+        <nav className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-blue-600 uppercase tracking-widest px-3 py-1 bg-blue-500/10 rounded-xl">
+              Portal do Estudante
+            </span>
+            <span className="text-xs text-[#766e92]">
+              Acesse suas aulas, materiais didáticos e tire dúvidas pedagógicas em tempo real.
+            </span>
+          </div>
+        </nav>
       )}
 
-      {/* MODULE 0: CRIAR E GERENCIAR TURMAS */}
-      {activeSection === 'turmas' && (
-        <div className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Form Column */}
-            <div className="lg:col-span-5 space-y-4">
-              <form id="turma-form-container" onSubmit={handleSaveTurma} className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20 shadow-2xl">
-                <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-purple-500/10 rounded-2xl text-purple-400 border border-purple-500/20">
-                      <Users size={22} />
+      {/* ============================================================== */}
+      {/* 🎓 MODO PROFESSOR: CONTEÚDO PRINCIPAL                          */}
+      {/* ============================================================== */}
+      <AnimatePresence mode="wait">
+        {viewMode === 'professor' ? (
+          <motion.div
+            key="professor-mode"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-8"
+          >
+            {/* ------------------------------------------------------------- */}
+            {/* SEÇÃO 1: VISÃO GERAL (O DASHBOARD DO ATELIÊ DE AULAS)          */}
+            {/* ------------------------------------------------------------- */}
+            {currentSection === 'visao_geral' && (
+              <div className="space-y-8">
+                {/* HERO BANNER ESTILO ATELIÊ DE AULAS */}
+                <div className={`relative overflow-hidden rounded-3xl p-6 sm:p-8 md:p-10 border transition-all ${themeClasses.heroBg}`}>
+                  <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                    {/* Bloco de Texto Principal */}
+                    <div className="space-y-4 max-w-xl">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border border-purple-300/40 bg-white/70 text-[#7c3aed]">
+                        <Sparkles size={12} />
+                        SEU ATELIÊ DE MARKETING
+                      </div>
+
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-bold tracking-widest uppercase text-[#8878a8]">
+                          PREPARAR HOJE. ENSINAR AMANHÃ.
+                        </p>
+                        <h1 className={`text-2xl sm:text-3xl md:text-4xl font-display font-extrabold tracking-tight ${themeClasses.title}`}>
+                          Grandes aulas começam com uma boa ideia.
+                        </h1>
+                        <p className={`text-sm md:text-base leading-relaxed ${themeClasses.subtitle}`}>
+                          Reúna conteúdos, planeje experiências e prepare materiais didáticos completos para o Ensino Técnico Profissional no seu próprio ritmo.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-3 pt-2">
+                        <button
+                          onClick={() => {
+                            setCurrentSection('ia_assistente');
+                            setActiveGenerator('plano_aula');
+                          }}
+                          className="px-5 py-3 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl text-xs md:text-sm font-bold transition-all shadow-md shadow-purple-600/30 flex items-center gap-2 active:scale-95"
+                        >
+                          <span>Preparar uma aula</span>
+                          <ArrowRight size={16} />
+                        </button>
+                        <button
+                          onClick={() => setCurrentSection('turmas')}
+                          className={`px-4 py-3 rounded-2xl text-xs md:text-sm font-bold border transition-all flex items-center gap-2 ${themeClasses.card} hover:border-purple-400`}
+                        >
+                          <Users size={16} className="text-[#7c3aed]" />
+                          <span>Gerenciar Turmas</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Ilustração / Card 3D Inspirado no Ateliê */}
+                    <div className="relative flex justify-center lg:justify-end">
+                      <div className="relative w-64 sm:w-72 p-6 rounded-3xl bg-white text-slate-800 shadow-2xl border border-purple-100 rotate-1 hover:rotate-0 transition-transform duration-300">
+                        <div className="flex items-center justify-between mb-4">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                            PLANO DE AULA
+                          </span>
+                          <Brain size={20} className="text-purple-500" />
+                        </div>
+                        <h4 className="text-lg font-display font-bold text-slate-800 leading-snug">
+                          Ideias que viram aprendizado.
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-2">
+                          Estruture competências da EPTNM, cronogramas de aula e dinâmicas ativas em minutos.
+                        </p>
+                        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-purple-700">
+                          <span className="flex items-center gap-1.5">
+                            <CheckCircle size={14} className="text-emerald-500" /> Preparar para inspirar
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* MÉTRICAS EM CARDS CLAROS E ESPAÇADOS (Idênticos ao Ateliê) */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                  {/* Card 1: Materiais */}
+                  <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${themeClasses.card}`}>
+                    <div className="p-4 rounded-2xl bg-[#ede5fa] text-[#7c3aed]">
+                      <BookOpen size={26} />
                     </div>
                     <div>
-                      <h3 className="text-lg font-display font-bold text-white">
-                        {editingTurmaId ? 'Editar Turma' : 'Criar Nova Turma'}
+                      <h3 className={`text-2xl sm:text-3xl font-display font-black ${themeClasses.title}`}>
+                        {String(totalMateriais).padStart(2, '0')}
                       </h3>
-                      <p className="text-xs text-slate-400">Cadastre e gerencie suas turmas da EPTNM</p>
+                      <p className={`text-xs sm:text-sm font-medium ${themeClasses.subtitle}`}>
+                        Materiais no ateliê
+                      </p>
                     </div>
                   </div>
-                  {editingTurmaId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingTurmaId(null);
-                        setTurmaNome('');
-                        setTurmaDisciplina('');
-                        setTurmaDescricao('');
-                      }}
-                      className="text-xs text-slate-400 hover:text-white underline"
-                    >
-                      Cancelar Edição
-                    </button>
-                  )}
-                </div>
 
-                {/* Alternador de Modo: Preenchimento Manual vs Automático IA */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                    Modo de Cadastro
-                  </label>
-                  <div className="grid grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
-                    <button
-                      type="button"
-                      onClick={() => setTurmaCreationMode('manual')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                        turmaCreationMode === 'manual'
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Edit2 size={13} />
-                      Manual
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTurmaCreationMode('ai')}
-                      className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                        turmaCreationMode === 'ai'
-                          ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Sparkles size={13} />
-                      Automático (IA)
-                    </button>
+                  {/* Card 2: Disciplinas em preparação */}
+                  <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${themeClasses.card}`}>
+                    <div className="p-4 rounded-2xl bg-[#fef3c7] text-[#d97706]">
+                      <Layers size={26} />
+                    </div>
+                    <div>
+                      <h3 className={`text-2xl sm:text-3xl font-display font-black ${themeClasses.title}`}>
+                        {String(totalDisciplinas).padStart(2, '0')}
+                      </h3>
+                      <p className={`text-xs sm:text-sm font-medium ${themeClasses.subtitle}`}>
+                        Disciplinas em preparação
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Turmas ativas */}
+                  <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${themeClasses.card}`}>
+                    <div className="p-4 rounded-2xl bg-[#d1fae5] text-[#059669]">
+                      <CheckCircle2 size={26} />
+                    </div>
+                    <div>
+                      <h3 className={`text-2xl sm:text-3xl font-display font-black ${themeClasses.title}`}>
+                        {String(turmasAtivasCount).padStart(2, '0')}
+                      </h3>
+                      <p className={`text-xs sm:text-sm font-medium ${themeClasses.subtitle}`}>
+                        Prontas para ensinar
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Botão de Preenchimento Automático IA */}
-                {turmaCreationMode === 'ai' && (
-                  <div className="p-3 bg-purple-500/10 border border-purple-500/30 rounded-2xl space-y-2">
-                    <p className="text-[11px] text-purple-300">
-                      Gere automaticamente a estrutura de nome, disciplina e observações pedagógicas com a IA do Gemini.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={handleGenerateTurmaAI}
-                      disabled={loading}
-                      className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
-                    >
-                      {loading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                      Preencher Automático com IA
-                    </button>
-                  </div>
-                )}
-
+                {/* SEÇÃO: POR ONDE COMEÇAR? (3 PROPOSTAS RÁPIDAS) */}
                 <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nome da Turma *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Turma 3001 - Marketing Digital"
-                      value={turmaNome}
-                      onChange={e => setTurmaNome(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Disciplina / Módulo *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Marketing de Conteúdo & Mídias Sociais"
-                      value={turmaDisciplina}
-                      onChange={e => setTurmaDisciplina(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Ano de Escolaridade / Período *</label>
-                    <select
-                      value={turmaAnoEscolaridade}
-                      onChange={e => setTurmaAnoEscolaridade(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h3 className={`text-lg md:text-xl font-display font-bold ${themeClasses.title}`}>
+                        Por onde começar?
+                      </h3>
+                      <p className={`text-xs md:text-sm ${themeClasses.subtitle}`}>
+                        Três propostas para tirar sua primeira aula técnica do papel hoje.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setCurrentSection('ia_assistente')}
+                      className="text-xs font-bold text-[#7c3aed] hover:underline flex items-center gap-1 self-start sm:self-auto"
                     >
-                      <option value="1º Ano Técnico - EPTNM">1º Ano Técnico - EPTNM</option>
-                      <option value="2º Ano Técnico - EPTNM">2º Ano Técnico - EPTNM</option>
-                      <option value="3º Ano Técnico - EPTNM">3º Ano Técnico - EPTNM</option>
-                      <option value="Módulo Subsequente / Pós-Médio">Módulo Subsequente / Pós-Médio</option>
-                      <option value="Curso Livre / Extensão">Curso Livre / Extensão</option>
-                    </select>
+                      Ver todas as ferramentas IA <ArrowRight size={14} />
+                    </button>
                   </div>
 
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Descrição / Observações da Turma</label>
-                    <textarea
-                      rows={3}
-                      placeholder="Ex: Horário das aulas, particularidades da turma, projetos em andamento..."
-                      value={turmaDescricao}
-                      onChange={e => setTurmaDescricao(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Card Proposta 1 */}
+                    <div 
+                      onClick={() => {
+                        setCurrentSection('ia_assistente');
+                        setActiveGenerator('plano_aula');
+                        setPlanoTema('O marketing no nosso cotidiano');
+                      }}
+                      className={`p-6 rounded-3xl border cursor-pointer group transition-all hover:scale-[1.01] hover:border-purple-400 ${themeClasses.card}`}
+                    >
+                      <div className="p-3 w-fit rounded-2xl bg-[#ede5fa] text-[#7c3aed] mb-4 group-hover:bg-[#7c3aed] group-hover:text-white transition-colors">
+                        <Lightbulb size={22} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
+                        Plano de aula · 50 min
+                      </span>
+                      <h4 className={`text-base font-display font-bold mt-1 group-hover:text-[#7c3aed] transition-colors ${themeClasses.title}`}>
+                        O marketing no nosso cotidiano
+                      </h4>
+                      <p className={`text-xs mt-2 leading-relaxed ${themeClasses.subtitle}`}>
+                        Conceitos, exemplos locais e um roteiro pronto para conduzir uma aula engajadora.
+                      </p>
+                    </div>
+
+                    {/* Card Proposta 2 */}
+                    <div 
+                      onClick={() => {
+                        setCurrentSection('ia_assistente');
+                        setActiveGenerator('ideias_atividades');
+                        setIdeiasTema('Os 4 Ps na prática');
+                      }}
+                      className={`p-6 rounded-3xl border cursor-pointer group transition-all hover:scale-[1.01] hover:border-amber-400 ${themeClasses.card}`}
+                    >
+                      <div className="p-3 w-fit rounded-2xl bg-[#fef3c7] text-[#d97706] mb-4 group-hover:bg-[#d97706] group-hover:text-white transition-colors">
+                        <Layers size={22} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
+                        Atividade · 30 min
+                      </span>
+                      <h4 className={`text-base font-display font-bold mt-1 group-hover:text-[#d97706] transition-colors ${themeClasses.title}`}>
+                        Os 4 Ps na prática
+                      </h4>
+                      <p className={`text-xs mt-2 leading-relaxed ${themeClasses.subtitle}`}>
+                        Uma atividade mão na massa para conectar produto, preço, praça e promoção.
+                      </p>
+                    </div>
+
+                    {/* Card Proposta 3 */}
+                    <div 
+                      onClick={() => {
+                        setCurrentSection('ia_assistente');
+                        setActiveGenerator('quiz');
+                        setQuizTema('Diagnóstico inicial de Marketing');
+                      }}
+                      className={`p-6 rounded-3xl border cursor-pointer group transition-all hover:scale-[1.01] hover:border-emerald-400 ${themeClasses.card}`}
+                    >
+                      <div className="p-3 w-fit rounded-2xl bg-[#d1fae5] text-[#059669] mb-4 group-hover:bg-[#059669] group-hover:text-white transition-colors">
+                        <CheckCircle size={22} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
+                        Avaliação · 20 min
+                      </span>
+                      <h4 className={`text-base font-display font-bold mt-1 group-hover:text-[#059669] transition-colors ${themeClasses.title}`}>
+                        Diagnóstico inicial de Marketing
+                      </h4>
+                      <p className={`text-xs mt-2 leading-relaxed ${themeClasses.subtitle}`}>
+                        Conheça o ponto de partida do conhecimento prévio da sua futura turma.
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Highlighted Criar Turma Button */}
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    className={`w-full py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-xl shadow-purple-600/30 flex items-center justify-center gap-3 transition-all relative overflow-hidden group border border-purple-400/30 ${
-                      createdFeedback ? 'ring-4 ring-emerald-500/50 from-emerald-600 to-teal-600' : ''
-                    }`}
-                  >
-                    {createdFeedback ? (
-                      <>
-                        <CheckCircle2 size={22} className="text-white animate-bounce" />
-                        <span>{editingTurmaId ? 'Turma Atualizada!' : 'Turma Cadastrada com Sucesso!'}</span>
-                      </>
-                    ) : (
-                      <>
-                        {editingTurmaId ? <Save size={20} /> : <Plus size={20} />}
-                        <span className="text-base font-display">{editingTurmaId ? 'Salvar Alterações da Turma' : '✨ Criar Turma'}</span>
-                      </>
-                    )}
-                  </motion.button>
-                </div>
-              </form>
-            </div>
-
-            {/* List & Management Column */}
-            <div className="lg:col-span-7 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-white/10">
-                <div>
-                  <h3 className="text-lg font-display font-bold text-white flex items-center gap-2">
-                    <School className="text-purple-400" size={22} />
-                    Painel de Gerenciamento de Turmas ({classesList.length})
-                  </h3>
-                  <p className="text-xs text-slate-400">Edite, ative/desative, acompanhe relatórios e vincule materiais da biblioteca.</p>
                 </div>
 
-                {/* Filtro de Busca por Nome ou Módulo */}
-                <div className="relative w-full sm:w-64">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nome ou módulo..."
-                    value={turmasSearchQuery}
-                    onChange={e => setTurmasSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 bg-white/5 border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-                  />
+                {/* CARD MOTIVACIONAL DO ATELIÊ NO RODAPÉ */}
+                <div className={`p-6 rounded-3xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${themeClasses.cardMuted}`}>
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-2xl bg-[#ede5fa] text-[#7c3aed]">
+                      <GraduationCap size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wider text-[#7c3aed]">
+                        ENSINO TÉCNICO · MARKETING
+                      </p>
+                      <h4 className={`text-sm md:text-base font-display font-bold mt-0.5 ${themeClasses.title}`}>
+                        Uma aula de cada vez.
+                      </h4>
+                      <p className={`text-xs ${themeClasses.subtitle}`}>
+                        Seu próximo capítulo começa na preparação de hoje. Transforme ideias em boas aulas.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-xs text-[#8c82a8] font-medium self-end sm:self-auto">
+                    Professora Raquel Duarte
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Grid de Turmas Cadastradas */}
-              <div className="grid grid-cols-1 gap-4">
-                {classesList.length > 0 ? (
-                  classesList
-                    .filter(t => 
-                      t.name.toLowerCase().includes(turmasSearchQuery.toLowerCase()) || 
-                      t.subject.toLowerCase().includes(turmasSearchQuery.toLowerCase())
-                    )
-                    .map((turma) => {
-                      const linkedItems = libraryItems.filter(item => item.classId === turma.id);
-                      const isActive = turma.status !== 'inativa';
+            {/* ------------------------------------------------------------- */}
+            {/* SEÇÃO 2: TURMAS (GESTÃO COMPLETA, CADASTRO, VÍNCULOS, RELATÓRIO)*/}
+            {/* ------------------------------------------------------------- */}
+            {currentSection === 'turmas' && (
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Formulário de Criação/Edição de Turma */}
+                  <div className="lg:col-span-5 space-y-4">
+                    <form 
+                      id="turma-form-container" 
+                      onSubmit={handleSaveTurma} 
+                      className={`p-6 md:p-8 rounded-3xl space-y-5 border shadow-sm ${themeClasses.card}`}
+                    >
+                      <div className="flex items-center justify-between pb-3 border-b border-purple-500/10">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2.5 bg-[#ede5fa] rounded-2xl text-[#7c3aed]">
+                            <School size={22} />
+                          </div>
+                          <div>
+                            <h3 className={`text-lg font-display font-bold ${themeClasses.title}`}>
+                              {editingTurmaId ? 'Editar Turma' : 'Cadastrar Nova Turma'}
+                            </h3>
+                            <p className={`text-xs ${themeClasses.subtitle}`}>
+                              Gestão pedagógica da turma EPTNM
+                            </p>
+                          </div>
+                        </div>
+                        {editingTurmaId && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTurmaId(null);
+                              setTurmaNome('');
+                              setTurmaDisciplina('');
+                              setTurmaDescricao('');
+                            }}
+                            className="text-xs text-rose-500 hover:underline font-semibold"
+                          >
+                            Cancelar
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Modo de Cadastro: Manual vs Automático IA */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block">
+                          Modo de Preenchimento
+                        </label>
+                        <div className="grid grid-cols-2 gap-2 p-1 bg-purple-500/5 rounded-2xl border border-purple-500/10">
+                          <button
+                            type="button"
+                            onClick={() => setTurmaCreationMode('manual')}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                              turmaCreationMode === 'manual'
+                                ? 'bg-[#7c3aed] text-white shadow-xs'
+                                : 'text-[#6f678e] hover:text-[#7c3aed]'
+                            }`}
+                          >
+                            <Edit2 size={13} />
+                            Manual
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTurmaCreationMode('ai')}
+                            className={`py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                              turmaCreationMode === 'ai'
+                                ? 'bg-[#7c3aed] text-white shadow-xs'
+                                : 'text-[#6f678e] hover:text-[#7c3aed]'
+                            }`}
+                          >
+                            <Sparkles size={13} />
+                            Automático (IA)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Botão de Preenchimento Automático IA */}
+                      {turmaCreationMode === 'ai' && (
+                        <div className="p-4 bg-[#f5effd] dark:bg-purple-950/20 border border-purple-300/40 rounded-2xl space-y-2.5">
+                          <p className="text-xs text-[#6d28d9] dark:text-purple-300 font-medium leading-relaxed">
+                            A IA do Gemini formulará uma proposta completa de turma alinhada às competências técnicas do curso de Marketing.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleGenerateTurmaAI}
+                            disabled={loading}
+                            className="w-full py-2.5 bg-gradient-to-r from-[#7c3aed] to-[#6d28d9] hover:from-[#6d28d9] hover:to-[#5b21b6] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                            Preencher Automaticamente com IA
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                            Nome da Turma *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ex: Turma 3001 - Marketing Digital"
+                            value={turmaNome}
+                            onChange={e => setTurmaNome(e.target.value)}
+                            className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                            Disciplina / Módulo *
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ex: Marketing de Conteúdo & Mídias Sociais"
+                            value={turmaDisciplina}
+                            onChange={e => setTurmaDisciplina(e.target.value)}
+                            className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                            Ano de Escolaridade / Período *
+                          </label>
+                          <select
+                            value={turmaAnoEscolaridade}
+                            onChange={e => setTurmaAnoEscolaridade(e.target.value)}
+                            className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                          >
+                            <option value="1º Ano Técnico - EPTNM">1º Ano Técnico - EPTNM</option>
+                            <option value="2º Ano Técnico - EPTNM">2º Ano Técnico - EPTNM</option>
+                            <option value="3º Ano Técnico - EPTNM">3º Ano Técnico - EPTNM</option>
+                            <option value="Módulo Subsequente / Pós-Médio">Módulo Subsequente / Pós-Médio</option>
+                            <option value="Curso Livre / Extensão">Curso Livre / Extensão</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                            Descrição / Observações da Turma
+                          </label>
+                          <textarea
+                            rows={3}
+                            placeholder="Ex: Particularidades da turma, horários, projetos integradores..."
+                            value={turmaDescricao}
+                            onChange={e => setTurmaDescricao(e.target.value)}
+                            className={`w-full rounded-2xl p-4 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                          />
+                        </div>
+
+                        <motion.button
+                          whileTap={{ scale: 0.98 }}
+                          type="submit"
+                          className={`w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2.5 transition-all ${
+                            createdFeedback ? 'bg-emerald-600 hover:bg-emerald-600' : ''
+                          }`}
+                        >
+                          {createdFeedback ? (
+                            <>
+                              <CheckCircle2 size={20} className="animate-bounce" />
+                              <span>{editingTurmaId ? 'Turma Atualizada!' : 'Turma Cadastrada com Sucesso!'}</span>
+                            </>
+                          ) : (
+                            <>
+                              {editingTurmaId ? <Save size={18} /> : <Plus size={18} />}
+                              <span>{editingTurmaId ? 'Salvar Alterações da Turma' : 'Criar Turma no Ateliê'}</span>
+                            </>
+                          )}
+                        </motion.button>
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Lista de Turmas Cadastradas */}
+                  <div className="lg:col-span-7 space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-purple-500/10">
+                      <div>
+                        <h3 className={`text-lg font-display font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                          <School className="text-[#7c3aed]" size={22} />
+                          Turmas Cadastradas ({classesList.length})
+                        </h3>
+                        <p className={`text-xs ${themeClasses.subtitle}`}>
+                          Acompanhe planos, materiais vinculados e relatórios de progresso.
+                        </p>
+                      </div>
+
+                      {/* Busca por Turma */}
+                      <div className="relative w-full sm:w-64">
+                        <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8878a8]" />
+                        <input
+                          type="text"
+                          placeholder="Buscar por turma ou módulo..."
+                          value={turmasSearchQuery}
+                          onChange={e => setTurmasSearchQuery(e.target.value)}
+                          className={`w-full pl-9 pr-3 py-2 rounded-xl text-xs focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {classesList.length > 0 ? (
+                        classesList
+                          .filter(t => 
+                            t.name.toLowerCase().includes(turmasSearchQuery.toLowerCase()) || 
+                            t.subject.toLowerCase().includes(turmasSearchQuery.toLowerCase())
+                          )
+                          .map((turma) => {
+                            const linkedItems = libraryItems.filter(item => item.classId === turma.id);
+                            const isActive = turma.status !== 'inativa';
+
+                            return (
+                              <div
+                                key={turma.id}
+                                className={`p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 ${themeClasses.card} ${
+                                  !isActive ? 'opacity-60' : 'hover:border-purple-400'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-purple-500/10 text-[#7c3aed] rounded-full border border-purple-200/50">
+                                        {turma.gradeYear}
+                                      </span>
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-blue-500/10 text-blue-600 rounded-full border border-blue-200/50">
+                                        {linkedItems.length} materiais vinculados
+                                      </span>
+                                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
+                                        isActive
+                                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-200/60'
+                                          : 'bg-slate-500/10 text-slate-500 border-slate-200'
+                                      }`}>
+                                        <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                                        {isActive ? 'Ativa' : 'Inativa'}
+                                      </span>
+                                    </div>
+
+                                    <h4 className={`text-xl font-display font-bold ${themeClasses.title}`}>
+                                      {turma.name}
+                                    </h4>
+                                    <p className="text-sm font-semibold text-[#7c3aed] mt-0.5">
+                                      📘 {turma.subject}
+                                    </p>
+                                    {turma.description && (
+                                      <p className={`text-xs mt-2 p-3 rounded-2xl border ${themeClasses.cardMuted}`}>
+                                        {turma.description}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Botões de Ação */}
+                                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                    <button
+                                      onClick={() => handleToggleTurmaStatus(turma)}
+                                      className={`p-2 rounded-xl transition-all border ${
+                                        isActive 
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                                          : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                                      }`}
+                                      title={isActive ? "Desativar Turma" : "Ativar Turma"}
+                                    >
+                                      {isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                                    </button>
+
+                                    <button
+                                      onClick={() => setReportModalTurma(turma)}
+                                      className="p-2 bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all"
+                                      title="Ver Relatório Detalhado"
+                                    >
+                                      <BarChart3 size={16} />
+                                    </button>
+
+                                    <button
+                                      onClick={() => handleEditTurma(turma)}
+                                      className="p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 border border-purple-200 rounded-xl transition-all"
+                                      title="Editar Turma"
+                                    >
+                                      <Edit2 size={16} />
+                                    </button>
+
+                                    <button
+                                      onClick={() => setDeletingTurmaId(turma.id)}
+                                      className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all"
+                                      title="Excluir Turma"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {/* Rodapé do Card da Turma */}
+                                <div className="pt-3 border-t border-purple-500/10 flex flex-wrap items-center justify-between gap-2">
+                                  <button
+                                    onClick={() => setSelectedTurmaView(turma)}
+                                    className="text-xs font-bold text-[#7c3aed] hover:underline flex items-center gap-1.5"
+                                  >
+                                    <FolderOpen size={15} /> Ver materiais vinculados ({linkedItems.length})
+                                  </button>
+                                  <span className="text-[10px] text-[#8878a8]">
+                                    Criada em: {new Date(turma.createdAt).toLocaleDateString('pt-BR')}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })
+                      ) : (
+                        <div className={`py-16 text-center space-y-3 rounded-3xl border ${themeClasses.cardMuted}`}>
+                          <Users size={48} className="mx-auto text-[#8878a8] stroke-[1.5]" />
+                          <p className={`text-sm ${themeClasses.subtitle}`}>
+                            Nenhuma turma encontrada. Cadastre uma nova turma no formulário ao lado!
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SEÇÃO 3: MEUS MATERIAIS & BIBLIOTECA SALVA                   */}
+            {/* ------------------------------------------------------------- */}
+            {currentSection === 'materiais' && (
+              <div className="space-y-6">
+                {/* Barra de Busca e Filtro de Categorias */}
+                <div className={`p-6 rounded-3xl border flex flex-col md:flex-row gap-4 items-center justify-between ${themeClasses.card}`}>
+                  <div className="relative w-full md:w-96">
+                    <input
+                      type="text"
+                      placeholder="Pesquisar nos materiais do ateliê..."
+                      value={librarySearch}
+                      onChange={e => setLibrarySearch(e.target.value)}
+                      className={`w-full rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                    />
+                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8878a8]" />
+                  </div>
+
+                  <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 scrollbar-none">
+                    <button
+                      onClick={() => setLibraryCategoryFilter('all')}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                        libraryCategoryFilter === 'all'
+                          ? 'bg-[#7c3aed] text-white'
+                          : `${themeClasses.cardMuted} text-[#6c6488] hover:border-purple-300`
+                      }`}
+                    >
+                      Todos ({libraryItems.length})
+                    </button>
+                    {toolsConfig.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setLibraryCategoryFilter(t.id)}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                          libraryCategoryFilter === t.id
+                            ? 'bg-[#7c3aed] text-white'
+                            : `${themeClasses.cardMuted} text-[#6c6488] hover:border-purple-300`
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Grid de Materiais */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredLibrary.length > 0 ? (
+                    filteredLibrary.map((item) => {
+                      const cfg = toolsConfig.find(s => s.id === item.category);
+                      const linkedClass = classesList.find(c => c.id === item.classId);
+                      const Icon = cfg?.icon || BookOpen;
 
                       return (
                         <div
-                          key={turma.id}
-                          className={`glass-card p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 group relative ${
-                            isActive ? 'border-white/10 hover:border-purple-500/40' : 'border-white/5 opacity-60 bg-black/40'
-                          }`}
+                          key={item.id}
+                          className={`p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 group hover:border-purple-400 ${themeClasses.card}`}
                         >
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
-                                  {turma.gradeYear}
-                                </span>
-                                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
-                                  {linkedItems.length} Materiais Vinculados
-                                </span>
-
-                                {/* Badge de Status: Verde = Ativa, Cinza = Inativa */}
-                                <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full border flex items-center gap-1.5 ${
-                                  isActive
-                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                    : 'bg-slate-500/20 text-slate-400 border-slate-500/30'
-                                }`}>
-                                  <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
-                                  {isActive ? 'Ativa' : 'Inativa'}
-                                </span>
-                              </div>
-
-                              <h4 className="text-xl font-display font-bold text-white group-hover:text-purple-300 transition-colors">
-                                {turma.name}
-                              </h4>
-                              <p className="text-sm text-purple-300 font-medium mt-0.5">
-                                📘 {turma.subject}
-                              </p>
-                              {turma.description && (
-                                <p className="text-xs text-slate-400 mt-2 bg-black/20 p-3 rounded-2xl border border-white/5">
-                                  {turma.description}
-                                </p>
-                              )}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#ede5fa] text-[#7c3aed] rounded-full border border-purple-200/60 flex items-center gap-1.5">
+                                <Icon size={12} />
+                                {cfg?.label || item.category}
+                              </span>
+                              <span className="text-[10px] text-[#8878a8]">
+                                {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+                              </span>
                             </div>
 
-                            {/* Botões de Ação de Gerenciamento */}
-                            <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                              {/* Toggle Ativar/Desativar */}
-                              <button
-                                onClick={() => handleToggleTurmaStatus(turma)}
-                                className={`p-2.5 rounded-xl transition-all border ${
-                                  isActive 
-                                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20' 
-                                    : 'bg-white/5 hover:bg-white/10 text-slate-400 border-white/10'
-                                }`}
-                                title={isActive ? "Desativar Turma" : "Ativar Turma"}
-                              >
-                                {isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                              </button>
+                            {linkedClass && (
+                              <span className="inline-block text-[10px] bg-blue-500/10 text-blue-600 font-bold px-2.5 py-0.5 rounded-lg mb-2 border border-blue-200/50">
+                                🏫 {linkedClass.name}
+                              </span>
+                            )}
 
-                              {/* Ver Relatórios Individuais */}
-                              <button
-                                onClick={() => setReportModalTurma(turma)}
-                                className="p-2.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 rounded-xl transition-all"
-                                title="Ver Relatório Detalhado"
-                              >
-                                <BarChart3 size={16} />
-                              </button>
-
-                              {/* Editar */}
-                              <button
-                                onClick={() => handleEditTurma(turma)}
-                                className="p-2.5 bg-white/5 hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 border border-white/10 rounded-xl transition-all"
-                                title="Editar Turma"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-
-                              {/* Excluir com Confirmação */}
-                              <button
-                                onClick={() => setDeletingTurmaId(turma.id)}
-                                className="p-2.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-xl transition-all"
-                                title="Excluir Turma"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
+                            <h4 className={`text-base font-display font-bold line-clamp-2 mt-1 group-hover:text-[#7c3aed] transition-colors ${themeClasses.title}`}>
+                              {item.title}
+                            </h4>
+                            <p className={`text-xs line-clamp-4 mt-2 p-3 rounded-2xl border ${themeClasses.cardMuted}`}>
+                              {item.content.replace(/[#*`_]/g, '')}
+                            </p>
                           </div>
 
-                          {/* Quick Overview Footer */}
-                          <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center justify-between pt-3 border-t border-purple-500/10">
                             <button
-                              onClick={() => setSelectedTurmaView(turma)}
-                              className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1.5"
+                              onClick={() => setSelectedLibraryItem(item)}
+                              className="text-xs font-bold text-[#7c3aed] hover:underline flex items-center gap-1"
                             >
-                              <FolderOpen size={16} /> Ver Planos & Materiais da Turma ({linkedItems.length})
+                              <Eye size={14} /> Visualizar Completo
                             </button>
-                            <span className="text-[10px] text-slate-500">
-                              Criada em: {new Date(turma.createdAt).toLocaleDateString('pt-BR')}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => copyToClipboard(item.content, item.id)}
+                                className={`p-2 rounded-xl border transition-all ${themeClasses.cardMuted} hover:border-purple-300`}
+                                title="Copiar"
+                              >
+                                {copiedId === item.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteLibraryItem(item.id)}
+                                className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-rose-200"
+                                title="Excluir"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
                     })
-                ) : (
-                  <div className="py-16 text-center space-y-3 glass-card rounded-3xl border border-white/10">
-                    <Users size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
-                    <p className="text-slate-400 text-sm">Nenhuma turma encontrada. Crie uma nova turma ao lado!</p>
+                  ) : (
+                    <div className={`col-span-full py-16 text-center space-y-3 rounded-3xl border ${themeClasses.cardMuted}`}>
+                      <BookmarkCheck size={48} className="mx-auto text-[#8878a8] stroke-[1.5]" />
+                      <p className={`text-sm ${themeClasses.subtitle}`}>
+                        Nenhum material encontrado no ateliê. Crie um novo plano ou atividade na aba IA Assistente!
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SEÇÃO 4: IA ASSISTENTE (TODAS AS 9 FERRAMENTAS PEDAGÓGICAS)    */}
+            {/* ------------------------------------------------------------- */}
+            {currentSection === 'ia_assistente' && (
+              <div className="space-y-6">
+                {/* Seletor de Turma Alvo para Vínculo */}
+                <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-4 ${themeClasses.card}`}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-[#ede5fa] text-[#7c3aed] rounded-xl">
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <p className={`text-xs font-bold ${themeClasses.title}`}>
+                        Vincular Geração a uma Turma (Opcional)
+                      </p>
+                      <p className={`text-[11px] ${themeClasses.subtitle}`}>
+                        O material gerado será automaticamente salvo e associado à turma selecionada.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODULE: COMPARATIVO DE TURMAS */}
-      {activeSection === 'comparativo_turmas' && (
-        <div className="space-y-8">
-          <div className="glass-card p-6 md:p-8 rounded-3xl border border-purple-500/20 space-y-6 shadow-2xl">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-xl font-display font-bold text-white flex items-center gap-2">
-                  <BarChart3 size={24} className="text-emerald-400" />
-                  Comparativo de Desempenho entre Turmas
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Selecione turmas cadastradas para comparar aulas concluídas, materiais vinculados, slides e progresso pedagógico.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                {/* Filtro de Período */}
-                <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10">
-                  {(['dia', 'semana', 'mes'] as const).map(tf => (
-                    <button
-                      key={tf}
-                      onClick={() => setComparativoTimeframe(tf)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                        comparativoTimeframe === tf
-                          ? 'bg-purple-600 text-white shadow-md'
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      {tf === 'dia' ? 'Dia' : tf === 'semana' ? 'Semana' : 'Mês'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Botões Exportar CSV e JSON */}
-                <button
-                  onClick={() => handleExportComparativeReport('csv')}
-                  className="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
-                >
-                  <Download size={14} />
-                  Exportar CSV
-                </button>
-
-                <button
-                  onClick={() => handleExportComparativeReport('json')}
-                  className="px-3.5 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95"
-                >
-                  <Download size={14} />
-                  Exportar JSON
-                </button>
-              </div>
-            </div>
-
-            {/* Seletor de Turmas para Comparação */}
-            <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Selecione as turmas para comparar ({selectedTurmasForComparison.length} selecionadas):
-                </span>
-                <button
-                  onClick={() => {
-                    if (selectedTurmasForComparison.length === classesList.length) {
-                      setSelectedTurmasForComparison([]);
-                    } else {
-                      setSelectedTurmasForComparison(classesList.map(c => c.id));
-                    }
-                  }}
-                  className="text-xs text-purple-400 hover:text-purple-300 underline font-medium"
-                >
-                  {selectedTurmasForComparison.length === classesList.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {classesList.map(c => {
-                  const isChecked = selectedTurmasForComparison.includes(c.id);
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        if (isChecked) {
-                          setSelectedTurmasForComparison(prev => prev.filter(id => id !== c.id));
-                        } else {
-                          setSelectedTurmasForComparison(prev => [...prev, c.id]);
-                        }
-                      }}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
-                        isChecked
-                          ? 'bg-purple-600/20 border-purple-500 text-white shadow-md'
-                          : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-purple-400' : 'bg-slate-600'}`} />
-                      {c.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Gráficos Visuais Comparativos */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Gráfico 1: Aulas Concluídas vs Pendentes */}
-              <div className="p-5 bg-white/5 border border-white/10 rounded-3xl space-y-4">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <TrendingUp size={16} className="text-purple-400" />
-                  Aulas Concluídas vs Pendentes por Turma
-                </h4>
-
-                <div className="space-y-3 pt-2">
-                  {classesList
-                    .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
-                    .map(turma => {
-                      const st = turma.stats || { aulasConcluidas: 8, aulasPendentes: 2 };
-                      const total = (st.aulasConcluidas || 8) + (st.aulasPendentes || 2);
-                      const percentConcluidas = Math.round(((st.aulasConcluidas || 8) / total) * 100);
-
-                      return (
-                        <div key={turma.id} className="space-y-1.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="font-bold text-white">{turma.name}</span>
-                            <span className="text-slate-400 font-mono">
-                              {st.aulasConcluidas} concluídas / {st.aulasPendentes} pendentes
-                            </span>
-                          </div>
-                          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden flex">
-                            <div
-                              className="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-l-full transition-all duration-500"
-                              style={{ width: `${percentConcluidas}%` }}
-                              title={`Concluídas: ${percentConcluidas}%`}
-                            />
-                            <div
-                              className="h-full bg-slate-600/50 rounded-r-full transition-all duration-500"
-                              style={{ width: `${100 - percentConcluidas}%` }}
-                              title={`Pendentes: ${100 - percentConcluidas}%`}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-
-              {/* Gráfico 2: Progresso Médio dos Alunos (%) */}
-              <div className="p-5 bg-white/5 border border-white/10 rounded-3xl space-y-4">
-                <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                  <GraduationCap size={16} className="text-emerald-400" />
-                  Progresso Médio dos Alunos (%)
-                </h4>
-
-                <div className="space-y-3 pt-2">
-                  {classesList
-                    .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
-                    .map(turma => {
-                      const st = turma.stats || { progressoMedioAlunos: 82 };
-                      const prog = st.progressoMedioAlunos || 82;
-
-                      return (
-                        <div key={turma.id} className="space-y-1.5">
-                          <div className="flex justify-between text-xs">
-                            <span className="font-bold text-white">{turma.name}</span>
-                            <span className="font-mono font-bold text-emerald-400">{prog}%</span>
-                          </div>
-                          <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
-                            <div
-                              className="h-full bg-gradient-to-r from-purple-500 via-indigo-500 to-emerald-400 rounded-full transition-all duration-500"
-                              style={{ width: `${prog}%` }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            </div>
-
-            {/* Tabela Comparativa Métricas Lado a Lado */}
-            <div className="space-y-3 pt-4">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <Layers size={16} className="text-purple-400" />
-                Tabela Comparativa de Métricas
-              </h4>
-
-              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-white/5 border-b border-white/10 text-slate-400 uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="p-3.5">Nome da Turma</th>
-                      <th className="p-3.5">Disciplina / Módulo</th>
-                      <th className="p-3.5">Período</th>
-                      <th className="p-3.5">Status</th>
-                      <th className="p-3.5 text-center">Materiais</th>
-                      <th className="p-3.5 text-center">Slides</th>
-                      <th className="p-3.5 text-center">Progresso</th>
-                      <th className="p-3.5 text-center">Taxa Conclusão</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {classesList
-                      .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
-                      .map(turma => {
-                        const st = turma.stats || { materiaisVinculados: 3, slidesGerados: 4, progressoMedioAlunos: 85, taxaConclusaoProjetos: 90 };
-                        const isActive = turma.status !== 'inativa';
-
-                        return (
-                          <tr key={turma.id} className="hover:bg-white/5 transition-colors">
-                            <td className="p-3.5 font-bold text-white">{turma.name}</td>
-                            <td className="p-3.5 text-purple-300">{turma.subject}</td>
-                            <td className="p-3.5 text-slate-400">{turma.gradeYear}</td>
-                            <td className="p-3.5">
-                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                                isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'
-                              }`}>
-                                {isActive ? 'Ativa' : 'Inativa'}
-                              </span>
-                            </td>
-                            <td className="p-3.5 text-center font-mono font-bold text-white">{st.materiaisVinculados || 0}</td>
-                            <td className="p-3.5 text-center font-mono font-bold text-purple-300">{st.slidesGerados || 0}</td>
-                            <td className="p-3.5 text-center font-mono font-bold text-emerald-400">{st.progressoMedioAlunos || 85}%</td>
-                            <td className="p-3.5 text-center font-mono font-bold text-indigo-300">{st.taxaConclusaoProjetos || 88}%</td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO DE TURMA */}
-      <AnimatePresence>
-        {deletingTurmaId && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#181427] border border-rose-500/40 rounded-3xl p-6 max-w-md w-full space-y-5 shadow-2xl"
-            >
-              <div className="flex items-center gap-3 text-rose-400">
-                <AlertTriangle size={28} />
-                <h3 className="text-lg font-display font-bold text-white">Confirmar Exclusão</h3>
-              </div>
-
-              <p className="text-sm text-slate-300">
-                ⚠️ Tem certeza que deseja excluir esta turma? Esta ação removerá a turma e todos os vínculos associados.
-              </p>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  onClick={() => setDeletingTurmaId(null)}
-                  className="px-4 py-2.5 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold transition-all"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={() => handleConfirmDeleteTurma(deletingTurmaId)}
-                  className="px-5 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-rose-600/30 flex items-center gap-1.5"
-                >
-                  <Trash2 size={14} />
-                  Sim, Excluir Turma
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL DE RELATÓRIO INDIVIDUAL DA TURMA */}
-      <AnimatePresence>
-        {reportModalTurma && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-[#181427] border border-purple-500/40 rounded-3xl p-6 md:p-8 max-w-2xl w-full space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto"
-            >
-              <div className="flex items-start justify-between gap-4 pb-4 border-b border-white/10">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 bg-purple-500/20 text-purple-300 rounded-full">
-                      {reportModalTurma.gradeYear}
-                    </span>
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full ${
-                      reportModalTurma.status !== 'inativa' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'
-                    }`}>
-                      {reportModalTurma.status !== 'inativa' ? 'Ativa' : 'Inativa'}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-display font-bold text-white">{reportModalTurma.name}</h3>
-                  <p className="text-xs text-purple-300 font-medium">📘 {reportModalTurma.subject}</p>
-                </div>
-
-                <button
-                  onClick={() => setReportModalTurma(null)}
-                  className="p-2 text-slate-400 hover:text-white bg-white/5 rounded-xl"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Grid de Métricas Individuais */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Aulas Vinculadas</span>
-                  <p className="text-xl font-display font-bold text-white">
-                    {(reportModalTurma.stats?.aulasConcluidas || 8) + (reportModalTurma.stats?.aulasPendentes || 2)} <span className="text-xs text-slate-500 font-sans">aulas</span>
-                  </p>
-                  <span className="text-[10px] text-emerald-400">
-                    {reportModalTurma.stats?.aulasConcluidas || 8} concluídas
-                  </span>
-                </div>
-
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Materiais Didáticos</span>
-                  <p className="text-xl font-display font-bold text-purple-300">
-                    {(reportModalTurma.linkedItemIds || []).length} <span className="text-xs text-slate-500 font-sans">itens</span>
-                  </p>
-                  <span className="text-[10px] text-slate-400">Vinculados da Biblioteca</span>
-                </div>
-
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Slides Gerados</span>
-                  <p className="text-xl font-display font-bold text-indigo-300">
-                    {reportModalTurma.stats?.slidesGerados || 4} <span className="text-xs text-slate-500 font-sans">apresentações</span>
-                  </p>
-                  <span className="text-[10px] text-slate-400">Roteiros visuais</span>
-                </div>
-
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Progresso dos Alunos</span>
-                  <p className="text-xl font-display font-bold text-emerald-400">
-                    {reportModalTurma.stats?.progressoMedioAlunos || 85}%
-                  </p>
-                  <span className="text-[10px] text-slate-400">Média de desenvolvimento</span>
-                </div>
-
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Conclusão de Projetos</span>
-                  <p className="text-xl font-display font-bold text-emerald-400">
-                    {reportModalTurma.stats?.taxaConclusaoProjetos || 90}%
-                  </p>
-                  <span className="text-[10px] text-slate-400">Entregas de agência</span>
-                </div>
-
-                <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Última Atualização</span>
-                  <p className="text-sm font-mono text-slate-300">
-                    {new Date(reportModalTurma.updatedAt || reportModalTurma.createdAt).toLocaleDateString('pt-BR')}
-                  </p>
-                  <span className="text-[10px] text-slate-500">Sincronizado Supabase</span>
-                </div>
-              </div>
-
-              {/* Ações do Relatório */}
-              <div className="flex items-center justify-between pt-4 border-t border-white/10">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleExportTurmaReport(reportModalTurma, 'csv')}
-                    className="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  <select
+                    value={selectedClassId}
+                    onChange={e => setSelectedClassId(e.target.value)}
+                    className={`w-full sm:w-72 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
                   >
-                    <Download size={14} /> Exportar CSV
-                  </button>
-                  <button
-                    onClick={() => handleExportTurmaReport(reportModalTurma, 'json')}
-                    className="px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-                  >
-                    <Download size={14} /> Exportar JSON
-                  </button>
+                    <option value="">Nenhuma turma selecionada (Material Geral)</option>
+                    {classesList.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} ({c.gradeYear})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <button
-                  onClick={() => setReportModalTurma(null)}
-                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-slate-300 rounded-xl text-xs font-bold"
-                >
-                  Fechar
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* Main Feature Content Area (For Generators 1-9) */}
-      {activeSection !== 'turmas' && activeSection !== 'biblioteca' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Form Column */}
-          <div className="lg:col-span-5 space-y-6">
-            <div className="glass-card p-6 md:p-8 rounded-3xl space-y-5 border border-purple-500/20">
-              <div className="flex items-center gap-3 pb-3 border-b border-white/10">
-                <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400">
-                  {sectionsConfig.find(s => s.id === activeSection)?.icon && 
-                    React.createElement(sectionsConfig.find(s => s.id === activeSection)!.icon, { size: 20 })}
+                {/* Grid de Seleção da Ferramenta IA */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-2">
+                  {toolsConfig.map(t => {
+                    const isActive = activeGenerator === t.id;
+                    const Icon = t.icon;
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => {
+                          setActiveGenerator(t.id);
+                          setGeneratedOutput('');
+                        }}
+                        className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-between gap-1.5 ${
+                          isActive
+                            ? 'bg-[#7c3aed] text-white border-purple-600 shadow-md shadow-purple-600/20'
+                            : `${themeClasses.card} text-[#6c6488] hover:border-purple-300`
+                        }`}
+                      >
+                        <Icon size={18} className={isActive ? 'text-white' : 'text-[#7c3aed]'} />
+                        <span className="text-[11px] font-bold line-clamp-1">{t.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                <div>
-                  <h3 className="text-lg font-display font-bold text-white">
-                    {sectionsConfig.find(s => s.id === activeSection)?.label}
-                  </h3>
-                  <p className="text-xs text-slate-400">Preencha os campos para orientar a geração técnica</p>
-                </div>
-              </div>
 
-              {/* SECTION 1: PLANO DE AULA */}
-              {activeSection === 'plano_aula' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tema / Conteúdo da Aula *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Funil de Vendas Digital e Inbound Marketing"
-                      value={planoTema}
-                      onChange={e => setPlanoTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Duração Total</label>
-                    <input
-                      type="text"
-                      value={planoDuracao}
-                      onChange={e => setPlanoDuracao(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Metodologia Ativa</label>
-                    <select
-                      value={planoMetodologia}
-                      onChange={e => setPlanoMetodologia(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500 [color-scheme:dark]"
-                    >
-                      <option value="Aprendizagem Baseada em Projetos (PBL)">Aprendizagem Baseada em Projetos (PBL)</option>
-                      <option value="Sala de Aula Invertida">Sala de Aula Invertida</option>
-                      <option value="Estudo de Caso Prático de Mercado">Estudo de Caso Prático de Mercado</option>
-                      <option value="Gamificação e Desafios de Equipe">Gamificação e Desafios de Equipe</option>
-                      <option value="Rotação por Estações de Trabalho">Rotação por Estações de Trabalho</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Competências Diretrizes EPTNM</label>
-                    <textarea
-                      rows={3}
-                      value={planoCompetencias}
-                      onChange={e => setPlanoCompetencias(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'plano_aula',
-                      `Plano de Aula: ${planoTema}`,
-                      `Gere um Plano de Aula completo para a disciplina de Marketing no Ensino Técnico (EPTNM).
+                {/* Painel do Gerador Ativo: Formulário (Esquerda) e Resultado (Direita) */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                  {/* Coluna Esquerda: Formulário de Entrada */}
+                  <div className="lg:col-span-5 space-y-6">
+                    <div className={`p-6 md:p-8 rounded-3xl space-y-5 border shadow-sm ${themeClasses.card}`}>
+                      <div className="flex items-center gap-3 pb-3 border-b border-purple-500/10">
+                        <div className="p-2.5 bg-[#ede5fa] rounded-2xl text-[#7c3aed]">
+                          {React.createElement(toolsConfig.find(t => t.id === activeGenerator)?.icon || Sparkles, { size: 20 })}
+                        </div>
+                        <div>
+                          <h3 className={`text-lg font-display font-bold ${themeClasses.title}`}>
+                            {toolsConfig.find(t => t.id === activeGenerator)?.label}
+                          </h3>
+                          <p className={`text-xs ${themeClasses.subtitle}`}>
+                            {toolsConfig.find(t => t.id === activeGenerator)?.desc}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 1. PLANO DE AULA */}
+                      {activeGenerator === 'plano_aula' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Tema / Conteúdo da Aula *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Funil de Vendas Digital e Inbound Marketing"
+                              value={planoTema}
+                              onChange={e => setPlanoTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Duração Total
+                            </label>
+                            <input
+                              type="text"
+                              value={planoDuracao}
+                              onChange={e => setPlanoDuracao(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Metodologia Ativa
+                            </label>
+                            <select
+                              value={planoMetodologia}
+                              onChange={e => setPlanoMetodologia(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            >
+                              <option value="Aprendizagem Baseada em Projetos (PBL)">Aprendizagem Baseada em Projetos (PBL)</option>
+                              <option value="Sala de Aula Invertida">Sala de Aula Invertida</option>
+                              <option value="Estudo de Caso Prático de Mercado">Estudo de Caso Prático de Mercado</option>
+                              <option value="Gamificação e Desafios de Equipe">Gamificação e Desafios de Equipe</option>
+                              <option value="Rotação por Estações de Trabalho">Rotação por Estações de Trabalho</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Competências Diretrizes EPTNM
+                            </label>
+                            <textarea
+                              rows={3}
+                              value={planoCompetencias}
+                              onChange={e => setPlanoCompetencias(e.target.value)}
+                              className={`w-full rounded-2xl p-4 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'plano_aula',
+                              `Plano de Aula: ${planoTema}`,
+                              `Gere um Plano de Aula completo para a disciplina de Marketing no Ensino Técnico (EPTNM).
 Tema: ${planoTema}
 Duração: ${planoDuracao}
 Metodologia: ${planoMetodologia}
@@ -1498,844 +1703,1059 @@ Estrutura exigida no plano:
 5. Desenvolvimento Metodológico Passo a Passo (Introdução, Prática, Conclusão)
 6. Recursos Didáticos Necessários
 7. Critérios e Formas de Avaliação Formativa.`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <Sparkles size={18} />}
-                    Gerar Plano de Aula com IA
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 2: MATERIAL DIDÁTICO */}
-              {activeSection === 'material_didatico' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tipo de Material</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => setMaterialTipo('resumo')}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                          materialTipo === 'resumo' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-slate-400'
-                        }`}
-                      >
-                        Resumo Didático
-                      </button>
-                      <button
-                        onClick={() => setMaterialTipo('slides')}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                          materialTipo === 'slides' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-slate-400'
-                        }`}
-                      >
-                        Estrutura Slides
-                      </button>
-                      <button
-                        onClick={() => setMaterialTipo('atividade_pratica')}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-                          materialTipo === 'atividade_pratica' ? 'bg-purple-600 border-purple-400 text-white' : 'bg-white/5 border-white/10 text-slate-400'
-                        }`}
-                      >
-                        Guia Prático
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tema do Material *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Persona, Jornada do Cliente e Copywriting"
-                      value={materialTema}
-                      onChange={e => setMaterialTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'material_didatico',
-                      `Material Didático (${materialTipo.toUpperCase()}): ${materialTema}`,
-                      `Gere um material didático completo do tipo "${materialTipo}" para alunos de curso técnico em Marketing.
-Tema: ${materialTema}
-
-Exigências:
-- Linguagem clara, acessível e voltada ao mercado de trabalho.
-- Inclua definições formais, exemplos visuais/práticos, erros comuns cometidos por profissionais iniciantes e checklist de aplicação prática.`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <BookOpen size={18} />}
-                    Gerar Material Didático
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 3: ASSISTENTE DE MERCADO */}
-              {activeSection === 'assistente_mercado' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Topico ou Conceito de Marketing *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Rebranding, Marketing de Influência, Tráfego Pago"
-                      value={assistenteTopico}
-                      onChange={e => setAssistenteTopico(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nicho / Contexto de Mercado</label>
-                    <input
-                      type="text"
-                      value={assistenteContexto}
-                      onChange={e => setAssistenteContexto(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'assistente_mercado',
-                      `Análise de Mercado: ${assistenteTopico}`,
-                      `Atue como um Assistente de Mercado de Marketing para a professora levar exemplos reais aos alunos técnicos.
-Tópico: ${assistenteTopico}
-Nicho/Contexto: ${assistenteContexto}
-
-Forneça:
-1. 3 Exemplos REAIS de grandes marcas ou marcas brasileiras recentes que utilizaram este conceito com sucesso.
-2. Análise da Estratégia e Métrica de Sucesso de cada exemplo.
-3. Tendências atuais e inovações para 2026/2027 relacionadas a este tema.
-4. Perguntas reflexivas para instigar debate na sala de aula técnica.`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <MessageSquare size={18} />}
-                    Consultar Tendências & Casos Reais
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 4: APRESENTAÇÃO DE SLIDES */}
-              {activeSection === 'slides' && (
-                <div className="space-y-5">
-                  {/* Seletor de Modo de Tema */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-                      Origem do Tema da Apresentação
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl">
-                      <button
-                        type="button"
-                        onClick={() => setSlidesSourceMode('manual')}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                          slidesSourceMode === 'manual'
-                            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <Edit2 size={14} />
-                        Digitar novo tema manualmente
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSlidesSourceMode('library');
-                          loadData();
-                        }}
-                        className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
-                          slidesSourceMode === 'library'
-                            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
-                        }`}
-                      >
-                        <BookOpen size={14} />
-                        Selecionar tema salvo na Biblioteca
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* MODO BIBLIOTECA */}
-                  {slidesSourceMode === 'library' ? (
-                    <div className="p-5 bg-white/5 border border-purple-500/20 rounded-2xl space-y-4 shadow-lg">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
-                        <div className="flex items-center gap-2">
-                          <BookOpen size={18} className="text-purple-400" />
-                          <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                            Temas Salvos na Biblioteca
-                            <span className="group relative cursor-help">
-                              <HelpCircle size={13} className="text-slate-400 hover:text-purple-300" />
-                              <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-60 p-2.5 bg-[#0f0c1b] border border-purple-500/40 text-[10px] text-slate-200 rounded-lg shadow-xl text-center z-30 font-normal">
-                                Selecione um tema salvo na Biblioteca para gerar slides automaticamente.
-                              </span>
-                            </span>
-                          </h4>
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <Brain size={18} />}
+                            Gerar Plano de Aula com IA
+                          </button>
                         </div>
+                      )}
 
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            await loadData();
-                            showToast('Lista de temas da Biblioteca atualizada! 🔄');
-                          }}
-                          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-[11px] font-bold transition-all border border-white/10 flex items-center gap-1.5 self-start sm:self-auto"
-                        >
-                          <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
-                          Atualizar Lista de Temas
-                        </button>
-                      </div>
+                      {/* 2. SLIDES COM INTEGRAÇÃO BIBLIOTECA */}
+                      {activeGenerator === 'slides' && (
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block">
+                              Origem do Tema da Apresentação
+                            </label>
+                            <div className="grid grid-cols-2 gap-2 p-1 bg-purple-500/5 rounded-2xl border border-purple-500/10">
+                              <button
+                                type="button"
+                                onClick={() => setSlidesSourceMode('manual')}
+                                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                                  slidesSourceMode === 'manual' ? 'bg-[#7c3aed] text-white' : 'text-[#6c6488]'
+                                }`}
+                              >
+                                Manual
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSlidesSourceMode('library');
+                                  loadData();
+                                }}
+                                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+                                  slidesSourceMode === 'library' ? 'bg-[#7c3aed] text-white' : 'text-[#6c6488]'
+                                }`}
+                              >
+                                Do Ateliê
+                              </button>
+                            </div>
+                          </div>
 
-                      {/* Busca por Nome do Tema */}
-                      <div className="relative">
-                        <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="text"
-                          placeholder="Buscar tema salvo na biblioteca por nome..."
-                          value={slidesLibrarySearch}
-                          onChange={e => setSlidesLibrarySearch(e.target.value)}
-                          className="w-full bg-black/20 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
-                        />
-                      </div>
+                          {slidesSourceMode === 'library' ? (
+                            <div className="p-4 rounded-2xl border space-y-3 bg-purple-50/50 dark:bg-purple-950/20 border-purple-200">
+                              <div className="relative">
+                                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Buscar material no ateliê..."
+                                  value={slidesLibrarySearch}
+                                  onChange={e => setSlidesLibrarySearch(e.target.value)}
+                                  className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl focus:outline-none ${themeClasses.inputBg}`}
+                                />
+                              </div>
+                              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                                {libraryItems
+                                  .filter(i => i.title.toLowerCase().includes(slidesLibrarySearch.toLowerCase()))
+                                  .map(i => (
+                                    <button
+                                      key={i.id}
+                                      type="button"
+                                      onClick={() => handleSelectLibraryItemForSlides(i.id)}
+                                      className={`w-full text-left p-2.5 rounded-xl border text-xs transition-all flex items-center justify-between ${
+                                        slidesSelectedLibraryItemId === i.id
+                                          ? 'bg-[#7c3aed] text-white border-purple-600'
+                                          : `${themeClasses.card} text-slate-700 dark:text-slate-200 hover:border-purple-300`
+                                      }`}
+                                    >
+                                      <span className="font-semibold line-clamp-1">{i.title}</span>
+                                      {slidesSelectedLibraryItemId === i.id && <Check size={14} />}
+                                    </button>
+                                  ))}
+                              </div>
+                              <input
+                                type="text"
+                                placeholder="Tema selecionado (editável)..."
+                                value={slidesTema}
+                                onChange={e => setSlidesTema(e.target.value)}
+                                className={`w-full rounded-xl px-3 py-2 text-xs focus:outline-none ${themeClasses.inputBg}`}
+                              />
+                            </div>
+                          ) : (
+                            <div>
+                              <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                                Tema da Apresentação *
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Ex: Métricas de Marketing Digital (CAC, LTV, ROI)"
+                                value={slidesTema}
+                                onChange={e => setSlidesTema(e.target.value)}
+                                className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                              />
+                            </div>
+                          )}
 
-                      {/* Lista de Seleção de Temas */}
-                      {libraryItems.length === 0 ? (
-                        <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-center space-y-1">
-                          <p className="text-xs text-amber-300 font-bold">Nenhum tema encontrado na Biblioteca.</p>
-                          <p className="text-[11px] text-slate-400">Crie um novo tema para começar.</p>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Quantidade de Slides
+                            </label>
+                            <input
+                              type="text"
+                              value={slidesQtd}
+                              onChange={e => setSlidesQtd(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+
+                          <button
+                            onClick={handleGenerateSlides}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <Presentation size={18} />}
+                            Gerar Roteiro de Slides com IA
+                          </button>
                         </div>
-                      ) : (
-                        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                          {libraryItems
-                            .filter(item => item.title.toLowerCase().includes(slidesLibrarySearch.toLowerCase()))
-                            .map(item => {
-                              const isSelected = slidesSelectedLibraryItemId === item.id;
-                              return (
+                      )}
+
+                      {/* 3. MATERIAL DIDÁTICO */}
+                      {activeGenerator === 'material_didatico' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Tipo de Material
+                            </label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['resumo', 'slides', 'atividade_pratica'] as const).map(tipo => (
                                 <button
-                                  key={item.id}
+                                  key={tipo}
                                   type="button"
-                                  onClick={() => handleSelectLibraryItemForSlides(item.id)}
-                                  className={`w-full text-left p-3 rounded-xl border transition-all flex items-start justify-between gap-3 ${
-                                    isSelected
-                                      ? 'bg-purple-600/20 border-purple-500 text-white'
-                                      : 'bg-white/5 border-white/5 text-slate-300 hover:bg-white/10 hover:border-white/10'
+                                  onClick={() => setMaterialTipo(tipo)}
+                                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all ${
+                                    materialTipo === tipo
+                                      ? 'bg-[#7c3aed] text-white border-purple-600'
+                                      : `${themeClasses.cardMuted} text-[#6c6488]`
                                   }`}
                                 >
-                                  <div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-xs font-bold text-white">{item.title}</span>
-                                      <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-white/10 text-slate-300 uppercase">
-                                        {item.category.replace('_', ' ')}
-                                      </span>
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                                      {item.content.slice(0, 100)}...
-                                    </p>
-                                  </div>
-                                  {isSelected && <CheckCircle2 size={16} className="text-purple-400 shrink-0 mt-0.5" />}
+                                  {tipo === 'resumo' ? 'Resumo' : tipo === 'slides' ? 'Slides' : 'Guia Prático'}
                                 </button>
-                              );
-                            })}
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Tema do Material *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Persona, Jornada do Consumidor e Copywriting"
+                              value={materialTema}
+                              onChange={e => setMaterialTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'material_didatico',
+                              `Material Didático (${materialTipo.toUpperCase()}): ${materialTema}`,
+                              `Gere um material didático do tipo "${materialTipo}" para alunos de curso técnico em Marketing.
+Tema: ${materialTema}
+Linguagem prática, exemplos de mercado e checklist de aplicação.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <BookOpen size={18} />}
+                            Gerar Material Didático
+                          </button>
                         </div>
                       )}
 
-                      {/* Campo editável do Tema Selecionado */}
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
-                          Tema Selecionado (Editável) *
-                        </label>
-                        <div className="relative">
-                          <BookOpen size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
-                          <input
-                            type="text"
-                            placeholder="Selecione um tema acima ou edite aqui..."
-                            value={slidesTema}
-                            onChange={e => setSlidesTema(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Preview / Edição do Conteúdo Carregado */}
-                      {slidesLoadedContent && (
-                        <div>
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
-                            Conteúdo Base da Biblioteca (Carregado para Alimentar a IA)
-                          </label>
-                          <textarea
-                            rows={3}
-                            value={slidesLoadedContent}
-                            onChange={e => setSlidesLoadedContent(e.target.value)}
-                            className="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-xs text-slate-300 focus:outline-none focus:border-purple-500 font-mono"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* MODO MANUAL */
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1 flex items-center gap-1.5">
-                        <BookOpen size={14} className="text-purple-400" />
-                        Tema da Apresentação *
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          placeholder="Ex: Métricas de Marketing Digital (CAC, LTV, ROI)"
-                          value={slidesTema}
-                          onChange={e => setSlidesTema(e.target.value)}
-                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Quantidade de Slides */}
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
-                      Quantidade de Slides
-                    </label>
-                    <input
-                      type="text"
-                      value={slidesQtd}
-                      onChange={e => setSlidesQtd(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-
-                  {/* Botão Gerar Roteiro de Slides */}
-                  <button
-                    onClick={handleGenerateSlides}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 active:scale-[0.99]"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <Presentation size={18} />}
-                    Gerar Roteiro de Slides Visual
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 5: SEQUÊNCIA DIDÁTICA */}
-              {activeSection === 'sequencia_didatica' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tema Principal da Sequência *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Planejamento de Campanha de Lançamento de Produto"
-                      value={sequenciaTema}
-                      onChange={e => setSequenciaTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Carga Horária Planejada</label>
-                    <input
-                      type="text"
-                      value={sequenciaCargaHoraria}
-                      onChange={e => setSequenciaCargaHoraria(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'sequencia_didatica',
-                      `Sequência Didática: ${sequenciaTema}`,
-                      `Monte uma Sequência Didática completa organizada rigorosamente em 4 etapas didáticas para o ensino técnico em Marketing.
+                      {/* 4. SEQUÊNCIA DIDÁTICA (4 ETAPAS) */}
+                      {activeGenerator === 'sequencia_didatica' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Tema da Sequência *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Planejamento de Campanha de Lançamento"
+                              value={sequenciaTema}
+                              onChange={e => setSequenciaTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Carga Horária
+                            </label>
+                            <input
+                              type="text"
+                              value={sequenciaCargaHoraria}
+                              onChange={e => setSequenciaCargaHoraria(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'sequencia_didatica',
+                              `Sequência Didática: ${sequenciaTema}`,
+                              `Monte uma Sequência Didática organizada rigorosamente em 4 etapas didáticas para Marketing EPTNM:
 Tema: ${sequenciaTema}
-Carga Horária Total: ${sequenciaCargaHoraria}
-
-Etapas obrigatórias:
-1. **Etapa 1: Sensibilização & Introdução** (Problematização do tema, diagnóstico prévio e provocação inicial).
-2. **Etapa 2: Desenvolvimento Teórico-Prático** (Exposição dialogada, análise de cases e fundamentação dos conceitos).
-3. **Etapa 3: Aplicação Prática & Desafio Técnico** (Atividade mão na massa pelos estudantes).
-4. **Etapa 4: Sistematização & Avaliação** (Apresentação dos resultados, feedback formativo e fechamento do ciclo).`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <FileText size={18} />}
-                    Gerar Sequência Didática em 4 Etapas
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 6: FOLHA DE ATIVIDADE */}
-              {activeSection === 'folha_atividade' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Assunto da Atividade Prática *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Elaboração de Briefing e Escolha de Canais de Mídia"
-                      value={folhaTema}
-                      onChange={e => setFolhaTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Nível Exigido</label>
-                    <input
-                      type="text"
-                      value={folhaNivel}
-                      onChange={e => setFolhaNivel(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'folha_atividade',
-                      `Folha de Atividade: ${folhaTema}`,
-                      `Crie uma Folha de Atividade Técnica Prática para impressão ou ambiente virtual de aprendizagem.
-Tema: ${folhaTema}
-Nível: ${folhaNivel}
-
-Estrutura da Folha:
-- **Nome da Instituição & Identificação do Aluno**
-- **Instruções Gerais**
-- **Estudo de Caso Hipotético / Cenário de Empresa fictícia**
-- **Questões Práticas (3 a 5 desafios aplicados ao cenário)**
-- **Espaço para Rascunho / Framework de Resposta**
-- 🔑 **Gabarito / Critérios de Correção Exclusivos do Professor (ao final)**`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <ClipboardList size={18} />}
-                    Gerar Folha de Atividades + Gabarito
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 7: IDEIAS DE ATIVIDADES */}
-              {activeSection === 'ideias_atividades' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Conteúdo/Tema Principal *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Neuromarketing, Comportamento do Consumidor e Embalagem"
-                      value={ideiasTema}
-                      onChange={e => setIdeiasTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Formato Preferencial</label>
-                    <input
-                      type="text"
-                      value={ideiasFormato}
-                      onChange={e => setIdeiasFormato(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'ideias_atividades',
-                      `Ideias Práticas: ${ideiasTema}`,
-                      `Gere 4 Propostas de Atividades Criativas e Engajadoras para aulas de Marketing Técnico de Nível Médio.
-Tema: ${ideiasTema}
-Formato: ${ideiasFormato}
-
-Para cada proposta inclua:
-- Nome da Dinâmica/Atividade
-- Objetivo Pedagógico
-- Passo a Passo de Execução
-- Entregável final do aluno (ex: Mockup, Vídeo de Pitch, Apresentação)
-- Dicas de Engajamento para o Professor.`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <Lightbulb size={18} />}
-                    Gerar Propostas de Dinâmicas
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 8: JOGOS EDUCATIVOS */}
-              {activeSection === 'jogos_educativos' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Tópico de Marketing para o Jogo *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Gestão de Crise de Imagem e Relações Públicas"
-                      value={jogosTema}
-                      onChange={e => setJogosTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Estilo de Gamificação</label>
-                    <input
-                      type="text"
-                      value={jogosEstilo}
-                      onChange={e => setJogosEstilo(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'jogos_educativos',
-                      `Jogo Educativo: ${jogosTema}`,
-                      `Desenvolva uma Dinâmica Gamificada / Jogo Educativo para ser aplicado presencialmente ou online com a turma de Marketing.
-Tópico: ${jogosTema}
-Estilo: ${jogosEstilo}
-
-Estrutura do Jogo:
-- **Nome do Jogo / Desafio**
-- **Regras do Jogo e Condições de Vitória**
-- **Cartas / Cenários / Roleplay dos Participantes**
-- **Sistema de Pontuação e Ranking**
-- **Debriefing Pedagógico pós-jogo (conclusão das aprendizagens).**`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <Gamepad2 size={18} />}
-                    Criar Jogo Didático
-                  </button>
-                </div>
-              )}
-
-              {/* SECTION 9: QUIZ INTERATIVO */}
-              {activeSection === 'quiz' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Assunto do Quiz *</label>
-                    <input
-                      type="text"
-                      placeholder="Ex: Metodologias de Precificação e Matriz BCG"
-                      value={quizTema}
-                      onChange={e => setQuizTema(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Quantidade de Questões</label>
-                    <input
-                      type="text"
-                      value={quizQtd}
-                      onChange={e => setQuizQtd(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-                    />
-                  </div>
-                  <button
-                    onClick={() => handleGenerate(
-                      'quiz',
-                      `Quiz Interativo: ${quizTema}`,
-                      `Crie um Quiz Didático Interativo com a quantidade pedida para fixação de conceitos em Marketing Técnico.
-Tema: ${quizTema}
-Quantidade: ${quizQtd}
-
-Formatos exigidos por questão:
-- Pergunta objetiva contextualizada em situação real de empresa.
-- 4 alternativas (A, B, C, D) sendo apenas 1 correta.
-- Indicação clara da Resposta Correta ao final.
-- Justificativa Pedagógica explicando por que a alternativa está certa e por que as outras são incorretas.`
-                    )}
-                    disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-2xl font-bold shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
-                  >
-                    {loading ? <RefreshCw className="animate-spin" size={18} /> : <HelpCircle size={18} />}
-                    Gerar Quiz com Gabarito Comentado
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Output Column */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="glass-card p-6 md:p-8 rounded-3xl space-y-4 border border-purple-500/20 min-h-[500px] flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
-                  <h4 className="text-base font-display font-bold text-white flex items-center gap-2">
-                    <Sparkles className="text-yellow-400" size={18} />
-                    Resultado Gerado pela IA
-                  </h4>
-                  {generatedOutput && (
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => copyToClipboard(generatedOutput, 'main_output')}
-                        className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-white/10 transition-all"
-                      >
-                        {copiedId === 'main_output' ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                        Copiar
-                      </button>
-                      <button
-                        onClick={handleSaveOutputToLibrary}
-                        className="px-3 py-1.5 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
-                      >
-                        <Save size={14} />
-                        Salvar na Biblioteca
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {loading ? (
-                  <div className="py-24 flex flex-col items-center justify-center text-center space-y-4">
-                    <RefreshCw className="animate-spin text-purple-400" size={40} />
-                    <div>
-                      <p className="text-base font-display font-bold text-white">Elaborando conteúdo pedagógico especializado...</p>
-                      <p className="text-xs text-slate-400 mt-1">Conectando às diretrizes da EPTNM e mercado prático.</p>
-                    </div>
-                  </div>
-                ) : generatedOutput ? (
-                  <div className="prose prose-invert max-w-none text-slate-200 text-sm leading-relaxed overflow-y-auto max-h-[600px] pr-2 custom-scrollbar">
-                    <Markdown>{generatedOutput}</Markdown>
-                  </div>
-                ) : (
-                  <div className="py-24 text-center space-y-3">
-                    <GraduationCap size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
-                    <p className="text-slate-400 text-sm font-medium">
-                      Preencha os campos ao lado e clique no botão para gerar o seu conteúdo didático.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {generatedOutput && (
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-500">
-                  <span>Salvo automaticamente na sua biblioteca local.</span>
-                  <span className="text-emerald-400 flex items-center gap-1">
-                    <Check size={14} /> Pronto para uso em sala
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* SECTION 10: BIBLIOTECA COMPLETA */}
-      {activeSection === 'biblioteca' && (
-        <div className="space-y-6">
-          {/* Search & Filter Bar */}
-          <div className="glass-card p-6 rounded-3xl border border-purple-500/20 flex flex-col md:flex-row gap-4 items-center justify-between">
-            <div className="relative w-full md:w-96">
-              <input
-                type="text"
-                placeholder="Pesquisar nos materiais salvos..."
-                value={librarySearch}
-                onChange={e => setLibrarySearch(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-purple-500"
-              />
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-            </div>
-
-            <div className="flex gap-2 w-full md:w-auto overflow-x-auto custom-scrollbar pb-1">
-              <button
-                onClick={() => setLibraryCategoryFilter('all')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                  libraryCategoryFilter === 'all' ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                }`}
-              >
-                Todos ({libraryItems.length})
-              </button>
-              {sectionsConfig.filter(s => s.id !== 'biblioteca' && s.id !== 'turmas').map(s => (
-                <button
-                  key={s.id}
-                  onClick={() => setLibraryCategoryFilter(s.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                    libraryCategoryFilter === s.id ? 'bg-purple-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Items List */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredLibrary.length > 0 ? (
-              filteredLibrary.map((item) => {
-                const cfg = sectionsConfig.find(s => s.id === item.category);
-                const linkedClass = classesList.find(c => c.id === item.classId);
-                return (
-                  <div
-                    key={item.id}
-                    className="glass-card p-5 rounded-3xl border border-white/10 hover:border-purple-500/30 transition-all flex flex-col justify-between space-y-4 group"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 bg-purple-500/10 text-purple-300 rounded-full border border-purple-500/20 flex items-center gap-1.5">
-                          {cfg?.icon && React.createElement(cfg.icon, { size: 12 })}
-                          {cfg?.label || item.category}
-                        </span>
-                        <span className="text-[10px] text-slate-500">
-                          {new Date(item.createdAt).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-
-                      {linkedClass && (
-                        <span className="inline-block text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-2 py-0.5 rounded-md mb-2 border border-indigo-500/30">
-                          🏫 {linkedClass.name}
-                        </span>
+Carga: ${sequenciaCargaHoraria}
+Etapas: 1. Sensibilização | 2. Teórico-Prático | 3. Aplicação Mão na Massa | 4. Sistematização e Feedback.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <FileText size={18} />}
+                            Gerar Sequência em 4 Etapas
+                          </button>
+                        </div>
                       )}
 
-                      <h4 className="text-base font-display font-bold text-white line-clamp-2 mt-1">
-                        {item.title}
-                      </h4>
-                      <p className="text-xs text-slate-400 line-clamp-4 mt-2 font-mono bg-black/20 p-2.5 rounded-xl border border-white/5">
-                        {item.content.replace(/[#*`_]/g, '')}
+                      {/* 5. FOLHA DE ATIVIDADE */}
+                      {activeGenerator === 'folha_atividade' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Assunto da Atividade *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Elaboração de Briefing e Canais de Mídia"
+                              value={folhaTema}
+                              onChange={e => setFolhaTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Nível Exigido
+                            </label>
+                            <input
+                              type="text"
+                              value={folhaNivel}
+                              onChange={e => setFolhaNivel(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'folha_atividade',
+                              `Folha de Atividade: ${folhaTema}`,
+                              `Crie uma Folha de Atividade Técnica Prática para impressão ou ambiente virtual.
+Tema: ${folhaTema}
+Inclua: Instruções, Cenário de empresa fictícia, 3 a 5 questões práticas e Gabarito/Critérios do Professor ao final.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <ClipboardList size={18} />}
+                            Gerar Folha de Atividade + Gabarito
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 6. IDEIAS DE ATIVIDADES */}
+                      {activeGenerator === 'ideias_atividades' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Tema Principal *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Neuromarketing e Comportamento do Consumidor"
+                              value={ideiasTema}
+                              onChange={e => setIdeiasTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Formato Preferencial
+                            </label>
+                            <input
+                              type="text"
+                              value={ideiasFormato}
+                              onChange={e => setIdeiasFormato(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'ideias_atividades',
+                              `Ideias de Atividades: ${ideiasTema}`,
+                              `Gere 4 Propostas de Atividades Criativas e Dinâmicas para aulas de Marketing Técnico:
+Tema: ${ideiasTema} | Formato: ${ideiasFormato}
+Cada proposta deve ter Nome, Objetivo, Passo a Passo e Entregável do Aluno.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <Lightbulb size={18} />}
+                            Gerar Ideias de Atividades
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 7. JOGOS EDUCATIVOS */}
+                      {activeGenerator === 'jogos_educativos' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Tópico para o Jogo *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Gestão de Crise de Imagem e RP"
+                              value={jogosTema}
+                              onChange={e => setJogosTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Estilo de Gamificação
+                            </label>
+                            <input
+                              type="text"
+                              value={jogosEstilo}
+                              onChange={e => setJogosEstilo(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'jogos_educativos',
+                              `Jogo Educativo: ${jogosTema}`,
+                              `Desenvolva uma Dinâmica Gamificada / Jogo Educativo de Marketing.
+Tópico: ${jogosTema} | Estilo: ${jogosEstilo}
+Regras, papéis dos alunos, pontuação e debriefing final.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <Gamepad2 size={18} />}
+                            Criar Jogo Didático
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 8. QUIZ INTERATIVO */}
+                      {activeGenerator === 'quiz' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Assunto do Quiz *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Matriz BCG e Estratégias de Precificação"
+                              value={quizTema}
+                              onChange={e => setQuizTema(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Quantidade de Questões
+                            </label>
+                            <input
+                              type="text"
+                              value={quizQtd}
+                              onChange={e => setQuizQtd(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'quiz',
+                              `Quiz Interativo: ${quizTema}`,
+                              `Crie um Quiz Didático Interativo com ${quizQtd} para fixação de conceitos em Marketing.
+4 alternativas (A, B, C, D), resposta correta e justificativa comentada por questão.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <HelpCircle size={18} />}
+                            Gerar Quiz com Gabarito
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 9. ASSISTENTE DE MERCADO */}
+                      {activeGenerator === 'assistente_mercado' && (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Conceito de Marketing *
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ex: Rebranding, Marketing de Influência, Tráfego Pago"
+                              value={assistenteTopico}
+                              onChange={e => setAssistenteTopico(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                              Contexto / Nicho
+                            </label>
+                            <input
+                              type="text"
+                              value={assistenteContexto}
+                              onChange={e => setAssistenteContexto(e.target.value)}
+                              className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                            />
+                          </div>
+                          <button
+                            onClick={() => handleGenerate(
+                              'assistente_mercado',
+                              `Análise de Mercado: ${assistenteTopico}`,
+                              `Assistente de Mercado para Professora de Marketing:
+Conceito: ${assistenteTopico} | Contexto: ${assistenteContexto}
+Forneça 3 exemplos reais de marcas no Brasil, métricas de sucesso, tendências atuais e perguntas para debate em sala.`
+                            )}
+                            disabled={loading}
+                            className="w-full py-3.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-2xl font-bold shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                          >
+                            {loading ? <RefreshCw className="animate-spin" size={18} /> : <MessageSquare size={18} />}
+                            Consultar Casos Reais & Mercado
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Coluna Direita: Resultado Gerado em Markdown */}
+                  <div className="lg:col-span-7 space-y-6">
+                    <div className={`p-6 md:p-8 rounded-3xl space-y-4 border min-h-[500px] flex flex-col justify-between shadow-sm ${themeClasses.card}`}>
+                      <div>
+                        <div className="flex items-center justify-between pb-4 mb-4 border-b border-purple-500/10">
+                          <h4 className={`text-base font-display font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                            <Sparkles className="text-amber-500" size={18} />
+                            Resultado Gerado pela IA
+                          </h4>
+                          {generatedOutput && (
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyToClipboard(generatedOutput, 'output_active')}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all ${themeClasses.cardMuted}`}
+                              >
+                                {copiedId === 'output_active' ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                                Copiar
+                              </button>
+                              <button
+                                onClick={handleSaveOutputToLibrary}
+                                className="px-3.5 py-1.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                              >
+                                <Save size={14} />
+                                Salvar no Ateliê
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {loading ? (
+                          <div className="py-24 flex flex-col items-center justify-center text-center space-y-4">
+                            <RefreshCw className="animate-spin text-[#7c3aed]" size={40} />
+                            <div>
+                              <p className={`text-base font-display font-bold ${themeClasses.title}`}>
+                                Elaborando material didático especializado...
+                              </p>
+                              <p className={`text-xs mt-1 ${themeClasses.subtitle}`}>
+                                Conectando metodologias ativas e diretrizes da formação técnica.
+                              </p>
+                            </div>
+                          </div>
+                        ) : generatedOutput ? (
+                          <div className="prose dark:prose-invert max-w-none text-sm leading-relaxed overflow-y-auto max-h-[600px] pr-2">
+                            <Markdown>{generatedOutput}</Markdown>
+                          </div>
+                        ) : (
+                          <div className="py-24 text-center space-y-3">
+                            <GraduationCap size={48} className="mx-auto text-[#8878a8] stroke-[1.5]" />
+                            <p className={`text-sm font-medium ${themeClasses.subtitle}`}>
+                              Preencha os campos ao lado e gere conteúdos didáticos com assistência pedagógica da IA.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {generatedOutput && (
+                        <div className="pt-4 border-t border-purple-500/10 flex items-center justify-between text-xs text-[#8878a8]">
+                          <span>Salvo automaticamente no seu ateliê local.</span>
+                          <span className="text-emerald-600 font-bold flex items-center gap-1">
+                            <Check size={14} /> Pronto para levar para a sala de aula
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ------------------------------------------------------------- */}
+            {/* SEÇÃO 5: RELATÓRIOS & COMPARATIVO DE TURMAS                  */}
+            {/* ------------------------------------------------------------- */}
+            {currentSection === 'relatorios' && (
+              <div className="space-y-8">
+                <div className={`p-6 md:p-8 rounded-3xl border space-y-6 shadow-sm ${themeClasses.card}`}>
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-purple-500/10">
+                    <div>
+                      <h3 className={`text-xl font-display font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                        <BarChart3 size={24} className="text-emerald-500" />
+                        Comparativo de Desempenho entre Turmas
+                      </h3>
+                      <p className={`text-xs mt-1 ${themeClasses.subtitle}`}>
+                        Selecione turmas para comparar métricas pedagógicas, taxa de conclusão e materiais aplicados.
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-3 border-t border-white/10">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className={`flex items-center p-1 rounded-xl border ${themeClasses.border} ${themeClasses.cardMuted}`}>
+                        {(['dia', 'semana', 'mes'] as const).map(tf => (
+                          <button
+                            key={tf}
+                            onClick={() => setComparativoTimeframe(tf)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              comparativoTimeframe === tf
+                                ? 'bg-[#7c3aed] text-white'
+                                : 'text-[#6c6488]'
+                            }`}
+                          >
+                            {tf === 'dia' ? 'Dia' : tf === 'semana' ? 'Semana' : 'Mês'}
+                          </button>
+                        ))}
+                      </div>
+
                       <button
-                        onClick={() => setSelectedLibraryItem(item)}
-                        className="text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1"
+                        onClick={() => handleExportComparativeReport('csv')}
+                        className="px-3.5 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                       >
-                        <Eye size={14} /> Visualizar Completo
+                        <Download size={14} /> Exportar CSV
                       </button>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => copyToClipboard(item.content, item.id)}
-                          className="p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
-                          title="Copiar"
-                        >
-                          {copiedId === item.id ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteLibraryItem(item.id)}
-                          className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl transition-all"
-                          title="Excluir"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+
+                      <button
+                        onClick={() => handleExportComparativeReport('json')}
+                        className="px-3.5 py-2 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                      >
+                        <Download size={14} /> Exportar JSON
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Seletor de Turmas para Comparar */}
+                  <div className={`p-4 rounded-2xl border space-y-3 ${themeClasses.cardMuted}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#7a6f95]">
+                        Turmas para comparar ({selectedTurmasForComparison.length} selecionadas):
+                      </span>
+                      <button
+                        onClick={() => {
+                          if (selectedTurmasForComparison.length === classesList.length) {
+                            setSelectedTurmasForComparison([]);
+                          } else {
+                            setSelectedTurmasForComparison(classesList.map(c => c.id));
+                          }
+                        }}
+                        className="text-xs text-[#7c3aed] hover:underline font-semibold"
+                      >
+                        {selectedTurmasForComparison.length === classesList.length ? 'Desmarcar Todas' : 'Selecionar Todas'}
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {classesList.map(c => {
+                        const isChecked = selectedTurmasForComparison.includes(c.id);
+                        return (
+                          <button
+                            key={c.id}
+                            onClick={() => {
+                              if (isChecked) {
+                                setSelectedTurmasForComparison(prev => prev.filter(id => id !== c.id));
+                              } else {
+                                setSelectedTurmasForComparison(prev => [...prev, c.id]);
+                              }
+                            }}
+                            className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 ${
+                              isChecked
+                                ? 'bg-[#7c3aed] text-white border-purple-600 shadow-xs'
+                                : `${themeClasses.card} text-[#6c6488] hover:border-purple-300`
+                            }`}
+                          >
+                            <span className={`w-2 h-2 rounded-full ${isChecked ? 'bg-white' : 'bg-slate-400'}`} />
+                            {c.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Gráficos Visuais Comparativos */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Gráfico 1: Aulas Concluídas */}
+                    <div className={`p-5 rounded-3xl border space-y-4 ${themeClasses.cardMuted}`}>
+                      <h4 className={`text-sm font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                        <TrendingUp size={16} className="text-[#7c3aed]" />
+                        Aulas Concluídas vs Pendentes
+                      </h4>
+
+                      <div className="space-y-3 pt-2">
+                        {classesList
+                          .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
+                          .map(turma => {
+                            const st = turma.stats || { aulasConcluidas: 8, aulasPendentes: 2 };
+                            const total = (st.aulasConcluidas || 8) + (st.aulasPendentes || 2);
+                            const percentConcluidas = Math.round(((st.aulasConcluidas || 8) / total) * 100);
+
+                            return (
+                              <div key={turma.id} className="space-y-1.5">
+                                <div className="flex justify-between text-xs">
+                                  <span className={`font-bold ${themeClasses.title}`}>{turma.name}</span>
+                                  <span className="text-slate-500 font-mono">
+                                    {st.aulasConcluidas} concluídas / {st.aulasPendentes} pendentes
+                                  </span>
+                                </div>
+                                <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-500"
+                                    style={{ width: `${percentConcluidas}%` }}
+                                    title={`Concluídas: ${percentConcluidas}%`}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {/* Gráfico 2: Progresso Médio */}
+                    <div className={`p-5 rounded-3xl border space-y-4 ${themeClasses.cardMuted}`}>
+                      <h4 className={`text-sm font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                        <GraduationCap size={16} className="text-emerald-500" />
+                        Progresso Médio dos Estudantes (%)
+                      </h4>
+
+                      <div className="space-y-3 pt-2">
+                        {classesList
+                          .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
+                          .map(turma => {
+                            const st = turma.stats || { progressoMedioAlunos: 82 };
+                            const prog = st.progressoMedioAlunos || 82;
+
+                            return (
+                              <div key={turma.id} className="space-y-1.5">
+                                <div className="flex justify-between text-xs">
+                                  <span className={`font-bold ${themeClasses.title}`}>{turma.name}</span>
+                                  <span className="font-mono font-bold text-emerald-600">{prog}%</span>
+                                </div>
+                                <div className="w-full h-3 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-0.5">
+                                  <div
+                                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 rounded-full transition-all duration-500"
+                                    style={{ width: `${prog}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="col-span-full py-16 text-center space-y-3 glass-card rounded-3xl">
-                <BookmarkCheck size={48} className="mx-auto text-slate-600 stroke-[1.5]" />
-                <p className="text-slate-400 text-sm">Nenhum material encontrado na biblioteca.</p>
+
+                  {/* Tabela de Métricas Comparativas */}
+                  <div className="space-y-3 pt-2">
+                    <h4 className={`text-sm font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                      <Layers size={16} className="text-[#7c3aed]" />
+                      Tabela Comparativa de Métricas
+                    </h4>
+
+                    <div className="overflow-x-auto rounded-2xl border border-purple-500/10">
+                      <table className="w-full text-left text-xs">
+                        <thead className={`border-b uppercase text-[10px] tracking-wider text-[#8878a8] ${themeClasses.cardMuted}`}>
+                          <tr>
+                            <th className="p-3.5">Nome da Turma</th>
+                            <th className="p-3.5">Disciplina</th>
+                            <th className="p-3.5">Período</th>
+                            <th className="p-3.5">Status</th>
+                            <th className="p-3.5 text-center">Materiais</th>
+                            <th className="p-3.5 text-center">Slides</th>
+                            <th className="p-3.5 text-center">Progresso</th>
+                            <th className="p-3.5 text-center">Taxa Conclusão</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-purple-500/10">
+                          {classesList
+                            .filter(c => selectedTurmasForComparison.length === 0 || selectedTurmasForComparison.includes(c.id))
+                            .map(turma => {
+                              const st = turma.stats || { materiaisVinculados: 3, slidesGerados: 4, progressoMedioAlunos: 85, taxaConclusaoProjetos: 90 };
+                              const isActive = turma.status !== 'inativa';
+
+                              return (
+                                <tr key={turma.id} className="hover:bg-purple-500/5 transition-colors">
+                                  <td className={`p-3.5 font-bold ${themeClasses.title}`}>{turma.name}</td>
+                                  <td className="p-3.5 text-[#7c3aed] font-medium">{turma.subject}</td>
+                                  <td className="p-3.5 text-slate-500">{turma.gradeYear}</td>
+                                  <td className="p-3.5">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                      isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                                    }`}>
+                                      {isActive ? 'Ativa' : 'Inativa'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3.5 text-center font-mono font-bold">{st.materiaisVinculados || 0}</td>
+                                  <td className="p-3.5 text-center font-mono font-bold text-purple-600">{st.slidesGerados || 0}</td>
+                                  <td className="p-3.5 text-center font-mono font-bold text-emerald-600">{st.progressoMedioAlunos || 85}%</td>
+                                  <td className="p-3.5 text-center font-mono font-bold text-indigo-600">{st.taxaConclusaoProjetos || 88}%</td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
+          </motion.div>
+        ) : (
+          /* ============================================================== */
+          /* 📘 MODO ALUNO: INTERFACE SIMPLIFICADA E INTUITIVA              */
+          /* ============================================================== */
+          <motion.div
+            key="aluno-mode"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+            className="space-y-8"
+          >
+            {/* Banner de Boas-Vindas do Estudante */}
+            <div className={`p-6 sm:p-8 rounded-3xl border ${themeClasses.heroBg} flex flex-col md:flex-row md:items-center justify-between gap-6`}>
+              <div className="space-y-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/10 text-blue-600 border border-blue-200">
+                  <span>📘</span> Espaço do Estudante de Marketing
+                </span>
+                <h2 className={`text-2xl sm:text-3xl font-display font-extrabold ${themeClasses.title}`}>
+                  Bem-vindo às suas Aulas & Materiais Didáticos
+                </h2>
+                <p className={`text-sm ${themeClasses.subtitle}`}>
+                  Aqui você encontra os roteiros, resumos, folhas de atividade e tira dúvidas com a IA de apoio aos estudos.
+                </p>
+              </div>
 
-      {/* Modal View Turma Details and Linked Items */}
+              {/* Seletor de Turma do Aluno */}
+              <div className="flex flex-col gap-1.5 min-w-[240px]">
+                <label className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
+                  Filtrar por Disciplina / Turma:
+                </label>
+                <select
+                  value={studentFilterTurma}
+                  onChange={e => setStudentFilterTurma(e.target.value)}
+                  className={`w-full rounded-2xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 ${themeClasses.inputBg}`}
+                >
+                  <option value="all">Todas as turmas e disciplinas</option>
+                  {classesList.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} - {c.subject}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* SEÇÃO 1 DO ALUNO: IA DE APOIO / TIRA-DÚVIDAS DO ALUNO */}
+            <div className={`p-6 md:p-8 rounded-3xl border shadow-sm space-y-4 ${themeClasses.card}`}>
+              <div className="flex items-center gap-3 pb-3 border-b border-purple-500/10">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl">
+                  <Brain size={22} />
+                </div>
+                <div>
+                  <h3 className={`text-lg font-display font-bold ${themeClasses.title}`}>
+                    IA de Apoio ao Estudante · Tira-Dúvidas de Marketing
+                  </h3>
+                  <p className={`text-xs ${themeClasses.subtitle}`}>
+                    Ficou com dúvida sobre algum conceito de aula? Pergunte ao assistente pedagógico.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleAskStudentAi} className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ex: O que são os 4 Ps do Marketing? Como calcular o CAC? Como montar um briefing?"
+                    value={studentQuestion}
+                    onChange={e => setStudentQuestion(e.target.value)}
+                    className={`flex-1 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 ${themeClasses.inputBg}`}
+                  />
+                  <button
+                    type="submit"
+                    disabled={studentAiLoading || !studentQuestion.trim()}
+                    className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold transition-all flex items-center gap-2 disabled:opacity-50 active:scale-95 shadow-sm shadow-blue-600/30"
+                  >
+                    {studentAiLoading ? <RefreshCw size={16} className="animate-spin" /> : <Send size={16} />}
+                    <span>Perguntar</span>
+                  </button>
+                </div>
+
+                {/* Sugestões Rápidas de Perguntas */}
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-[#8878a8]">
+                  <span>Sugestões:</span>
+                  {[
+                    'Exemplos reais dos 4 Ps',
+                    'Diferença entre CAC e LTV',
+                    'Como funciona o funil de vendas'
+                  ].map(sug => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => setStudentQuestion(sug)}
+                      className="px-2.5 py-1 rounded-lg border text-xs font-medium bg-blue-50/50 hover:bg-blue-100/50 text-blue-700 border-blue-200 transition-colors"
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              </form>
+
+              {/* Resposta da IA do Aluno */}
+              {studentAiAnswer && (
+                <div className={`p-5 rounded-2xl border space-y-3 bg-blue-50/30 dark:bg-blue-950/20 border-blue-200`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-600 flex items-center gap-1.5">
+                      <Sparkles size={14} /> Resposta Pedagógica:
+                    </span>
+                    <button
+                      onClick={() => copyToClipboard(studentAiAnswer, 'student_answer')}
+                      className="text-xs text-[#8878a8] hover:text-blue-600 flex items-center gap-1"
+                    >
+                      <Copy size={12} /> Copiar
+                    </button>
+                  </div>
+                  <div className="prose dark:prose-invert text-sm max-w-none leading-relaxed">
+                    <Markdown>{studentAiAnswer}</Markdown>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* SEÇÃO 2 DO ALUNO: AULAS E MATERIAIS DIDÁTICOS PUBLICADOS */}
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-purple-500/10">
+                <div>
+                  <h3 className={`text-xl font-display font-bold flex items-center gap-2 ${themeClasses.title}`}>
+                    <BookOpen size={22} className="text-blue-600" />
+                    Materiais & Roteiros de Aula
+                  </h3>
+                  <p className={`text-xs ${themeClasses.subtitle}`}>
+                    Materiais didáticos preparados pela Professora Raquel Duarte para seus estudos.
+                  </p>
+                </div>
+
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Buscar conteúdo didático..."
+                    value={studentSearch}
+                    onChange={e => setStudentSearch(e.target.value)}
+                    className={`w-full pl-9 pr-3 py-2 text-xs rounded-xl focus:outline-none focus:border-blue-500 ${themeClasses.inputBg}`}
+                  />
+                </div>
+              </div>
+
+              {/* Grid de Cards Didáticos do Aluno */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {libraryItems
+                  .filter(item => {
+                    const matchesClass = studentFilterTurma === 'all' || item.classId === studentFilterTurma;
+                    const matchesSearch = item.title.toLowerCase().includes(studentSearch.toLowerCase()) || 
+                                          item.content.toLowerCase().includes(studentSearch.toLowerCase());
+                    return matchesClass && matchesSearch;
+                  })
+                  .map(item => {
+                    const isDone = completedLessons.includes(item.id);
+                    const linkedClass = classesList.find(c => c.id === item.classId);
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 ${themeClasses.card} ${
+                          isDone ? 'border-emerald-300 dark:border-emerald-800' : 'hover:border-blue-400'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                              {item.category.replace('_', ' ')}
+                            </span>
+                            {isDone && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                <CheckCircle size={12} /> Estudado
+                              </span>
+                            )}
+                          </div>
+
+                          {linkedClass && (
+                            <p className="text-[11px] font-semibold text-[#7c3aed] mb-1">
+                              🏫 {linkedClass.name}
+                            </p>
+                          )}
+
+                          <h4 className={`text-base font-display font-bold line-clamp-2 ${themeClasses.title}`}>
+                            {item.title}
+                          </h4>
+                          <p className={`text-xs line-clamp-3 mt-2 p-3 rounded-2xl border ${themeClasses.cardMuted}`}>
+                            {item.content.replace(/[#*`_]/g, '')}
+                          </p>
+                        </div>
+
+                        <div className="pt-3 border-t border-purple-500/10 flex items-center justify-between">
+                          <button
+                            onClick={() => setSelectedLibraryItem(item)}
+                            className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1"
+                          >
+                            <Eye size={14} /> Abrir Material
+                          </button>
+
+                          <button
+                            onClick={() => handleToggleLessonCompleted(item.id)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+                              isDone
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                : `${themeClasses.cardMuted} text-[#6c6488] hover:border-emerald-400`
+                            }`}
+                          >
+                            <CheckCircle2 size={13} className={isDone ? 'text-emerald-600' : 'text-slate-400'} />
+                            <span>{isDone ? 'Concluído' : 'Marcar visto'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ============================================================== */}
+      {/* MODAIS COMPARTILHADOS (PRESERVADOS E ESTILIZADOS)               */}
+      {/* ============================================================== */}
+
+      {/* 1. MODAL DETALHES DA TURMA E VÍNCULOS */}
       <AnimatePresence>
         {selectedTurmaView && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-          >
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-4xl bg-[#1e1e24] border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`relative w-full max-w-4xl p-6 md:p-8 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border ${themeClasses.card}`}
             >
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center justify-between pb-4 border-b border-purple-500/10">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-purple-500/10 text-[#7c3aed] rounded-full">
                       {selectedTurmaView.gradeYear}
                     </span>
-                    <span className="text-xs text-purple-300 font-medium">
+                    <span className="text-xs font-medium text-[#7c3aed]">
                       {selectedTurmaView.subject}
                     </span>
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white mt-1">
+                  <h3 className={`text-2xl font-display font-bold mt-1 ${themeClasses.title}`}>
                     {selectedTurmaView.name}
                   </h3>
                 </div>
                 <button
                   onClick={() => setSelectedTurmaView(null)}
-                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto py-6 space-y-6 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto py-6 space-y-6">
                 {selectedTurmaView.description && (
-                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                    <p className="text-xs font-bold text-purple-300 uppercase tracking-widest mb-1">Observações da Turma:</p>
-                    <p className="text-sm text-slate-300">{selectedTurmaView.description}</p>
+                  <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                    <p className="text-xs font-bold text-[#7c3aed] uppercase tracking-wider mb-1">Observações da Turma:</p>
+                    <p className={`text-sm ${themeClasses.subtitle}`}>{selectedTurmaView.description}</p>
                   </div>
                 )}
 
                 <div>
-                  <h4 className="text-base font-display font-bold text-white mb-3 flex items-center gap-2">
-                    <FolderOpen size={18} className="text-purple-400" />
-                    Materiais, Planos e Atividades Vinculados nesta Turma
+                  <h4 className={`text-base font-display font-bold mb-3 flex items-center gap-2 ${themeClasses.title}`}>
+                    <FolderOpen size={18} className="text-[#7c3aed]" />
+                    Materiais e Planos Vinculados nesta Turma
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {libraryItems.filter(i => i.classId === selectedTurmaView.id).length > 0 ? (
-                      libraryItems.filter(i => i.classId === selectedTurmaView.id).map(item => {
-                        const cfg = sectionsConfig.find(s => s.id === item.category);
-                        return (
-                          <div key={item.id} className="p-4 bg-black/30 rounded-2xl border border-white/10 flex flex-col justify-between space-y-3">
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-purple-300 flex items-center gap-1">
-                                  {cfg?.icon && React.createElement(cfg.icon, { size: 12 })}
-                                  {cfg?.label || item.category}
-                                </span>
-                                <span className="text-[10px] text-slate-500">
-                                  {new Date(item.createdAt).toLocaleDateString('pt-BR')}
-                                </span>
-                              </div>
-                              <p className="text-sm font-bold text-white line-clamp-1">{item.title}</p>
-                              <p className="text-xs text-slate-400 line-clamp-2 mt-1 font-mono">
-                                {item.content.replace(/[#*`_]/g, '')}
-                              </p>
+                      libraryItems.filter(i => i.classId === selectedTurmaView.id).map(item => (
+                        <div key={item.id} className={`p-4 rounded-2xl border flex flex-col justify-between space-y-3 ${themeClasses.cardMuted}`}>
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed]">
+                                {item.category.replace('_', ' ')}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+                              </span>
                             </div>
-                            <div className="flex items-center justify-between pt-2 border-t border-white/10">
-                              <button
-                                onClick={() => setSelectedLibraryItem(item)}
-                                className="text-xs font-bold text-purple-400 hover:underline flex items-center gap-1"
-                              >
-                                <Eye size={12} /> Ver Completo
-                              </button>
-                              <button
-                                onClick={() => handleToggleLinkItemToClass(item.id, selectedTurmaView.id)}
-                                className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
-                              >
-                                <Unlink size={12} /> Desvincular
-                              </button>
-                            </div>
+                            <p className={`text-sm font-bold line-clamp-1 ${themeClasses.title}`}>{item.title}</p>
                           </div>
-                        );
-                      })
+                          <div className="flex items-center justify-between pt-2 border-t border-purple-500/10">
+                            <button
+                              onClick={() => setSelectedLibraryItem(item)}
+                              className="text-xs font-bold text-[#7c3aed] hover:underline flex items-center gap-1"
+                            >
+                              <Eye size={12} /> Ver Completo
+                            </button>
+                            <button
+                              onClick={() => handleToggleLinkItemToClass(item.id, selectedTurmaView.id)}
+                              className="text-xs text-rose-500 hover:underline flex items-center gap-1"
+                            >
+                              <Unlink size={12} /> Desvincular
+                            </button>
+                          </div>
+                        </div>
+                      ))
                     ) : (
-                      <div className="col-span-full py-8 text-center bg-white/5 rounded-2xl border border-white/10 space-y-2">
-                        <p className="text-sm text-slate-400">Nenhum material vinculado a esta turma ainda.</p>
-                        <p className="text-xs text-slate-500">Ao criar planos ou atividades nas ferramentas ao lado, selecione esta turma no topo para vinculá-los automaticamente.</p>
+                      <div className={`col-span-full py-8 text-center rounded-2xl border ${themeClasses.cardMuted}`}>
+                        <p className="text-sm text-slate-500">Nenhum material vinculado a esta turma ainda.</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Attach Existing Unlinked Items */}
-                <div className="pt-4 border-t border-white/10">
-                  <h4 className="text-sm font-display font-bold text-white mb-3 flex items-center gap-2">
-                    <Link size={16} className="text-indigo-400" />
-                    Vincular Outros Materiais da Biblioteca a esta Turma
+                {/* Vincular outros materiais existentes */}
+                <div className="pt-4 border-t border-purple-500/10">
+                  <h4 className={`text-sm font-display font-bold mb-3 flex items-center gap-2 ${themeClasses.title}`}>
+                    <Link size={16} className="text-[#7c3aed]" />
+                    Vincular Outros Materiais do Ateliê a esta Turma
                   </h4>
-                  <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                  <div className="max-h-48 overflow-y-auto space-y-2 pr-2">
                     {libraryItems.filter(i => i.classId !== selectedTurmaView.id).map(item => (
-                      <div key={item.id} className="p-3 bg-white/5 rounded-xl border border-white/5 flex items-center justify-between">
+                      <div key={item.id} className={`p-3 rounded-xl border flex items-center justify-between ${themeClasses.cardMuted}`}>
                         <div>
-                          <p className="text-xs font-bold text-white line-clamp-1">{item.title}</p>
-                          <span className="text-[10px] text-slate-400 uppercase">
-                            {sectionsConfig.find(s => s.id === item.category)?.label}
+                          <p className={`text-xs font-bold line-clamp-1 ${themeClasses.title}`}>{item.title}</p>
+                          <span className="text-[10px] text-[#8878a8] uppercase">
+                            {item.category.replace('_', ' ')}
                           </span>
                         </div>
                         <button
                           onClick={() => handleToggleLinkItemToClass(item.id, selectedTurmaView.id)}
-                          className="px-3 py-1 bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 rounded-lg text-xs font-bold flex items-center gap-1 border border-purple-500/30 transition-all"
+                          className="px-3 py-1 bg-[#ede5fa] hover:bg-[#7c3aed] text-[#7c3aed] hover:text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all"
                         >
                           <Link size={12} /> Vincular
                         </button>
@@ -2345,84 +2765,231 @@ Formatos exigidos por questão:
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-white/10 flex items-center justify-end">
+              <div className="pt-4 border-t border-purple-500/10 flex items-center justify-end">
                 <button
                   onClick={() => setSelectedTurmaView(null)}
-                  className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-slate-200 rounded-xl font-bold text-xs transition-all"
+                  className="px-5 py-2.5 bg-[#7c3aed] text-white rounded-xl font-bold text-xs"
                 >
                   Fechar
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Modal View Library Item */}
+      {/* 2. MODAL RELATÓRIO INDIVIDUAL DA TURMA */}
+      <AnimatePresence>
+        {reportModalTurma && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`p-6 md:p-8 max-w-2xl w-full rounded-3xl space-y-6 shadow-2xl border ${themeClasses.card}`}
+            >
+              <div className="flex items-start justify-between gap-4 pb-4 border-b border-purple-500/10">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 bg-purple-500/10 text-[#7c3aed] rounded-full">
+                      {reportModalTurma.gradeYear}
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+                      reportModalTurma.status !== 'inativa' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      {reportModalTurma.status !== 'inativa' ? 'Ativa' : 'Inativa'}
+                    </span>
+                  </div>
+                  <h3 className={`text-xl font-display font-bold ${themeClasses.title}`}>
+                    {reportModalTurma.name}
+                  </h3>
+                  <p className="text-xs text-[#7c3aed] font-semibold">📘 {reportModalTurma.subject}</p>
+                </div>
+                <button
+                  onClick={() => setReportModalTurma(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Grid de Métricas da Turma */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                  <span className="text-[10px] font-bold text-[#8878a8] uppercase tracking-wider block mb-1">Aulas Vinculadas</span>
+                  <p className={`text-xl font-display font-bold ${themeClasses.title}`}>
+                    {(reportModalTurma.stats?.aulasConcluidas || 8) + (reportModalTurma.stats?.aulasPendentes || 2)} aulas
+                  </p>
+                  <span className="text-[10px] text-emerald-600 font-semibold">
+                    {reportModalTurma.stats?.aulasConcluidas || 8} concluídas
+                  </span>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                  <span className="text-[10px] font-bold text-[#8878a8] uppercase tracking-wider block mb-1">Materiais Didáticos</span>
+                  <p className="text-xl font-display font-bold text-[#7c3aed]">
+                    {(reportModalTurma.linkedItemIds || []).length} itens
+                  </p>
+                  <span className="text-[10px] text-slate-400">Vinculados no Ateliê</span>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                  <span className="text-[10px] font-bold text-[#8878a8] uppercase tracking-wider block mb-1">Slides Gerados</span>
+                  <p className="text-xl font-display font-bold text-indigo-600">
+                    {reportModalTurma.stats?.slidesGerados || 4} apresentações
+                  </p>
+                  <span className="text-[10px] text-slate-400">Roteiros visuais</span>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                  <span className="text-[10px] font-bold text-[#8878a8] uppercase tracking-wider block mb-1">Progresso dos Alunos</span>
+                  <p className="text-xl font-display font-bold text-emerald-600">
+                    {reportModalTurma.stats?.progressoMedioAlunos || 85}%
+                  </p>
+                  <span className="text-[10px] text-slate-400">Desenvolvimento médio</span>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                  <span className="text-[10px] font-bold text-[#8878a8] uppercase tracking-wider block mb-1">Taxa de Conclusão</span>
+                  <p className="text-xl font-display font-bold text-blue-600">
+                    {reportModalTurma.stats?.taxaConclusaoProjetos || 90}%
+                  </p>
+                  <span className="text-[10px] text-slate-400">Entregas de projetos</span>
+                </div>
+
+                <div className={`p-4 rounded-2xl border ${themeClasses.cardMuted}`}>
+                  <span className="text-[10px] font-bold text-[#8878a8] uppercase tracking-wider block mb-1">Última Atualização</span>
+                  <p className="text-sm font-mono text-slate-700 dark:text-slate-300">
+                    {new Date(reportModalTurma.updatedAt || reportModalTurma.createdAt).toLocaleDateString('pt-BR')}
+                  </p>
+                  <span className="text-[10px] text-slate-400">Sincronizado Supabase</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-purple-500/10">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleExportTurmaReport(reportModalTurma, 'csv')}
+                    className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> Exportar CSV
+                  </button>
+                  <button
+                    onClick={() => handleExportTurmaReport(reportModalTurma, 'json')}
+                    className="px-4 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  >
+                    <Download size={14} /> Exportar JSON
+                  </button>
+                </div>
+                <button
+                  onClick={() => setReportModalTurma(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. MODAL CONFIRMAÇÃO DE EXCLUSÃO DE TURMA */}
+      <AnimatePresence>
+        {deletingTurmaId && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`p-6 max-w-md w-full space-y-4 rounded-3xl border shadow-2xl ${themeClasses.card}`}
+            >
+              <div className="flex items-center gap-3 text-rose-500">
+                <AlertTriangle size={26} />
+                <h3 className={`text-lg font-display font-bold ${themeClasses.title}`}>Confirmar Exclusão</h3>
+              </div>
+              <p className={`text-sm ${themeClasses.subtitle}`}>
+                Tem certeza que deseja remover esta turma? Os dados da turma serão excluídos com segurança no Supabase.
+              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  onClick={() => setDeletingTurmaId(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleConfirmDeleteTurma(deletingTurmaId)}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/30 flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  Sim, Excluir Turma
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. MODAL VISUALIZAÇÃO COMPLETA DE MATERIAL DIDÁTICO */}
       <AnimatePresence>
         {selectedLibraryItem && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
-          >
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="relative w-full max-w-4xl bg-[#1e1e24] border border-purple-500/30 rounded-3xl p-6 md:p-8 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`relative w-full max-w-4xl p-6 md:p-8 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border ${themeClasses.card}`}
             >
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center justify-between pb-4 border-b border-purple-500/10">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full border border-purple-500/30">
-                      {sectionsConfig.find(s => s.id === selectedLibraryItem.category)?.label}
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-purple-500/10 text-[#7c3aed] rounded-full">
+                      {selectedLibraryItem.category.replace('_', ' ')}
                     </span>
                     {selectedLibraryItem.classId && (
-                      <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-blue-500/10 text-blue-600 rounded-full">
                         🏫 {classesList.find(c => c.id === selectedLibraryItem.classId)?.name || 'Turma Vinculada'}
                       </span>
                     )}
                   </div>
-                  <h3 className="text-xl font-display font-bold text-white mt-2">
+                  <h3 className={`text-xl font-display font-bold mt-2 ${themeClasses.title}`}>
                     {selectedLibraryItem.title}
                   </h3>
                 </div>
                 <button
                   onClick={() => setSelectedLibraryItem(null)}
-                  className="p-2 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-all"
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
                 >
                   <X size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto py-6 prose prose-invert max-w-none text-slate-200 text-sm leading-relaxed custom-scrollbar">
+              <div className="flex-1 overflow-y-auto py-6 prose dark:prose-invert max-w-none text-sm leading-relaxed">
                 <Markdown>{selectedLibraryItem.content}</Markdown>
               </div>
 
-              <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                <span className="text-xs text-slate-500">
+              <div className="pt-4 border-t border-purple-500/10 flex items-center justify-between">
+                <span className="text-xs text-[#8878a8]">
                   Criado em: {new Date(selectedLibraryItem.createdAt).toLocaleString('pt-BR')}
                 </span>
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <button
-                    onClick={() => copyToClipboard(selectedLibraryItem.content, 'modal')}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all"
+                    onClick={() => copyToClipboard(selectedLibraryItem.content, 'modal_view')}
+                    className="px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-xs"
                   >
-                    {copiedId === 'modal' ? <Check size={14} /> : <Copy size={14} />}
-                    Copiar Conteúdo Completo
+                    {copiedId === 'modal_view' ? <Check size={14} /> : <Copy size={14} />}
+                    Copiar Conteúdo
                   </button>
                   <button
                     onClick={() => setSelectedLibraryItem(null)}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 text-slate-300 rounded-xl font-bold text-xs transition-all"
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all"
                   >
                     Fechar
                   </button>
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>
