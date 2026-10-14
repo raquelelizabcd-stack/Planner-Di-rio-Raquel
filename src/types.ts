@@ -466,7 +466,7 @@ export interface FinanceDashboardSummary {
 }
 
 // Painel Multi-IA & Token Meter Types
-export type AIProviderId = 'gemini' | 'chatgpt' | 'claude' | 'mistral' | 'perplexity' | 'copilot';
+export type AIProviderId = 'gemini' | 'chatgpt' | 'claude';
 
 export interface AIProviderConfig {
   id: AIProviderId;

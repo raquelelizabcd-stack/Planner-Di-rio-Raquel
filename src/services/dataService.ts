@@ -1051,7 +1051,7 @@ export const dataService = {
       },
       {
         id: 'chatgpt',
-        name: 'OpenAI ChatGPT (GPT-4o / GPT-4o-mini)',
+        name: 'OpenAI ChatGPT (GPT-4 / GPT-4o-mini)',
         providerLabel: 'OpenAI',
         iconName: 'Bot',
         color: '#10A37F',
@@ -1073,61 +1073,27 @@ export const dataService = {
         color: '#D97706',
         bgColor: 'rgba(217, 119, 6, 0.1)',
         borderColor: 'rgba(217, 119, 6, 0.3)',
-        apiKey: '',
-        encryptedKey: '',
-        isConnected: false,
-        totalTokensAvailable: 300000,
-        consumedTokens: 0,
-        endpointUrl: 'https://api.anthropic.com/v1/messages'
-      },
-      {
-        id: 'mistral',
-        name: 'Mistral AI (Large / Codestral)',
-        providerLabel: 'Mistral',
-        iconName: 'Cpu',
-        color: '#3B82F6',
-        bgColor: 'rgba(59, 130, 246, 0.1)',
-        borderColor: 'rgba(59, 130, 246, 0.3)',
-        apiKey: '',
-        encryptedKey: '',
-        isConnected: false,
-        totalTokensAvailable: 250000,
-        consumedTokens: 0,
-        endpointUrl: 'https://api.mistral.ai/v1/chat/completions'
-      },
-      {
-        id: 'perplexity',
-        name: 'Perplexity AI (Sonar Reasoning)',
-        providerLabel: 'Perplexity',
-        iconName: 'Search',
-        color: '#06B6D4',
-        bgColor: 'rgba(6, 182, 212, 0.1)',
-        borderColor: 'rgba(6, 182, 212, 0.3)',
-        apiKey: '',
-        encryptedKey: '',
-        isConnected: false,
-        totalTokensAvailable: 200000,
-        consumedTokens: 0,
-        endpointUrl: 'https://api.perplexity.ai/chat/completions'
-      },
-      {
-        id: 'copilot',
-        name: 'GitHub Copilot / Azure OpenAI',
-        providerLabel: 'Microsoft Copilot',
-        iconName: 'Code',
-        color: '#6366F1',
-        bgColor: 'rgba(99, 102, 241, 0.1)',
-        borderColor: 'rgba(99, 102, 241, 0.3)',
-        apiKey: '',
-        encryptedKey: '',
-        isConnected: false,
+        apiKey: (typeof process !== 'undefined' && process.env?.ANTHROPIC_API_KEY) || '',
+        encryptedKey: (typeof process !== 'undefined' && process.env?.ANTHROPIC_API_KEY) ? encryptApiKey(process.env.ANTHROPIC_API_KEY) : '',
+        isConnected: !!((typeof process !== 'undefined' && process.env?.ANTHROPIC_API_KEY)),
         totalTokensAvailable: 400000,
-        consumedTokens: 0,
-        endpointUrl: 'https://models.inference.ai.azure.com'
+        consumedTokens: 92000,
+        lastTested: Date.now() - 1800000,
+        endpointUrl: 'https://api.anthropic.com/v1/messages'
       }
     ];
 
-    return dataService.safeFetch<AIProviderConfig>('ai_providers_config', 'raquel_ai_providers_config', defaultProviders);
+    const rawList = await dataService.safeFetch<AIProviderConfig>('ai_providers_config', 'raquel_ai_providers_config', defaultProviders);
+    const filtered = (rawList || []).filter(p => p.id === 'gemini' || p.id === 'chatgpt' || p.id === 'claude');
+    const result = defaultProviders.map(def => {
+      const found = filtered.find(p => p.id === def.id);
+      return found ? { ...def, ...found } : def;
+    });
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('raquel_ai_providers_config', JSON.stringify(result));
+    }
+    return result;
   },
 
   async saveAIProviderConfig(provider: AIProviderConfig): Promise<void> {
@@ -1145,16 +1111,19 @@ export const dataService = {
     const dayMs = 86400000;
     const defaultHistory: AITokenHistoryRecord[] = [
       { id: 'th-1', providerId: 'gemini', providerName: 'Google Gemini Pro', timestamp: now - 1 * dayMs, dateStr: new Date(now - 1 * dayMs).toISOString().split('T')[0], tokensUsed: 12500, action: 'Geração de conteúdo semanal', promptSample: 'Plano de Marketing Digital 2026', costEstimateUSD: 0.015 },
-      { id: 'th-2', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4o)', timestamp: now - 1 * dayMs, dateStr: new Date(now - 1 * dayMs).toISOString().split('T')[0], tokensUsed: 8400, action: 'Revisão de postagem LinkedIn', promptSample: 'Copywriting de vendas de alta conversão', costEstimateUSD: 0.042 },
-      { id: 'th-3', providerId: 'gemini', providerName: 'Google Gemini Flash', timestamp: now - 2 * dayMs, dateStr: new Date(now - 2 * dayMs).toISOString().split('T')[0], tokensUsed: 18200, action: 'Análise diagnóstica Debug IA', promptSample: 'Logs de erro em ProfessoraMarketingTab', costEstimateUSD: 0.009 },
-      { id: 'th-4', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4o-mini)', timestamp: now - 3 * dayMs, dateStr: new Date(now - 3 * dayMs).toISOString().split('T')[0], tokensUsed: 6200, action: 'Geração de hashtags estratégicas', promptSample: '#MarketingDigital #Educacao', costEstimateUSD: 0.003 },
-      { id: 'th-5', providerId: 'copilot', providerName: 'Microsoft Copilot', timestamp: now - 4 * dayMs, dateStr: new Date(now - 4 * dayMs).toISOString().split('T')[0], tokensUsed: 15000, action: 'Otimização de rotas TypeScript', promptSample: 'Refatoração de dataService', costEstimateUSD: 0.020 },
-      { id: 'th-6', providerId: 'gemini', providerName: 'Google Gemini Pro', timestamp: now - 5 * dayMs, dateStr: new Date(now - 5 * dayMs).toISOString().split('T')[0], tokensUsed: 21000, action: 'Criação de Plano de Aula Técnico', promptSample: 'Inbound Marketing e Funil de Vendas', costEstimateUSD: 0.025 },
-      { id: 'th-7', providerId: 'perplexity', providerName: 'Perplexity AI', timestamp: now - 6 * dayMs, dateStr: new Date(now - 6 * dayMs).toISOString().split('T')[0], tokensUsed: 9800, action: 'Pesquisa de tendências MicroSaas', promptSample: 'Tendências de EdTech no Brasil', costEstimateUSD: 0.018 },
-      { id: 'th-8', providerId: 'mistral', providerName: 'Mistral Large', timestamp: now - 7 * dayMs, dateStr: new Date(now - 7 * dayMs).toISOString().split('T')[0], tokensUsed: 11400, action: 'Sumarização de artigos técnicos', promptSample: 'IA na Educação Profissional', costEstimateUSD: 0.014 }
+      { id: 'th-2', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4)', timestamp: now - 1 * dayMs, dateStr: new Date(now - 1 * dayMs).toISOString().split('T')[0], tokensUsed: 8400, action: 'Revisão de postagem LinkedIn', promptSample: 'Copywriting de vendas de alta conversão', costEstimateUSD: 0.042 },
+      { id: 'th-3', providerId: 'claude', providerName: 'Claude 3.5 Sonnet', timestamp: now - 1.5 * dayMs, dateStr: new Date(now - 1 * dayMs).toISOString().split('T')[0], tokensUsed: 7800, action: 'Refinamento de roteiro didático', promptSample: 'Estruturação de oficina de Micro-SaaS', costEstimateUSD: 0.023 },
+      { id: 'th-4', providerId: 'gemini', providerName: 'Google Gemini Flash', timestamp: now - 2 * dayMs, dateStr: new Date(now - 2 * dayMs).toISOString().split('T')[0], tokensUsed: 18200, action: 'Análise diagnóstica Debug IA', promptSample: 'Logs de erro em ProfessoraMarketingTab', costEstimateUSD: 0.009 },
+      { id: 'th-5', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4o-mini)', timestamp: now - 3 * dayMs, dateStr: new Date(now - 3 * dayMs).toISOString().split('T')[0], tokensUsed: 6200, action: 'Geração de hashtags estratégicas', promptSample: '#MarketingDigital #Educacao', costEstimateUSD: 0.003 },
+      { id: 'th-6', providerId: 'claude', providerName: 'Claude 3.5 Sonnet', timestamp: now - 3.5 * dayMs, dateStr: new Date(now - 3 * dayMs).toISOString().split('T')[0], tokensUsed: 9400, action: 'Análise de coerência pedagógica', promptSample: 'Validação de plano de marketing e funil', costEstimateUSD: 0.028 },
+      { id: 'th-7', providerId: 'gemini', providerName: 'Google Gemini Pro', timestamp: now - 4 * dayMs, dateStr: new Date(now - 4 * dayMs).toISOString().split('T')[0], tokensUsed: 15000, action: 'Otimização de rotas TypeScript', promptSample: 'Refatoração de dataService', costEstimateUSD: 0.018 },
+      { id: 'th-8', providerId: 'gemini', providerName: 'Google Gemini Pro', timestamp: now - 5 * dayMs, dateStr: new Date(now - 5 * dayMs).toISOString().split('T')[0], tokensUsed: 21000, action: 'Criação de Plano de Aula Técnico', promptSample: 'Inbound Marketing e Funil de Vendas', costEstimateUSD: 0.025 },
+      { id: 'th-9', providerId: 'chatgpt', providerName: 'ChatGPT (GPT-4)', timestamp: now - 6 * dayMs, dateStr: new Date(now - 6 * dayMs).toISOString().split('T')[0], tokensUsed: 9800, action: 'Pesquisa de tendências MicroSaas', promptSample: 'Tendências de EdTech no Brasil', costEstimateUSD: 0.049 },
+      { id: 'th-10', providerId: 'gemini', providerName: 'Google Gemini Flash', timestamp: now - 7 * dayMs, dateStr: new Date(now - 7 * dayMs).toISOString().split('T')[0], tokensUsed: 11400, action: 'Sumarização de artigos técnicos', promptSample: 'IA na Educação Profissional', costEstimateUSD: 0.006 }
     ];
 
-    return dataService.safeFetch<AITokenHistoryRecord>('ai_token_history', 'raquel_ai_token_history', defaultHistory);
+    const rawList = await dataService.safeFetch<AITokenHistoryRecord>('ai_token_history', 'raquel_ai_token_history', defaultHistory);
+    return (rawList || []).filter(h => h.providerId === 'gemini' || h.providerId === 'chatgpt' || h.providerId === 'claude');
   },
 
   async saveAITokenHistoryRecord(record: AITokenHistoryRecord): Promise<void> {

@@ -1,21 +1,29 @@
-export type AgentStatusType = 'ativo' | 'em execução' | 'em espera';
+import { AgenteCache } from "../cache";
+import { AgenteSeguranca } from "../seguranca";
+import { AgenteMemoria } from "../memoria";
+import { AgenteAuditoria } from "../auditoria";
 
 export class AgenteOrquestrador {
-  public readonly id = 'orquestrador';
-  public readonly name = 'Agente Orquestrador';
-  public readonly role = 'Coordenação & Fluxos';
-  public readonly avatar = 'engrenagem';
-  public status: AgentStatusType = 'em execução';
-  public readonly description = 'Coordena o fluxo de trabalho entre todos os agentes, prioriza tarefas concorrentes e gerencia os limites de execução em tempo real.';
+  private cache = new AgenteCache();
+  private seguranca = new AgenteSeguranca();
+  private memoria = new AgenteMemoria();
+  private auditoria = new AgenteAuditoria();
 
-  public async coordenarTarefas(tarefas: string[]): Promise<string> {
-    this.status = 'em execução';
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return `Orquestração concluída para ${tarefas.length} tarefas com distribuição balanceada.`;
-  }
+  async executar(prompt: string): Promise<string> {
+    const respostaCache = this.cache.get(prompt);
+    if (respostaCache) return `♻️ Resposta do cache: ${respostaCache}`;
 
-  public getStatus(): AgentStatusType {
-    return this.status;
+    const respostaMemoria = await this.memoria.verificarHistorico(prompt);
+    if (respostaMemoria) return `🧠 Resposta da memória: ${respostaMemoria}`;
+
+    const respostaIA = `✨ Nova resposta gerada para: ${prompt}`;
+    const respostaSegura = this.seguranca.validarSaida(respostaIA);
+
+    this.cache.set(prompt, respostaSegura);
+    await this.memoria.salvarResultado("AgenteOrquestrador", prompt, respostaSegura);
+    await this.auditoria.logAction("AgenteOrquestrador", "execucao", { prompt, respostaSegura });
+
+    return respostaSegura;
   }
 }
 

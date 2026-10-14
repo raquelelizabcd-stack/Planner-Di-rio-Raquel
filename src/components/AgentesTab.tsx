@@ -233,7 +233,7 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
 
   const handleConnectProvider = async (providerId: AIProviderId) => {
     const rawKey = keyInputValues[providerId] || '';
-    if (!rawKey && providerId !== 'copilot') {
+    if (!rawKey) {
       showToast(`Por favor, insira uma chave de API válida para o ${providerId.toUpperCase()}.`);
       return;
     }
@@ -1008,7 +1008,14 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
       {activeSubTab === 'escritorio' && (
         <EscritorioVirtualAgentes 
           accentColor={accentColor} 
-          borderRadius={borderRadius} 
+          borderRadius={borderRadius}
+          aiProviders={aiProviders}
+          optimizationSettings={optimizationSettings}
+          onToggleOptimization={handleToggleOptimization}
+          onConnectProvider={handleConnectProvider}
+          onTestProvider={handleTestConnection}
+          keyInputValues={keyInputValues}
+          onKeyInputChange={handleKeyInputChange}
         />
       )}
 
@@ -1226,7 +1233,7 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
                   Configuração de APIs de IA
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Conecte diretamente suas chaves de API dos provedores Gemini, ChatGPT, Claude, Mistral, Perplexity e Copilot para controle e orçamento de tokens.
+                  Conexões essenciais de IA mantidas no ecossistema: Google Gemini Pro / Flash, OpenAI ChatGPT (GPT-4 / GPT-4o-mini) e Anthropic Claude 3.5 Sonnet com controle centralizado de tokens.
                 </p>
               </div>
 
@@ -1241,8 +1248,8 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
               </div>
             </div>
 
-            {/* Cards Grid dos Provedores */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Cards Grid dos Provedores Essenciais (3 Colunas) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {aiProviders.map(provider => {
                 const consumed = provider.consumedTokens || 0;
                 const totalAvailable = provider.totalTokensAvailable || 500000;

@@ -1,23 +1,23 @@
-export type AgentStatusType = 'ativo' | 'em execução' | 'em espera';
+import { createClient } from "@supabase/supabase-js";
 
 export class AgenteAuditoria {
-  public readonly id = 'auditoria';
-  public readonly name = 'Agente de Auditoria';
-  public readonly role = 'Registros & Conformidade';
-  public readonly avatar = 'livro de registros';
-  public status: AgentStatusType = 'ativo';
-  public readonly description = 'Monitora logs de execução, registra histórico de ações, confere conformidade operacional e detecta qualquer anomalia no sistema.';
-
-  public async gerarRelatorioAuditoria(): Promise<{ totalLogs: number; statusGeral: string }> {
-    this.status = 'em execução';
-    await new Promise(resolve => setTimeout(resolve, 300));
-    this.status = 'ativo';
-    return { totalLogs: 124, statusGeral: 'Operação 100% conforme e íntegra.' };
+  private supabase;
+  constructor() {
+    this.supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+    );
   }
-
-  public getStatus(): AgentStatusType {
-    return this.status;
+  async logAction(agentName: string, action: string, details: object) {
+    try {
+      await this.supabase.from("audit_logs").insert({
+        agent_name: agentName,
+        action,
+        details,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn("AgenteAuditoria: logAction falhou ou offline", e);
+    }
   }
 }
-
-export default AgenteAuditoria;
