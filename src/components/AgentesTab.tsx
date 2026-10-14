@@ -1006,17 +1006,9 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
 
       {/* ================= SEÇÃO: ESCRITÓRIO VIRTUAL INTERATIVO ================= */}
       {activeSubTab === 'escritorio' && (
-        <EscritorioVirtualAgentes 
-          accentColor={accentColor} 
-          borderRadius={borderRadius}
-          aiProviders={aiProviders}
-          optimizationSettings={optimizationSettings}
-          onToggleOptimization={handleToggleOptimization}
-          onConnectProvider={handleConnectProvider}
-          onTestProvider={handleTestConnection}
-          keyInputValues={keyInputValues}
-          onKeyInputChange={handleKeyInputChange}
-        />
+        <section className="mt-8 p-6 rounded-xl bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shadow-lg">
+          <EscritorioVirtualAgentes />
+        </section>
       )}
 
       {/* ================= SEÇÃO 1: VISÃO GERAL & MEDIDOR DE TOKENS ================= */}
