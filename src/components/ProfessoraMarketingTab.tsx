@@ -42,7 +42,13 @@ import {
   Clock,
   Compass,
   CheckCircle,
-  LayoutDashboard
+  LayoutDashboard,
+  Printer,
+  Filter,
+  Calendar,
+  FileEdit,
+  Tag,
+  AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -50,6 +56,206 @@ import { GoogleGenAI } from '@google/genai';
 import { ProfessoraMarketingItem, ProfessoraClass } from '../types';
 import { dataService } from '../services/dataService';
 import { supabase } from '../lib/supabase';
+
+// Tipos oficiais do Ateliê de Aulas
+export type MaterialTipo = 'Plano de aula' | 'Conteúdo' | 'Atividade' | 'Avaliação' | 'Anotação';
+export type MaterialStatus = 'Rascunho' | 'Em preparação' | 'Pronto';
+
+// Lista oficial com os 38 componentes curriculares de Marketing + Projetos Empreendedores (total 39)
+export const DISCIPLINAS_MARKETING = [
+  "Administração de Marketing",
+  "Análise de Mercado e Concorrência",
+  "Branding e Gestão de Marcas",
+  "Comportamento do Consumidor",
+  "Comunicação Integrada de Marketing",
+  "Criação e Redação Publicitária (Copywriting)",
+  "Cultura Organizacional e Relações Humanas",
+  "Design Gráfico Aplicado ao Marketing",
+  "Direito e Legislação Aplicada ao Marketing",
+  "E-commerce e Vendas Online",
+  "Economia de Mercado e Cenários Comerciais",
+  "Endomarketing e Comunicação Interna",
+  "Estratégia de Preços e Precificação",
+  "Ética e Responsabilidade Socioambiental",
+  "Fundamentos de Marketing",
+  "Gestão da Experiência do Cliente (CX)",
+  "Gestão de Canais de Distribuição e Logística",
+  "Gestão de Equipes e Liderança de Vendas",
+  "Gestão de Mídias Sociais e Redes Digitais",
+  "Gestão de Relacionamento com o Cliente (CRM)",
+  "Inbound Marketing e Marketing de Conteúdo",
+  "Inteligência Artificial Aplicada ao Marketing",
+  "Logística Comercial e Merchandising",
+  "Marketing B2B (Business to Business)",
+  "Marketing de Serviços e Varejo",
+  "Marketing Digital e Tráfego Pago",
+  "Marketing Estratégico e Planejamento",
+  "Marketing Internacional e Comércio Exterior",
+  "Marketing Social e Marketing Cultural",
+  "Métricas, Analytics e Indicadores de Desempenho",
+  "Negociação Comercial e Técnicas de Vendas",
+  "Neuromarketing e Psicologia do Consumo",
+  "Pesquisa de Mercado Quantitativa e Qualitativa",
+  "Planejamento de Campanhas Promocionais",
+  "Posicionamento de Marca e Storytelling",
+  "Relações Públicas e Assessoria de Imprensa",
+  "SEO e Otimização para Mecanismos de Busca",
+  "Trade Marketing e Ponto de Venda (PDV)",
+  "Projetos Empreendedores"
+] as const;
+
+// 3 Modelos pedagógicos estruturados para a seção "Por onde começar?"
+export const TEMPLATES_POR_ONDE_COMECAR = [
+  {
+    title: "O marketing no nosso cotidiano",
+    tipo: "Plano de aula" as MaterialTipo,
+    disciplina: "Fundamentos de Marketing",
+    duracaoMinutos: 100,
+    status: "Em preparação" as MaterialStatus,
+    content: `# Plano de Aula: O Marketing no Nosso Cotidiano
+
+## 1. Identificação da Aula
+- **Componente Curricular**: Fundamentos de Marketing
+- **Duração Estimada**: 100 minutos (2 aulas geminadas)
+- **Público-Alvo**: Ensino Técnico Profissional (EPTNM)
+- **Modalidade**: Teórico-Prática com Metodologia Ativa
+
+---
+
+## 2. Objetivos de Aprendizagem
+- Identificar a presença contínua do marketing nas decisões diárias de consumo de indivíduos e famílias.
+- Diferenciar os conceitos basilares de Necessidade, Desejo e Demanda.
+- Compreender como produtos e marcas locais constroem valor percebido e relevância cultural.
+
+---
+
+## 3. Competências e Habilidades (Diretrizes EPTNM)
+- Analisar os fatores contextuais, sociais e comportamentais que orientam as decisões de compra.
+- Reconhecer estratégias de atratividade mercadológica utilizadas por pequenos e médios negócios.
+- Comunicar insights e diagnósticos com clareza, empatia e ética profissional.
+
+---
+
+## 4. Cronograma de Desenvolvimento (100 minutos)
+
+### Momento 1: Acolhimento e Provocação Inicial (15 min)
+- Dinâmica "O que tem na sua mochila?": Cada aluno seleciona um item pessoal e compartilha o motivo de ter escolhido aquela marca específica.
+- Problematização da professora: Foi uma decisão puramente racional ou houve influência de marketing e narrativa de marca?
+
+### Momento 2: Conceituação Ativa e Exemplos Locais (30 min)
+- Apresentação dialogada: Necessidades humanas fundamentais (Pirâmide de Maslow aplicada ao consumo) versus desejos culturais.
+- Análise de casos reais do comércio local: padarias de bairro, farmácias, cafeterias e marcas de vestuário jovem.
+- O conceito de Proposta de Valor: por que consumidores pagam preços diferentes por produtos de utilidade similar?
+
+### Momento 3: Desafio Prático em Equipes - Agência Simulada (40 min)
+- Divisão da turma em equipes de 4 a 5 integrantes.
+- Desafio: Cada equipe recebe um produto comum e formula uma proposta de valor autêntica para um nicho específico.
+- Elaboração de um mini-pitch de 2 minutos contendo:
+  1. Problema resolvido.
+  2. Experiência proporcionada ao cliente.
+  3. Canal ideal de comunicação.
+
+### Momento 4: Síntese e Avaliação Formativa (15 min)
+- Apresentação dos pitches com feedback construtivo da turma e mediação pedagógica.
+- Conexão dos aprendizados com as próximas etapas do curso técnico.
+
+---
+
+## 5. Recursos e Avaliação
+- Recursos: Quadro interativo, post-its, folhas Kraft e embalagens do cotidiano.
+- Critérios de Avaliação: Participação ativa, precisão no uso dos conceitos e coerência no pitch.`
+  },
+  {
+    title: "Os 4 Ps na prática",
+    tipo: "Atividade" as MaterialTipo,
+    disciplina: "Marketing Estratégico e Planejamento",
+    duracaoMinutos: 50,
+    status: "Em preparação" as MaterialStatus,
+    content: `# Atividade Prática: Os 4 Ps na Prática (Mix de Marketing)
+
+## 1. Visão Geral da Atividade
+- **Componente Curricular**: Marketing Estratégico e Planejamento
+- **Duração Estimada**: 50 minutos
+- **Tipo de Atividade**: Estudo Aplicado em Agência Simulada
+- **Status**: Em preparação
+
+---
+
+## 2. Objetivo Pedagógico
+Capacitar os alunos a articular harmonicamente as quatro variáveis estratégicas do Mix de Marketing (Produto, Preço, Praça e Promoção) na criação ou reposicionamento de um produto direcionado ao mercado brasileiro atual.
+
+---
+
+## 3. Roteiro de Execução Passo a Passo
+
+### Passo 1: Definição do Negócio e Público-Alvo (10 min)
+Em equipes de até 4 integrantes, escolham uma das opções abaixo:
+- **Opção A**: Uma cafeteria sustentável no centro comercial da cidade.
+- **Opção B**: Uma marca de cosméticos veganos e acessíveis para jovens da periferia.
+- **Opção C**: Um aplicativo de delivery exclusivo para produtores de alimentos locais.
+
+### Passo 2: Estruturação da Matriz dos 4 Ps (25 min)
+Preencham a matriz estratégica respondendo com profundidade técnica:
+
+1. **PRODUTO**: Diferenciais físicos, embalagem, design, marca e valor emocional entregue.
+2. **PREÇO**: Estratégia de precificação (penetração, competitiva ou valor agregado) e opções de pagamento.
+3. **PRAÇA / PONTO**: Canais de distribuição (loja física, redes sociais, marketplace) e logística de entrega.
+4. **PROMOÇÃO**: Estratégia de comunicação, tom de voz, canais prioritários e ação de lançamento.
+
+### Passo 3: Socialização e Feedback Rápido (15 min)
+- Apresentação rápida de cada grupo e debate guiado sobre a harmonia entre os 4 pilares.
+
+---
+
+## 4. Ficha de Entrega e Rubrica
+- Coerência Estratégica (40%): Alinhamento mútuo entre Produto, Preço, Praça e Promoção.
+- Viabilidade e Realismo (30%): Aderência ao contexto econômico local.
+- Trabalho em Equipe (30%): Divisão clara de papéis e respeito ao tempo estipulado.`
+  },
+  {
+    title: "Diagnóstico inicial de Marketing",
+    tipo: "Avaliação" as MaterialTipo,
+    disciplina: "Pesquisa de Mercado Quantitativa e Qualitativa",
+    duracaoMinutos: 30,
+    status: "Em preparação" as MaterialStatus,
+    content: `# Avaliação Diagnóstica Inicial de Marketing
+
+## 1. Contexto Pedagógico
+- **Componente Curricular**: Pesquisa de Mercado Quantitativa e Qualitativa
+- **Duração Estimada**: 30 minutos
+- **Finalidade**: Mapear o conhecimento prévio da turma sobre mercado, consumo, canais e valor de marca antes do início dos módulos avançados.
+- **Status**: Em preparação
+
+---
+
+## 2. Questionário Diagnóstico para os Estudantes
+
+### Questão 1 (Conceitual)
+Muitas pessoas confundem Marketing com simples propaganda ou publicidade. Na sua visão, qual é a diferença fundamental entre fazer Marketing e fazer Propaganda?
+*(Espaço para resposta do aluno: 4 a 6 linhas)*
+
+### Questão 2 (Segmentação de Mercado)
+Uma fábrica de mochilas decide lançar dois modelos distintos: um voltado para concurseiros e universitários e outro para praticantes de esportes ao ar livre. Por que a fábrica não desenvolve uma única mochila para atender aos dois públicos ao mesmo tempo? Qual conceito mercadológico está em jogo?
+
+### Questão 3 (Comportamento do Consumidor e Preço)
+Imagine duas camisetas brancas de algodão idênticas em tecido e acabamento. Uma custa R$ 40,00 numa loja convencional e a outra custa R$ 250,00 com a etiqueta de uma marca global reconhecida. O que leva um consumidor a pagar muito mais pela segunda peça?
+
+### Questão 4 (Canais e Experiência Digital)
+Cite uma marca ou empresa que você admira no Instagram ou TikTok. O que faz você parar para acompanhar o conteúdo dela em vez de apenas passar o feed?
+
+### Questão 5 (Métricas Básicas de Decisão)
+Se uma loja virtual investe R$ 1.000,00 em anúncios e fatura R$ 5.000,00 em vendas de produtos, como você avaliaria esse resultado? Que outros custos ou fatores precisariam ser levados em conta?
+
+---
+
+## 3. Gabarito Comentado e Guia de Correção para a Professora
+- Questão 1: Avaliar diferenciação entre o escopo amplo de marketing e a ferramenta promocional.
+- Questão 2: Identificar a noção de segmentação de mercado, personas e ergonomia.
+- Questão 3: Compreensão de Brand Equity, pertencimento social e valor percebido.
+- Questão 4: Percepção de marketing de conteúdo, autenticidade e conexão com a audiência.
+- Questão 5: Noções preliminares de ROI e margem líquida.`
+  }
+];
 
 interface ProfessoraMarketingTabProps {
   accentColor?: string;
@@ -120,6 +326,29 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
   const [librarySearch, setLibrarySearch] = useState('');
   const [libraryCategoryFilter, setLibraryCategoryFilter] = useState<string>('all');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
+
+  // --- MÓDULO DE MATERIAIS DO ATELIÊ: FORMULÁRIO E FILTROS ---
+  const [isMaterialModalOpen, setIsMaterialModalOpen] = useState(false);
+  const [editingMaterialId, setEditingMaterialId] = useState<string | null>(null);
+  const [matTitulo, setMatTitulo] = useState('');
+  const [matDisciplina, setMatDisciplina] = useState<string>(DISCIPLINAS_MARKETING[0]);
+  const [matTipo, setMatTipo] = useState<MaterialTipo>('Plano de aula');
+  const [matStatus, setMatStatus] = useState<MaterialStatus>('Rascunho');
+  const [matDuracao, setMatDuracao] = useState<number | ''>('');
+  const [matData, setMatData] = useState<string>('');
+  const [matClassId, setMatClassId] = useState<string>('');
+  const [matConteudo, setMatConteudo] = useState<string>('');
+  const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [materialFormErrors, setMaterialFormErrors] = useState<{ titulo?: string; disciplina?: string }>({});
+  const [confirmDiscardModalOpen, setConfirmDiscardModalOpen] = useState(false);
+  const [deletingMaterialItem, setDeletingMaterialItem] = useState<ProfessoraMarketingItem | null>(null);
+  const [printMaterialItem, setPrintMaterialItem] = useState<ProfessoraMarketingItem | null>(null);
+
+  // Filtros avançados da listagem de materiais
+  const [materialSearchQuery, setMaterialSearchQuery] = useState('');
+  const [materialFilterDisciplina, setMaterialFilterDisciplina] = useState<string>('all');
+  const [materialFilterTipo, setMaterialFilterTipo] = useState<string>('all');
+  const [materialFilterStatus, setMaterialFilterStatus] = useState<string>('all');
 
   // --- TURMAS: FORM & ESTADO ---
   const [turmaCreationMode, setTurmaCreationMode] = useState<'manual' | 'ai'>('manual');
@@ -687,7 +916,256 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
     { id: 'assistente_mercado', label: 'Assistente de Mercado', icon: MessageSquare, desc: 'Casos reais, marcas brasileiras e tendências', duration: '15 min' }
   ];
 
-  // Itens filtrados da biblioteca
+  // --- HANDLERS DO MÓDULO DE MATERIAIS DO ATELIÊ ---
+  const resetMaterialForm = () => {
+    setEditingMaterialId(null);
+    setMatTitulo('');
+    setMatDisciplina(DISCIPLINAS_MARKETING[0]);
+    setMatTipo('Plano de aula');
+    setMatStatus('Rascunho');
+    setMatDuracao('');
+    setMatData('');
+    setMatClassId('');
+    setMatConteudo('');
+    setMaterialFormErrors({});
+  };
+
+  const handleOpenNewMaterialModal = () => {
+    resetMaterialForm();
+    setIsMaterialModalOpen(true);
+  };
+
+  const handleEditMaterial = (item: ProfessoraMarketingItem) => {
+    setEditingMaterialId(item.id);
+    setMatTitulo(item.title);
+    setMatDisciplina(
+      (item.disciplina || (item.metadata?.disciplina as string) || (item.metadata?.subject as string) || DISCIPLINAS_MARKETING[0])
+    );
+    setMatTipo(
+      (item.tipo as MaterialTipo) || 
+      (item.category === 'plano_aula' ? 'Plano de aula' : 
+       item.category === 'quiz' ? 'Avaliação' : 
+       item.category === 'folha_atividade' || item.category === 'ideias_atividades' ? 'Atividade' : 'Conteúdo')
+    );
+    setMatStatus(
+      (item.status as MaterialStatus) || 
+      (item.metadata?.status as MaterialStatus) || 
+      'Em preparação'
+    );
+    setMatDuracao(item.duracaoMinutos || (item.metadata?.duracaoMinutos as number) || '');
+    setMatData(item.dataPlanejada || (item.metadata?.dataPlanejada as string) || '');
+    setMatClassId(item.classId || '');
+    setMatConteudo(item.content || '');
+    setMaterialFormErrors({});
+    setIsMaterialModalOpen(true);
+  };
+
+  const isMaterialFormDirty = () => {
+    return matTitulo.trim() !== '' || matConteudo.trim() !== '' || matDuracao !== '' || matData !== '';
+  };
+
+  const handleAttemptCloseMaterialModal = () => {
+    if (isMaterialFormDirty()) {
+      setConfirmDiscardModalOpen(true);
+    } else {
+      resetMaterialForm();
+      setIsMaterialModalOpen(false);
+    }
+  };
+
+  const handleConfirmDiscardMaterial = () => {
+    setConfirmDiscardModalOpen(false);
+    resetMaterialForm();
+    setIsMaterialModalOpen(false);
+    showToast('Alterações não salvas foram descartadas.');
+  };
+
+  const handleSelectStarterTemplate = (index: number) => {
+    const tpl = TEMPLATES_POR_ONDE_COMECAR[index];
+    if (!tpl) return;
+    setEditingMaterialId(null);
+    setMatTitulo(tpl.title);
+    setMatDisciplina(tpl.disciplina);
+    setMatTipo(tpl.tipo);
+    setMatStatus(tpl.status);
+    setMatDuracao(tpl.duracaoMinutos);
+    setMatData(new Date().toISOString().split('T')[0]);
+    setMatClassId('');
+    setMatConteudo(tpl.content);
+    setMaterialFormErrors({});
+    setIsMaterialModalOpen(true);
+    showToast(`✨ Modelo "${tpl.title}" carregado no formulário! Clique em "Salvar" para persistir.`);
+  };
+
+  const handleSaveMaterial = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
+    if (isSavingMaterial) return;
+
+    // Validação de formulário no cliente
+    const errors: { titulo?: string; disciplina?: string } = {};
+    if (!matTitulo.trim()) {
+      errors.titulo = 'O título do material é obrigatório.';
+    } else if (matTitulo.trim().length < 3) {
+      errors.titulo = 'O título deve conter pelo menos 3 caracteres.';
+    }
+    if (!matDisciplina.trim()) {
+      errors.disciplina = 'Selecione uma disciplina da lista.';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setMaterialFormErrors(errors);
+      showToast('⚠️ Preencha os campos obrigatórios corretamente.');
+      return;
+    }
+
+    setMaterialFormErrors({});
+    setIsSavingMaterial(true);
+
+    const now = Date.now();
+    const targetId = editingMaterialId || `mat-${now}`;
+
+    // Mapeamento semântico para category compatível com módulos legados
+    let cat: ProfessoraMarketingItem['category'] = 'material_didatico';
+    if (matTipo === 'Plano de aula') cat = 'plano_aula';
+    else if (matTipo === 'Conteúdo') cat = 'material_didatico';
+    else if (matTipo === 'Atividade') cat = 'folha_atividade';
+    else if (matTipo === 'Avaliação') cat = 'quiz';
+    else if (matTipo === 'Anotação') cat = 'assistente_mercado';
+
+    const materialItem: ProfessoraMarketingItem = {
+      id: targetId,
+      title: matTitulo.trim(),
+      category: cat,
+      content: matConteudo.trim(),
+      classId: matClassId || undefined,
+      disciplina: matDisciplina.trim(),
+      tipo: matTipo,
+      status: matStatus,
+      duracaoMinutos: typeof matDuracao === 'number' && matDuracao > 0 ? matDuracao : (matDuracao ? Number(matDuracao) : undefined),
+      dataPlanejada: matData || undefined,
+      createdAt: editingMaterialId ? (libraryItems.find(i => i.id === editingMaterialId)?.createdAt || now) : now,
+      updatedAt: now,
+      metadata: {
+        disciplina: matDisciplina.trim(),
+        tipo: matTipo,
+        status: matStatus,
+        duracaoMinutos: matDuracao || undefined,
+        dataPlanejada: matData || undefined
+      }
+    };
+
+    try {
+      // 1. Persistência segura no Supabase e localStorage via dataService
+      await dataService.saveProfessoraMarketingItem(materialItem);
+
+      // 2. Atualizar estado local da listagem
+      if (editingMaterialId) {
+        setLibraryItems(prev => prev.map(item => item.id === editingMaterialId ? materialItem : item));
+        showToast('✅ Material atualizado com sucesso no Ateliê e Supabase!');
+      } else {
+        setLibraryItems(prev => [materialItem, ...prev]);
+        showToast('✅ Material salvo com sucesso no Ateliê e Supabase!');
+      }
+
+      resetMaterialForm();
+      setIsMaterialModalOpen(false);
+    } catch (err: any) {
+      console.error('Erro ao salvar material no Ateliê:', err);
+      showToast('⚠️ Erro ao persistir material. Dados salvos no cache local.');
+    } finally {
+      setIsSavingMaterial(false);
+    }
+  };
+
+  const handleConfirmDeleteMaterial = async () => {
+    if (!deletingMaterialItem) return;
+    try {
+      await dataService.deleteProfessoraMarketingItem(deletingMaterialItem.id);
+      setLibraryItems(prev => prev.filter(i => i.id !== deletingMaterialItem.id));
+      if (selectedLibraryItem?.id === deletingMaterialItem.id) setSelectedLibraryItem(null);
+      showToast(`Material "${deletingMaterialItem.title}" removido com sucesso.`);
+    } catch (err) {
+      console.error('Erro ao deletar material:', err);
+      showToast('Erro ao remover material.');
+    } finally {
+      setDeletingMaterialItem(null);
+    }
+  };
+
+  const handleExportSingleMaterialJSON = (item: ProfessoraMarketingItem) => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(item, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `material_${item.title.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast('📄 Material exportado em JSON!');
+  };
+
+  const handleExportAllMaterialsJSON = () => {
+    if (filteredMaterials.length === 0) {
+      showToast('⚠️ Nenhum material disponível para exportação.');
+      return;
+    }
+    const exportPayload = {
+      exportadoEm: new Date().toISOString(),
+      totalRegistros: filteredMaterials.length,
+      modulo: "Ateliê de Aulas - Professora Marketing IA",
+      materiais: filteredMaterials
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportPayload, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `atelie_materiais_${new Date().toISOString().split('T')[0]}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    showToast(`📁 ${filteredMaterials.length} materiais exportados em JSON!`);
+  };
+
+  const handlePrintSingleMaterial = (item: ProfessoraMarketingItem) => {
+    setPrintMaterialItem(item);
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
+  const handlePrintAllMaterials = () => {
+    setPrintMaterialItem(null);
+    setTimeout(() => {
+      window.print();
+    }, 150);
+  };
+
+  // Itens filtrados com ordenação por atualização mais recente
+  const filteredMaterials = [...libraryItems]
+    .sort((a, b) => (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt))
+    .filter(item => {
+      const q = materialSearchQuery.toLowerCase().trim();
+      const matchesSearch = 
+        !q ||
+        item.title.toLowerCase().includes(q) || 
+        (item.disciplina || (item.metadata?.disciplina as string) || (item.metadata?.subject as string) || '').toLowerCase().includes(q) ||
+        item.content.toLowerCase().includes(q);
+
+      const itemDisc = item.disciplina || (item.metadata?.disciplina as string) || (item.metadata?.subject as string);
+      const matchesDisciplina = materialFilterDisciplina === 'all' || itemDisc === materialFilterDisciplina;
+
+      const itemTipo = item.tipo || 
+        (item.category === 'plano_aula' ? 'Plano de aula' : 
+         item.category === 'quiz' ? 'Avaliação' : 
+         item.category === 'folha_atividade' || item.category === 'ideias_atividades' ? 'Atividade' : 'Conteúdo');
+      const matchesTipo = materialFilterTipo === 'all' || itemTipo === materialFilterTipo;
+
+      const itemStatus = item.status || (item.metadata?.status as string) || 'Em preparação';
+      const matchesStatus = materialFilterStatus === 'all' || itemStatus === materialFilterStatus;
+
+      return matchesSearch && matchesDisciplina && matchesTipo && matchesStatus;
+    });
+
+  // Itens legados para IA Assistente
   const filteredLibrary = libraryItems.filter(item => {
     const matchesSearch = item.title.toLowerCase().includes(librarySearch.toLowerCase()) || 
                           item.content.toLowerCase().includes(librarySearch.toLowerCase());
@@ -695,9 +1173,22 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
     return matchesSearch && matchesCategory;
   });
 
-  // Métricas do Ateliê
+  // Métricas do Ateliê conforme requisitos
   const totalMateriais = libraryItems.length;
-  const totalDisciplinas = classesList.length;
+
+  // Disciplinas distintas que possuem materiais
+  const disciplinasComMateriais = new Set(
+    libraryItems
+      .map(i => i.disciplina || (i.metadata?.disciplina as string) || (i.metadata?.subject as string))
+      .filter(Boolean)
+  );
+  const totalDisciplinasEmPreparacao = disciplinasComMateriais.size > 0 ? disciplinasComMateriais.size : classesList.length;
+
+  // Materiais com status "Pronto"
+  const totalProntosParaEnsinar = libraryItems.filter(
+    i => i.status === 'Pronto' || i.metadata?.status === 'Pronto'
+  ).length;
+
   const turmasAtivasCount = classesList.filter(c => c.status !== 'inativa').length;
 
   // Variáveis de Estilo Híbrido: Claro Lavanda (Ateliê) vs Escuro Elegante
@@ -757,7 +1248,7 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
           {/* Alternador de Modo de Visualização */}
           <div className={`flex items-center p-1 rounded-2xl border ${themeClasses.border} ${themeClasses.cardMuted}`}>
             <span className="text-[10px] font-bold uppercase tracking-wider px-2 text-[#7d759a] hidden sm:inline">
-              Modo:
+              Modo de Visualização:
             </span>
             <button
               onClick={() => handleToggleViewMode('professor')}
@@ -766,7 +1257,7 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                   ? 'bg-[#7c3aed] text-white shadow-sm shadow-purple-500/30'
                   : 'text-[#6f678e] hover:text-[#7c3aed]'
               }`}
-              title="Modo Professor: Gestão completa de turmas, materiais e relatórios"
+              title="Modo Professor: Acesso total a criação, edição e exclusão de materiais, turmas e relatórios"
             >
               <span>🎓</span> Professor
             </button>
@@ -777,7 +1268,7 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                   ? 'bg-[#2563eb] text-white shadow-sm shadow-blue-500/30'
                   : 'text-[#6f678e] hover:text-[#2563eb]'
               }`}
-              title="Modo Aluno: Conteúdos didáticos, planos de estudo e assistente de dúvidas"
+              title="Modo Aluno: Visualização simplificada dos materiais didáticos e acompanhamento de progresso"
             >
               <span>📘</span> Aluno
             </button>
@@ -796,11 +1287,9 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
           {/* Botão Ação Rápida Ateliê */}
           {viewMode === 'professor' && (
             <button
-              onClick={() => {
-                setCurrentSection('ia_assistente');
-                setActiveGenerator('plano_aula');
-              }}
+              onClick={handleOpenNewMaterialModal}
               className="px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm shadow-purple-600/30 active:scale-95"
+              title="Criar novo material didático no Ateliê"
             >
               <Plus size={15} />
               <span>+ Novo material</span>
@@ -947,9 +1436,9 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                   </div>
                 </div>
 
-                {/* MÉTRICAS EM CARDS CLAROS E ESPAÇADOS (Idênticos ao Ateliê) */}
+                {/* MÉTRICAS EM CARDS CLAROS E ESPAÇADOS (Conforme especificação do Ateliê) */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-                  {/* Card 1: Materiais */}
+                  {/* Card 1: Materiais no ateliê */}
                   <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${themeClasses.card}`}>
                     <div className="p-4 rounded-2xl bg-[#ede5fa] text-[#7c3aed]">
                       <BookOpen size={26} />
@@ -971,7 +1460,7 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                     </div>
                     <div>
                       <h3 className={`text-2xl sm:text-3xl font-display font-black ${themeClasses.title}`}>
-                        {String(totalDisciplinas).padStart(2, '0')}
+                        {String(totalDisciplinasEmPreparacao).padStart(2, '0')}
                       </h3>
                       <p className={`text-xs sm:text-sm font-medium ${themeClasses.subtitle}`}>
                         Disciplinas em preparação
@@ -979,23 +1468,23 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                     </div>
                   </div>
 
-                  {/* Card 3: Turmas ativas */}
+                  {/* Card 3: Prontos para ensinar */}
                   <div className={`p-6 rounded-3xl border flex items-center gap-4 transition-all ${themeClasses.card}`}>
                     <div className="p-4 rounded-2xl bg-[#d1fae5] text-[#059669]">
                       <CheckCircle2 size={26} />
                     </div>
                     <div>
                       <h3 className={`text-2xl sm:text-3xl font-display font-black ${themeClasses.title}`}>
-                        {String(turmasAtivasCount).padStart(2, '0')}
+                        {String(totalProntosParaEnsinar).padStart(2, '0')}
                       </h3>
                       <p className={`text-xs sm:text-sm font-medium ${themeClasses.subtitle}`}>
-                        Prontas para ensinar
+                        Prontos para ensinar
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* SEÇÃO: POR ONDE COMEÇAR? (3 PROPOSTAS RÁPIDAS) */}
+                {/* SEÇÃO: POR ONDE COMEÇAR? (3 MODELOS INICIAIS - SÓ PERSISTEM AO SALVAR) */}
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div>
@@ -1003,85 +1492,100 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                         Por onde começar?
                       </h3>
                       <p className={`text-xs md:text-sm ${themeClasses.subtitle}`}>
-                        Três propostas para tirar sua primeira aula técnica do papel hoje.
+                        Três propostas estruturadas para tirar sua aula do papel hoje. Clique para abrir e personalizar; o material só é salvo após clicar em "Salvar".
                       </p>
                     </div>
                     <button
-                      onClick={() => setCurrentSection('ia_assistente')}
+                      onClick={() => setCurrentSection('materiais')}
                       className="text-xs font-bold text-[#7c3aed] hover:underline flex items-center gap-1 self-start sm:self-auto"
                     >
-                      Ver todas as ferramentas IA <ArrowRight size={14} />
+                      Ver todos os materiais <ArrowRight size={14} />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {/* Card Proposta 1 */}
+                    {/* Modelo 1: O marketing no nosso cotidiano (Plano de aula, 100 min) */}
                     <div 
-                      onClick={() => {
-                        setCurrentSection('ia_assistente');
-                        setActiveGenerator('plano_aula');
-                        setPlanoTema('O marketing no nosso cotidiano');
-                      }}
+                      onClick={() => handleSelectStarterTemplate(0)}
                       className={`p-6 rounded-3xl border cursor-pointer group transition-all hover:scale-[1.01] hover:border-purple-400 ${themeClasses.card}`}
                     >
                       <div className="p-3 w-fit rounded-2xl bg-[#ede5fa] text-[#7c3aed] mb-4 group-hover:bg-[#7c3aed] group-hover:text-white transition-colors">
                         <Lightbulb size={22} />
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
-                        Plano de aula · 50 min
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#7c3aed] bg-purple-500/10 px-2.5 py-0.5 rounded-full">
+                          Plano de aula
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#8878a8] flex items-center gap-1">
+                          <Clock size={11} /> 100 min
+                        </span>
+                      </div>
                       <h4 className={`text-base font-display font-bold mt-1 group-hover:text-[#7c3aed] transition-colors ${themeClasses.title}`}>
                         O marketing no nosso cotidiano
                       </h4>
                       <p className={`text-xs mt-2 leading-relaxed ${themeClasses.subtitle}`}>
-                        Conceitos, exemplos locais e um roteiro pronto para conduzir uma aula engajadora.
+                        Conceitos de necessidade, desejo e valor percebido com roteiro pronto para conduzir 2 aulas engajadoras.
                       </p>
+                      <div className="mt-4 pt-3 border-t border-purple-500/10 flex items-center justify-between text-xs font-bold text-[#7c3aed]">
+                        <span>Abrir modelo</span>
+                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
 
-                    {/* Card Proposta 2 */}
+                    {/* Modelo 2: Os 4 Ps na prática (Atividade, 50 min) */}
                     <div 
-                      onClick={() => {
-                        setCurrentSection('ia_assistente');
-                        setActiveGenerator('ideias_atividades');
-                        setIdeiasTema('Os 4 Ps na prática');
-                      }}
+                      onClick={() => handleSelectStarterTemplate(1)}
                       className={`p-6 rounded-3xl border cursor-pointer group transition-all hover:scale-[1.01] hover:border-amber-400 ${themeClasses.card}`}
                     >
                       <div className="p-3 w-fit rounded-2xl bg-[#fef3c7] text-[#d97706] mb-4 group-hover:bg-[#d97706] group-hover:text-white transition-colors">
                         <Layers size={22} />
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
-                        Atividade · 30 min
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#d97706] bg-amber-500/10 px-2.5 py-0.5 rounded-full">
+                          Atividade
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#8878a8] flex items-center gap-1">
+                          <Clock size={11} /> 50 min
+                        </span>
+                      </div>
                       <h4 className={`text-base font-display font-bold mt-1 group-hover:text-[#d97706] transition-colors ${themeClasses.title}`}>
                         Os 4 Ps na prática
                       </h4>
                       <p className={`text-xs mt-2 leading-relaxed ${themeClasses.subtitle}`}>
-                        Uma atividade mão na massa para conectar produto, preço, praça e promoção.
+                        Atividade mão na massa de agência simulada conectando Produto, Preço, Praça e Promoção em equipe.
                       </p>
+                      <div className="mt-4 pt-3 border-t border-purple-500/10 flex items-center justify-between text-xs font-bold text-[#d97706]">
+                        <span>Abrir modelo</span>
+                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
 
-                    {/* Card Proposta 3 */}
+                    {/* Modelo 3: Diagnóstico inicial de Marketing (Avaliação, 30 min) */}
                     <div 
-                      onClick={() => {
-                        setCurrentSection('ia_assistente');
-                        setActiveGenerator('quiz');
-                        setQuizTema('Diagnóstico inicial de Marketing');
-                      }}
+                      onClick={() => handleSelectStarterTemplate(2)}
                       className={`p-6 rounded-3xl border cursor-pointer group transition-all hover:scale-[1.01] hover:border-emerald-400 ${themeClasses.card}`}
                     >
                       <div className="p-3 w-fit rounded-2xl bg-[#d1fae5] text-[#059669] mb-4 group-hover:bg-[#059669] group-hover:text-white transition-colors">
                         <CheckCircle size={22} />
                       </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8878a8]">
-                        Avaliação · 20 min
-                      </span>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#059669] bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+                          Avaliação
+                        </span>
+                        <span className="text-[10px] font-semibold text-[#8878a8] flex items-center gap-1">
+                          <Clock size={11} /> 30 min
+                        </span>
+                      </div>
                       <h4 className={`text-base font-display font-bold mt-1 group-hover:text-[#059669] transition-colors ${themeClasses.title}`}>
                         Diagnóstico inicial de Marketing
                       </h4>
                       <p className={`text-xs mt-2 leading-relaxed ${themeClasses.subtitle}`}>
-                        Conheça o ponto de partida do conhecimento prévio da sua futura turma.
+                        Questionário diagnóstico de 5 questões práticas e gabarito comentado para mapear a turma.
                       </p>
+                      <div className="mt-4 pt-3 border-t border-purple-500/10 flex items-center justify-between text-xs font-bold text-[#059669]">
+                        <span>Abrir modelo</span>
+                        <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1433,107 +1937,292 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
             )}
 
             {/* ------------------------------------------------------------- */}
-            {/* SEÇÃO 3: MEUS MATERIAIS & BIBLIOTECA SALVA                   */}
+            {/* SEÇÃO 3: MEUS MATERIAIS (MÓDULO COMPLETO ATELIÊ DE AULAS)    */}
             {/* ------------------------------------------------------------- */}
             {currentSection === 'materiais' && (
               <div className="space-y-6">
-                {/* Barra de Busca e Filtro de Categorias */}
-                <div className={`p-6 rounded-3xl border flex flex-col md:flex-row gap-4 items-center justify-between ${themeClasses.card}`}>
-                  <div className="relative w-full md:w-96">
-                    <input
-                      type="text"
-                      placeholder="Pesquisar nos materiais do ateliê..."
-                      value={librarySearch}
-                      onChange={e => setLibrarySearch(e.target.value)}
-                      className={`w-full rounded-2xl pl-12 pr-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
-                    />
-                    <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8878a8]" />
+                {/* BARRA SUPERIOR: BOTÃO NOVO MATERIAL + AÇÕES GLOBAIS DE EXPORTAÇÃO E IMPRESSÃO */}
+                <div className={`p-6 rounded-3xl border flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between ${themeClasses.card}`}>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-xl bg-[#ede5fa] text-[#7c3aed]">
+                        <BookOpen size={20} />
+                      </span>
+                      <h3 className={`text-lg sm:text-xl font-display font-bold ${themeClasses.title}`}>
+                        Ateliê de Materiais Didáticos
+                      </h3>
+                    </div>
+                    <p className={`text-xs ${themeClasses.subtitle}`}>
+                      Planos de aula, conteúdos, atividades, avaliações e anotações para o Ensino Técnico Profissional.
+                    </p>
                   </div>
 
-                  <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-1 scrollbar-none">
+                  <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
                     <button
-                      onClick={() => setLibraryCategoryFilter('all')}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                        libraryCategoryFilter === 'all'
-                          ? 'bg-[#7c3aed] text-white'
-                          : `${themeClasses.cardMuted} text-[#6c6488] hover:border-purple-300`
-                      }`}
+                      onClick={handleOpenNewMaterialModal}
+                      className="px-4 py-2.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm shadow-purple-600/30 active:scale-95"
                     >
-                      Todos ({libraryItems.length})
+                      <Plus size={16} />
+                      <span>Novo material</span>
                     </button>
-                    {toolsConfig.map(t => (
-                      <button
-                        key={t.id}
-                        onClick={() => setLibraryCategoryFilter(t.id)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                          libraryCategoryFilter === t.id
-                            ? 'bg-[#7c3aed] text-white'
-                            : `${themeClasses.cardMuted} text-[#6c6488] hover:border-purple-300`
-                        }`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
+
+                    <button
+                      onClick={handleExportAllMaterialsJSON}
+                      className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${themeClasses.cardMuted} hover:border-purple-400`}
+                      title="Exportar todos os materiais filtrados em arquivo JSON"
+                    >
+                      <Download size={14} className="text-[#7c3aed]" />
+                      <span>Exportar JSON</span>
+                    </button>
+
+                    <button
+                      onClick={handlePrintAllMaterials}
+                      className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${themeClasses.cardMuted} hover:border-purple-400`}
+                      title="Imprimir materiais via CSS formatado para A4"
+                    >
+                      <Printer size={14} className="text-[#7c3aed]" />
+                      <span>Imprimir</span>
+                    </button>
                   </div>
                 </div>
 
-                {/* Grid de Materiais */}
+                {/* BARRA DE FILTROS E BUSCA AVANÇADA */}
+                <div className={`p-5 rounded-3xl border space-y-4 ${themeClasses.card}`}>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+                    {/* Campo de Busca textual (Título, Disciplina e Conteúdo) */}
+                    <div className="md:col-span-5 relative">
+                      <input
+                        type="text"
+                        placeholder="Buscar por título, disciplina ou conteúdo..."
+                        value={materialSearchQuery}
+                        onChange={e => setMaterialSearchQuery(e.target.value)}
+                        className={`w-full rounded-2xl pl-10 pr-4 py-2.5 text-xs focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                      />
+                      <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8878a8]" />
+                      {materialSearchQuery && (
+                        <button
+                          onClick={() => setMaterialSearchQuery('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filtro por Disciplina (38 componentes + Projetos Empreendedores) */}
+                    <div className="md:col-span-3">
+                      <select
+                        value={materialFilterDisciplina}
+                        onChange={e => setMaterialFilterDisciplina(e.target.value)}
+                        className={`w-full rounded-2xl px-3 py-2.5 text-xs focus:outline-none focus:border-purple-500 truncate ${themeClasses.inputBg}`}
+                      >
+                        <option value="all">Todas as Disciplinas (38 + Projetos)</option>
+                        {DISCIPLINAS_MARKETING.map(disc => (
+                          <option key={disc} value={disc}>
+                            {disc}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Filtro por Tipo */}
+                    <div className="md:col-span-2">
+                      <select
+                        value={materialFilterTipo}
+                        onChange={e => setMaterialFilterTipo(e.target.value)}
+                        className={`w-full rounded-2xl px-3 py-2.5 text-xs focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                      >
+                        <option value="all">Todos os Tipos</option>
+                        <option value="Plano de aula">Plano de aula</option>
+                        <option value="Conteúdo">Conteúdo</option>
+                        <option value="Atividade">Atividade</option>
+                        <option value="Avaliação">Avaliação</option>
+                        <option value="Anotação">Anotação</option>
+                      </select>
+                    </div>
+
+                    {/* Filtro por Status */}
+                    <div className="md:col-span-2">
+                      <select
+                        value={materialFilterStatus}
+                        onChange={e => setMaterialFilterStatus(e.target.value)}
+                        className={`w-full rounded-2xl px-3 py-2.5 text-xs focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                      >
+                        <option value="all">Todos os Status</option>
+                        <option value="Pronto">Pronto</option>
+                        <option value="Em preparação">Em preparação</option>
+                        <option value="Rascunho">Rascunho</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Resumo de Resultados dos Filtros */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-purple-500/10 text-xs text-[#8878a8]">
+                    <span>
+                      Exibindo <strong className="text-[#7c3aed]">{filteredMaterials.length}</strong> de {libraryItems.length} materiais salvos (ordenados por atualização mais recente)
+                    </span>
+                    {(materialSearchQuery || materialFilterDisciplina !== 'all' || materialFilterTipo !== 'all' || materialFilterStatus !== 'all') && (
+                      <button
+                        onClick={() => {
+                          setMaterialSearchQuery('');
+                          setMaterialFilterDisciplina('all');
+                          setMaterialFilterTipo('all');
+                          setMaterialFilterStatus('all');
+                        }}
+                        className="text-xs text-[#7c3aed] hover:underline font-bold"
+                      >
+                        Limpar Filtros
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* GRID DE MATERIAIS COM VISUAL COMPLETO DO ATELIÊ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredLibrary.length > 0 ? (
-                    filteredLibrary.map((item) => {
-                      const cfg = toolsConfig.find(s => s.id === item.category);
+                  {filteredMaterials.length > 0 ? (
+                    filteredMaterials.map((item) => {
+                      const itemTipo = item.tipo || 
+                        (item.category === 'plano_aula' ? 'Plano de aula' : 
+                         item.category === 'quiz' ? 'Avaliação' : 
+                         item.category === 'folha_atividade' || item.category === 'ideias_atividades' ? 'Atividade' : 'Conteúdo');
+                      
+                      const itemDisciplina = item.disciplina || (item.metadata?.disciplina as string) || (item.metadata?.subject as string) || 'Fundamentos de Marketing';
+                      const itemStatus = item.status || (item.metadata?.status as string) || 'Em preparação';
                       const linkedClass = classesList.find(c => c.id === item.classId);
-                      const Icon = cfg?.icon || BookOpen;
+
+                      // Ícone fino e contextualmente semântico por tipo
+                      const renderTipoIcon = () => {
+                        switch (itemTipo) {
+                          case 'Plano de aula': return <Brain size={13} className="text-[#7c3aed]" />;
+                          case 'Conteúdo': return <FileText size={13} className="text-blue-600" />;
+                          case 'Atividade': return <ClipboardList size={13} className="text-amber-600" />;
+                          case 'Avaliação': return <CheckCircle size={13} className="text-emerald-600" />;
+                          case 'Anotação': return <FileEdit size={13} className="text-indigo-600" />;
+                          default: return <BookOpen size={13} className="text-[#7c3aed]" />;
+                        }
+                      };
+
+                      // Cor visual de status
+                      const renderStatusBadge = () => {
+                        if (itemStatus === 'Pronto') {
+                          return (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200/80 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              Pronto
+                            </span>
+                          );
+                        } else if (itemStatus === 'Em preparação') {
+                          return (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80 flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              Em preparação
+                            </span>
+                          );
+                        }
+                        return (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            Rascunho
+                          </span>
+                        );
+                      };
 
                       return (
                         <div
                           key={item.id}
-                          className={`p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 group hover:border-purple-400 ${themeClasses.card}`}
+                          className={`p-6 rounded-3xl border transition-all flex flex-col justify-between space-y-4 group hover:border-purple-400 hover:shadow-md ${themeClasses.card}`}
                         >
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
+                          <div className="space-y-2.5">
+                            {/* Badges Superiores: Tipo, Status e Data */}
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
                               <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#ede5fa] text-[#7c3aed] rounded-full border border-purple-200/60 flex items-center gap-1.5">
-                                <Icon size={12} />
-                                {cfg?.label || item.category}
+                                {renderTipoIcon()}
+                                {itemTipo}
                               </span>
-                              <span className="text-[10px] text-[#8878a8]">
-                                {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+                              {renderStatusBadge()}
+                            </div>
+
+                            {/* Badge da Disciplina */}
+                            <div className="pt-0.5">
+                              <span className="inline-block text-[11px] font-bold text-[#6d28d9] bg-purple-500/10 px-2.5 py-1 rounded-xl border border-purple-200/40 line-clamp-1">
+                                📚 {itemDisciplina}
                               </span>
                             </div>
 
-                            {linkedClass && (
-                              <span className="inline-block text-[10px] bg-blue-500/10 text-blue-600 font-bold px-2.5 py-0.5 rounded-lg mb-2 border border-blue-200/50">
-                                🏫 {linkedClass.name}
-                              </span>
-                            )}
-
+                            {/* Título do Material */}
                             <h4 className={`text-base font-display font-bold line-clamp-2 mt-1 group-hover:text-[#7c3aed] transition-colors ${themeClasses.title}`}>
                               {item.title}
                             </h4>
-                            <p className={`text-xs line-clamp-4 mt-2 p-3 rounded-2xl border ${themeClasses.cardMuted}`}>
-                              {item.content.replace(/[#*`_]/g, '')}
+
+                            {/* Informações Complementares: Duração e Data Planejada */}
+                            <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#8878a8]">
+                              {(item.duracaoMinutos || item.metadata?.duracaoMinutos) && (
+                                <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded-lg font-medium">
+                                  <Clock size={12} className="text-[#7c3aed]" />
+                                  {item.duracaoMinutos || item.metadata?.duracaoMinutos} min
+                                </span>
+                              )}
+                              {(item.dataPlanejada || item.metadata?.dataPlanejada) && (
+                                <span className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded-lg font-medium">
+                                  <Calendar size={12} className="text-[#7c3aed]" />
+                                  {item.dataPlanejada || item.metadata?.dataPlanejada}
+                                </span>
+                              )}
+                              {linkedClass && (
+                                <span className="flex items-center gap-1 text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-lg">
+                                  🏫 {linkedClass.name}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Trecho do Conteúdo */}
+                            <p className={`text-xs line-clamp-3 p-3 rounded-2xl border ${themeClasses.cardMuted}`}>
+                              {item.content ? item.content.replace(/[#*`_]/g, '') : 'Sem conteúdo digitado.'}
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between pt-3 border-t border-purple-500/10">
+                          {/* Ações do Card de Material */}
+                          <div className="flex items-center justify-between pt-3 border-t border-purple-500/10 gap-1.5 flex-wrap">
                             <button
                               onClick={() => setSelectedLibraryItem(item)}
                               className="text-xs font-bold text-[#7c3aed] hover:underline flex items-center gap-1"
                             >
-                              <Eye size={14} /> Visualizar Completo
+                              <Eye size={14} /> Visualizar
                             </button>
-                            <div className="flex items-center gap-1.5">
+
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => handleEditMaterial(item)}
+                                className={`p-2 rounded-xl border transition-all ${themeClasses.cardMuted} hover:border-purple-300 text-[#7c3aed]`}
+                                title="Editar Material"
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handlePrintSingleMaterial(item)}
+                                className={`p-2 rounded-xl border transition-all ${themeClasses.cardMuted} hover:border-purple-300 text-slate-600`}
+                                title="Imprimir Ficha Didática"
+                              >
+                                <Printer size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleExportSingleMaterialJSON(item)}
+                                className={`p-2 rounded-xl border transition-all ${themeClasses.cardMuted} hover:border-purple-300 text-slate-600`}
+                                title="Exportar JSON"
+                              >
+                                <Download size={14} />
+                              </button>
                               <button
                                 onClick={() => copyToClipboard(item.content, item.id)}
                                 className={`p-2 rounded-xl border transition-all ${themeClasses.cardMuted} hover:border-purple-300`}
-                                title="Copiar"
+                                title="Copiar Conteúdo"
                               >
                                 {copiedId === item.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                               </button>
                               <button
-                                onClick={() => handleDeleteLibraryItem(item.id)}
+                                onClick={() => setDeletingMaterialItem(item)}
                                 className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-all border border-rose-200"
-                                title="Excluir"
+                                title="Excluir Material"
                               >
                                 <Trash2 size={14} />
                               </button>
@@ -1546,8 +2235,14 @@ Explique com clareza, empatia e exemplos didáticos do dia a dia ou de marcas re
                     <div className={`col-span-full py-16 text-center space-y-3 rounded-3xl border ${themeClasses.cardMuted}`}>
                       <BookmarkCheck size={48} className="mx-auto text-[#8878a8] stroke-[1.5]" />
                       <p className={`text-sm ${themeClasses.subtitle}`}>
-                        Nenhum material encontrado no ateliê. Crie um novo plano ou atividade na aba IA Assistente!
+                        Nenhum material encontrado com os filtros aplicados.
                       </p>
+                      <button
+                        onClick={handleOpenNewMaterialModal}
+                        className="px-4 py-2 bg-[#7c3aed] text-white rounded-xl text-xs font-bold shadow-sm"
+                      >
+                        + Criar Novo Material no Ateliê
+                      </button>
                     </div>
                   )}
                 </div>
@@ -2942,10 +3637,23 @@ Forneça 3 exemplos reais de marcas no Brasil, métricas de sucesso, tendências
             >
               <div className="flex items-center justify-between pb-4 border-b border-purple-500/10">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-purple-500/10 text-[#7c3aed] rounded-full">
-                      {selectedLibraryItem.category.replace('_', ' ')}
+                      {selectedLibraryItem.tipo || selectedLibraryItem.category.replace('_', ' ')}
                     </span>
+                    {(selectedLibraryItem.disciplina || selectedLibraryItem.metadata?.disciplina) && (
+                      <span className="text-[10px] font-bold px-2.5 py-1 bg-purple-50 text-[#6d28d9] rounded-full border border-purple-200/50">
+                        📚 {selectedLibraryItem.disciplina || selectedLibraryItem.metadata?.disciplina}
+                      </span>
+                    )}
+                    {selectedLibraryItem.status && (
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
+                        selectedLibraryItem.status === 'Pronto' ? 'bg-emerald-50 text-emerald-700' : 
+                        selectedLibraryItem.status === 'Em preparação' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {selectedLibraryItem.status}
+                      </span>
+                    )}
                     {selectedLibraryItem.classId && (
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 bg-blue-500/10 text-blue-600 rounded-full">
                         🏫 {classesList.find(c => c.id === selectedLibraryItem.classId)?.name || 'Turma Vinculada'}
@@ -2968,14 +3676,26 @@ Forneça 3 exemplos reais de marcas no Brasil, métricas de sucesso, tendências
                 <Markdown>{selectedLibraryItem.content}</Markdown>
               </div>
 
-              <div className="pt-4 border-t border-purple-500/10 flex items-center justify-between">
+              <div className="pt-4 border-t border-purple-500/10 flex flex-wrap items-center justify-between gap-3">
                 <span className="text-xs text-[#8878a8]">
                   Criado em: {new Date(selectedLibraryItem.createdAt).toLocaleString('pt-BR')}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handlePrintSingleMaterial(selectedLibraryItem)}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <Printer size={14} /> Imprimir
+                  </button>
+                  <button
+                    onClick={() => handleExportSingleMaterialJSON(selectedLibraryItem)}
+                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <Download size={14} /> Exportar JSON
+                  </button>
                   <button
                     onClick={() => copyToClipboard(selectedLibraryItem.content, 'modal_view')}
-                    className="px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-xs"
+                    className="px-4 py-2 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
                   >
                     {copiedId === 'modal_view' ? <Check size={14} /> : <Copy size={14} />}
                     Copiar Conteúdo
@@ -2992,6 +3712,383 @@ Forneça 3 exemplos reais de marcas no Brasil, métricas de sucesso, tendências
           </div>
         )}
       </AnimatePresence>
+
+      {/* 5. MODAL "NOVO MATERIAL" / "EDITAR MATERIAL" DO ATELIÊ */}
+      <AnimatePresence>
+        {isMaterialModalOpen && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`relative w-full max-w-3xl my-8 p-6 md:p-8 rounded-3xl shadow-2xl border space-y-6 ${themeClasses.card}`}
+            >
+              {/* Cabeçalho do Formulário */}
+              <div className="flex items-center justify-between pb-4 border-b border-purple-500/10">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-[#ede5fa] text-[#7c3aed] rounded-2xl">
+                    <FileEdit size={22} />
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-display font-bold ${themeClasses.title}`}>
+                      {editingMaterialId ? 'Editar Material do Ateliê' : 'Novo Material Didático'}
+                    </h3>
+                    <p className={`text-xs ${themeClasses.subtitle}`}>
+                      Preencha os dados do material. As alterações são persistidas no Supabase e sincronizadas com o Ateliê.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAttemptCloseMaterialModal}
+                  className="p-2 text-slate-400 hover:text-slate-600 rounded-xl"
+                  title="Fechar"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Formulário com todos os campos especificados */}
+              <form onSubmit={handleSaveMaterial} className="space-y-4">
+                {/* Campo: Título (obrigatório com validação) */}
+                <div>
+                  <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                    Título do Material *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Introdução ao Comportamento do Consumidor na Era Digital"
+                    value={matTitulo}
+                    onChange={e => {
+                      setMatTitulo(e.target.value);
+                      if (materialFormErrors.titulo) {
+                        setMaterialFormErrors(prev => ({ ...prev, titulo: undefined }));
+                      }
+                    }}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none transition-all ${
+                      materialFormErrors.titulo
+                        ? 'border-rose-400 bg-rose-50/30'
+                        : `focus:border-purple-500 ${themeClasses.inputBg}`
+                    }`}
+                  />
+                  {materialFormErrors.titulo && (
+                    <p className="text-xs text-rose-500 font-semibold mt-1 flex items-center gap-1">
+                      <AlertCircle size={13} /> {materialFormErrors.titulo}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Campo: Disciplina (38 componentes + Projetos Empreendedores) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                      Disciplina (38 de Marketing + Projetos) *
+                    </label>
+                    <select
+                      value={matDisciplina}
+                      onChange={e => setMatDisciplina(e.target.value)}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 truncate ${themeClasses.inputBg}`}
+                    >
+                      {DISCIPLINAS_MARKETING.map(disc => (
+                        <option key={disc} value={disc}>
+                          {disc}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Campo: Tipo (Plano de aula, Conteúdo, Atividade, Avaliação, Anotação) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                      Tipo de Material *
+                    </label>
+                    <select
+                      value={matTipo}
+                      onChange={e => setMatTipo(e.target.value as MaterialTipo)}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                    >
+                      <option value="Plano de aula">Plano de aula</option>
+                      <option value="Conteúdo">Conteúdo</option>
+                      <option value="Atividade">Atividade</option>
+                      <option value="Avaliação">Avaliação</option>
+                      <option value="Anotação">Anotação</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Campo: Status (Rascunho, Em preparação, Pronto) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                      Status *
+                    </label>
+                    <select
+                      value={matStatus}
+                      onChange={e => setMatStatus(e.target.value as MaterialStatus)}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                    >
+                      <option value="Rascunho">Rascunho</option>
+                      <option value="Em preparação">Em preparação</option>
+                      <option value="Pronto">Pronto</option>
+                    </select>
+                  </div>
+
+                  {/* Campo: Duração em minutos (opcional) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                      Duração (minutos)
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      placeholder="Ex: 50, 100"
+                      value={matDuracao}
+                      onChange={e => setMatDuracao(e.target.value === '' ? '' : Number(e.target.value))}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                    />
+                  </div>
+
+                  {/* Campo: Data planejada (opcional) */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                      Data Planejada
+                    </label>
+                    <input
+                      type="date"
+                      value={matData}
+                      onChange={e => setMatData(e.target.value)}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                    />
+                  </div>
+                </div>
+
+                {/* Campo: Vincular a Turma (Opcional) */}
+                <div>
+                  <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block mb-1">
+                    Vincular a uma Turma Cadastrada (Opcional)
+                  </label>
+                  <select
+                    value={matClassId}
+                    onChange={e => setMatClassId(e.target.value)}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 ${themeClasses.inputBg}`}
+                  >
+                    <option value="">Nenhuma turma vinculada (Material Geral)</option>
+                    {classesList.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name} - {c.subject} ({c.gradeYear})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Campo: Conteúdo (área de texto ampla) */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-[#8878a8] uppercase tracking-widest block">
+                      Conteúdo do Material (Markdown suportado)
+                    </label>
+                    <span className="text-[10px] text-[#8878a8]">
+                      {matConteudo.length} caracteres
+                    </span>
+                  </div>
+                  <textarea
+                    rows={9}
+                    placeholder="Escreva ou cole o conteúdo pedagógico, roteiro da aula, enunciados de atividades, critérios avaliativos ou referências de mercado..."
+                    value={matConteudo}
+                    onChange={e => setMatConteudo(e.target.value)}
+                    className={`w-full rounded-2xl p-4 text-sm font-mono leading-relaxed focus:outline-none focus:border-purple-500 resize-y ${themeClasses.inputBg}`}
+                  />
+                </div>
+
+                {/* Botões do Rodapé do Formulário */}
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-purple-500/10">
+                  <button
+                    type="button"
+                    onClick={handleAttemptCloseMaterialModal}
+                    className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingMaterial}
+                    className="px-6 py-2.5 bg-[#7c3aed] hover:bg-[#6d28d9] text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-sm shadow-purple-600/30 disabled:opacity-50 active:scale-95"
+                  >
+                    {isSavingMaterial ? (
+                      <>
+                        <RefreshCw size={15} className="animate-spin" />
+                        <span>Salvando no Supabase...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save size={15} />
+                        <span>Salvar material</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 6. MODAL: AVISO ANTES DE DESCARTAR ALTERAÇÕES NÃO SALVAS */}
+      <AnimatePresence>
+        {confirmDiscardModalOpen && (
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`p-6 max-w-md w-full space-y-4 rounded-3xl border shadow-2xl ${themeClasses.card}`}
+            >
+              <div className="flex items-center gap-3 text-amber-500">
+                <AlertTriangle size={24} />
+                <h3 className={`text-lg font-display font-bold ${themeClasses.title}`}>Descartar Alterações?</h3>
+              </div>
+              <p className={`text-sm leading-relaxed ${themeClasses.subtitle}`}>
+                Você possui dados digitados neste material que ainda não foram salvos. Se sair agora, as alterações serão descartadas.
+              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDiscardModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Continuar Editando
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDiscardMaterial}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-rose-600/30"
+                >
+                  Descartar Alterações
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 7. MODAL: CONFIRMAR EXCLUSÃO DE MATERIAL */}
+      <AnimatePresence>
+        {deletingMaterialItem && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`p-6 max-w-md w-full space-y-4 rounded-3xl border shadow-2xl ${themeClasses.card}`}
+            >
+              <div className="flex items-center gap-3 text-rose-500">
+                <Trash2 size={24} />
+                <h3 className={`text-lg font-display font-bold ${themeClasses.title}`}>Excluir Material Didático</h3>
+              </div>
+              <p className={`text-sm ${themeClasses.subtitle}`}>
+                Tem certeza que deseja remover o material <strong>"{deletingMaterialItem.title}"</strong> do Ateliê? O registro será excluído com segurança.
+              </p>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingMaterialItem(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDeleteMaterial}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-rose-600/30"
+                >
+                  Sim, Excluir Material
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CONTAINER EXCLUSIVO PARA IMPRESSÃO VIA CSS (@media print) */}
+      <div id="printable-material-sheet" className="hidden">
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            body * {
+              visibility: hidden !important;
+            }
+            #printable-material-sheet, #printable-material-sheet * {
+              visibility: visible !important;
+            }
+            #printable-material-sheet {
+              display: block !important;
+              position: absolute !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              color: #000 !important;
+              background: #fff !important;
+              font-family: Arial, Helvetica, sans-serif !important;
+              padding: 24px !important;
+            }
+            .print-page-break {
+              page-break-after: always;
+            }
+          }
+        `}} />
+        {printMaterialItem ? (
+          <div className="space-y-4">
+            <div style={{ borderBottom: '2px solid #6d28d9', paddingBottom: '12px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#6d28d9', margin: 0 }}>
+                Planner Diário Raquel · Ateliê de Aulas & Pedagogia Técnica
+              </h2>
+              <p style={{ fontSize: '12px', color: '#555', margin: '4px 0 0 0' }}>
+                Módulo Professora Marketing IA · Ficha Didática
+              </p>
+            </div>
+            <div style={{ marginTop: '16px' }}>
+              <h1 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+                {printMaterialItem.title}
+              </h1>
+              <div style={{ fontSize: '12px', color: '#444', lineHeight: '1.8' }}>
+                <strong>Disciplina:</strong> {printMaterialItem.disciplina || printMaterialItem.metadata?.disciplina || 'Fundamentos de Marketing'}<br />
+                <strong>Tipo:</strong> {printMaterialItem.tipo || printMaterialItem.category} | <strong>Status:</strong> {printMaterialItem.status || 'Em preparação'}<br />
+                {printMaterialItem.duracaoMinutos && <><strong>Duração:</strong> {printMaterialItem.duracaoMinutos} min | </>}
+                {printMaterialItem.dataPlanejada && <><strong>Data Planejada:</strong> {printMaterialItem.dataPlanejada}</>}
+              </div>
+            </div>
+            <hr style={{ border: 'none', borderTop: '1px solid #ccc', margin: '16px 0' }} />
+            <div style={{ fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+              {printMaterialItem.content}
+            </div>
+            <div style={{ marginTop: '32px', paddingTop: '16px', borderTop: '1px solid #eee', fontSize: '10px', color: '#777', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Emissão: {new Date().toLocaleDateString('pt-BR')}</span>
+              <span>Professora Raquel Duarte · EPTNM</span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            <div style={{ borderBottom: '2px solid #6d28d9', paddingBottom: '12px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 'bold', color: '#6d28d9', margin: 0 }}>
+                Planner Diário Raquel · Ateliê de Aulas (Todos os Materiais Filtrados)
+              </h2>
+              <p style={{ fontSize: '12px', color: '#555', margin: '4px 0 0 0' }}>
+                Total de Registros: {filteredMaterials.length} | Data: {new Date().toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+            {filteredMaterials.map((m, idx) => (
+              <div key={m.id} className={idx < filteredMaterials.length - 1 ? "print-page-break" : ""}>
+                <h2 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 6px 0' }}>{m.title}</h2>
+                <p style={{ fontSize: '11px', color: '#555', margin: '0 0 12px 0' }}>
+                  Disciplina: {m.disciplina || m.metadata?.disciplina} | Tipo: {m.tipo || m.category} | Status: {m.status || 'Em preparação'}
+                </p>
+                <div style={{ fontSize: '12px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  {m.content}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

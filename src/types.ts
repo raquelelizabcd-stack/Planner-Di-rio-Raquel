@@ -346,11 +346,17 @@ export interface ProfessoraClass {
 export interface ProfessoraMarketingItem {
   id: string;
   title: string;
-  category: 'plano_aula' | 'material_didatico' | 'assistente_mercado' | 'slides' | 'sequencia_didatica' | 'folha_atividade' | 'ideias_atividades' | 'jogos_educativos' | 'quiz';
+  category: 'plano_aula' | 'material_didatico' | 'assistente_mercado' | 'slides' | 'sequencia_didatica' | 'folha_atividade' | 'ideias_atividades' | 'jogos_educativos' | 'quiz' | string;
   content: string;
   classId?: string;
   metadata?: Record<string, any>;
   createdAt: number;
+  updatedAt?: number;
+  disciplina?: string;
+  tipo?: 'Plano de aula' | 'Conteúdo' | 'Atividade' | 'Avaliação' | 'Anotação' | string;
+  status?: 'Rascunho' | 'Em preparação' | 'Pronto' | string;
+  duracaoMinutos?: number;
+  dataPlanejada?: string;
 }
 
 

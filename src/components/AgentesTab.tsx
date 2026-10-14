@@ -47,7 +47,8 @@ import {
   Power,
   Settings2,
   HelpCircle,
-  XCircle
+  XCircle,
+  Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -68,6 +69,7 @@ import {
   AIProviderId
 } from '../types';
 import { dataService, encryptApiKey, decryptApiKey, maskApiKey } from '../services/dataService';
+import EscritorioVirtualAgentes from './EscritorioVirtualAgentes';
 
 interface AgentesTabProps {
   accentColor?: string;
@@ -75,7 +77,8 @@ interface AgentesTabProps {
 }
 
 export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 }: AgentesTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'control' | 'token_history' | 'publicacao' | 'marketing' | 'debug' | 'pedagogico' | 'logs'>('control');
+  const [activeSubTab, setActiveSubTab] = useState<'escritorio' | 'control' | 'token_history' | 'publicacao' | 'marketing' | 'debug' | 'pedagogico' | 'logs'>('escritorio');
+
   
   // States dos Agentes e Medidor
   const [agents, setAgents] = useState<AgentStatus[]>([]);
@@ -976,6 +979,7 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
         {/* Sub-navegação do Painel */}
         <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-white/10 relative z-10">
           {[
+            { id: 'escritorio', label: '🏢 Escritório Virtual', icon: Building2 },
             { id: 'control', label: 'Visão Geral & Tokens', icon: Sliders },
             { id: 'token_history', label: 'Histórico de Tokens', icon: BarChart3 },
             { id: 'publicacao', label: 'Agente de Publicação IA', icon: Share2 },
@@ -1000,8 +1004,17 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
         </div>
       </div>
 
+      {/* ================= SEÇÃO: ESCRITÓRIO VIRTUAL INTERATIVO ================= */}
+      {activeSubTab === 'escritorio' && (
+        <EscritorioVirtualAgentes 
+          accentColor={accentColor} 
+          borderRadius={borderRadius} 
+        />
+      )}
+
       {/* ================= SEÇÃO 1: VISÃO GERAL & MEDIDOR DE TOKENS ================= */}
       {activeSubTab === 'control' && (
+
         <div className="space-y-8">
           {/* Card do Medidor de Tokens Google Antigravity */}
           <div 
