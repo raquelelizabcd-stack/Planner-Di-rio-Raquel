@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { agenteSeguranca } from '../agents/seguranca';
 import { 
   Project, 
   KanbanTask, 
@@ -40,10 +41,12 @@ export const dataService = {
   },
 
   async saveProject(project: Project) {
-    console.log('Attempting to save project:', project);
+    const { sanitizado } = agenteSeguranca.inspecionarBanco('projects', 'insert', project);
+    const safeProject = sanitizado as Project;
+    console.log('Attempting to save project:', safeProject);
     const { error } = await supabase
       .from('projects')
-      .upsert(project);
+      .upsert(safeProject);
 
     if (error) {
       console.error('Supabase save error:', error);
@@ -77,9 +80,11 @@ export const dataService = {
   },
 
   async saveReminder(reminder: KanbanTask) {
+    const { sanitizado } = agenteSeguranca.inspecionarBanco('reminders', 'insert', reminder);
+    const safeReminder = sanitizado as KanbanTask;
     const { error } = await supabase
       .from('reminders')
-      .upsert(reminder);
+      .upsert(safeReminder);
 
     if (error) {
       console.error('Error saving reminder:', error);
@@ -313,8 +318,10 @@ export const dataService = {
 
   async safeSave<T extends { id: string }>(tableName: string, localStorageKey: string, payload: T) {
     try {
+      const { sanitizado } = agenteSeguranca.inspecionarBanco(tableName, 'insert', payload);
+      const safePayload = (sanitizado || payload) as T;
       const { data: { session } } = await supabase.auth.getSession();
-      const dbPayload: any = { ...payload };
+      const dbPayload: any = { ...safePayload };
       if (session?.user?.id) {
         dbPayload.user_id = session.user.id;
       }

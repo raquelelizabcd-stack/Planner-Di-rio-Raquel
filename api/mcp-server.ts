@@ -1,6 +1,7 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
+import { securityMiddleware } from '../src/agents/seguranca/SecurityMiddleware';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -8,6 +9,10 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
+
+  // Somente o administrador autorizado acessa; caso contrário o middleware já respondeu 403
+  const autorizado = await securityMiddleware(req, res);
+  if (!autorizado) return;
 
   const url = req.url || '';
 

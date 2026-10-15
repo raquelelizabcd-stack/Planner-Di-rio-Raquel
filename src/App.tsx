@@ -108,6 +108,7 @@ import {
 } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
 import { supabase } from './lib/supabase';
+import { agenteSeguranca, SecurityBadge } from './agents/seguranca';
 import { dataService } from './services/dataService';
 import { 
   Project, 
@@ -767,8 +768,9 @@ const ChatWidget = ({
 };
 
 const LoginView = ({ onLogin }: { onLogin: () => void }) => {
-  const [email, setEmail] = useState('raquelafiliade01@gmail.com');
-  const [password, setPassword] = useState('21226900');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showManualLogin, setShowManualLogin] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -778,40 +780,22 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
     setError('');
 
     const cleanEmail = email.trim().toLowerCase();
-    const isRaquelEmail = cleanEmail.includes('raquel') || cleanEmail.includes('afiliade');
+    const cleanPassword = password;
 
-    // Suporte a login direto por senha mestre para os e-mails da Raquel
-    if (password === '21226900' && isRaquelEmail) {
-      setLoading(false);
-      onLogin();
-      return;
-    }
+    // Limpa variáveis de input imediatamente para não ficarem residuais em memória ou cache
+    setEmail('');
+    setPassword('');
 
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
       });
-
-      if (authError) {
-        if (password === '21226900' && isRaquelEmail) {
-          setLoading(false);
-          onLogin();
-          return;
-        }
-        throw authError;
-      }
-
-      if (data.user) {
-        onLogin();
-      }
+      if (authError) throw authError;
+      // A liberação do acesso ocorre exclusivamente no onAuthStateChange (e-mail autorizado)
     } catch (err: any) {
       console.error('Login error:', err);
-      if (password === '21226900' && isRaquelEmail) {
-        onLogin();
-      } else {
-        setError(err.message || 'Erro ao fazer login. Verifique seu e-mail e senha.');
-      }
+      setError(err.message || 'Erro ao fazer login. Verifique seu e-mail e senha.');
     } finally {
       setLoading(false);
     }
@@ -836,88 +820,153 @@ const LoginView = ({ onLogin }: { onLogin: () => void }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-dark p-4">
+    <div className="min-h-screen flex items-center justify-center bg-bg-dark p-4 relative overflow-hidden">
+      {/* Luz ambiente de fundo */}
+      <SecurityBadge />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-roxo-suave/15 rounded-full blur-3xl pointer-events-none" />
+
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="w-full max-w-md glass-card p-6 md:p-8 rounded-3xl"
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-md glass-card p-6 md:p-8 rounded-3xl relative z-10 border border-white/10 shadow-2xl backdrop-blur-xl"
       >
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-roxo-suave/20 rounded-2xl flex items-center justify-center text-roxo-suave mb-4">
+        <div className="flex flex-col items-center mb-6 text-center">
+          <div className="w-16 h-16 bg-roxo-suave/20 border border-roxo-suave/30 rounded-2xl flex items-center justify-center text-roxo-suave mb-4 shadow-lg shadow-roxo-suave/10">
             <Shield size={32} />
           </div>
-          <h1 className="text-2xl font-display font-bold text-white">Bem-vindo de volta</h1>
-          <p className="text-slate-500 text-sm italic">Planner Diário Raquel</p>
+          <h1 className="text-2xl font-display font-bold text-white tracking-tight">Planner Diário Raquel</h1>
+          <p className="text-slate-400 text-xs mt-1">Ambiente Pessoal & Produtividade</p>
+        </div>
+
+        {/* Mensagem de segurança na tela inicial */}
+        <div className="mb-6 p-3.5 bg-roxo-suave/10 border border-roxo-suave/25 rounded-2xl flex items-start gap-3 text-xs text-purple-200/90 leading-relaxed shadow-inner">
+          <span className="text-sm select-none mt-0.5">🔒</span>
+          <span>Este Planner é exclusivo da conta Google de Raquel. Nenhuma credencial é armazenada localmente.</span>
         </div>
 
         <div className="space-y-4">
+          {/* Botão exclusivo de login com Google */}
           <button 
+            id="btn-google-login"
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full py-4 bg-white text-slate-900 rounded-2xl font-bold shadow-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
+            className="w-full py-4 px-6 bg-white hover:bg-slate-50 text-slate-900 rounded-2xl font-bold shadow-xl shadow-white/5 flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 border border-white/30 cursor-pointer"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24">
+            <svg width="20" height="20" viewBox="0 0 24 24" className="shrink-0">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
             </svg>
-            Sincronizar com Google
+            <span className="tracking-wide">{loading ? 'Conectando ao Google...' : '🔐 Entrar com Google'}</span>
           </button>
 
-          <div className="relative py-4">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border-dark"></div></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-bg-dark px-2 text-slate-600 font-bold tracking-widest">Ou entrar com e-mail</span></div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">E-mail</label>
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                <input 
-                  type="email" 
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="w-full bg-white/5 border border-border-dark rounded-2xl px-12 py-3 text-white focus:outline-none focus:border-roxo-suave transition-all"
-                  required
-                />
-              </div>
+          {/* Opção secundária: Login manual oculto por padrão */}
+          {!showManualLogin ? (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                id="btn-toggle-email-login"
+                onClick={() => setShowManualLogin(true)}
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors font-medium hover:underline underline-offset-4 cursor-pointer py-1"
+              >
+                Entrar com e-mail
+              </button>
             </div>
+          ) : (
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="pt-2 overflow-hidden"
+              >
+                <div className="relative py-2 mb-2">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+                  <div className="relative flex justify-center text-[10px] uppercase">
+                    <span className="bg-bg-dark px-2 text-slate-500 font-bold tracking-widest">Acesso Alternativo</span>
+                  </div>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Senha</label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
-                <input 
-                  type="password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-white/5 border border-border-dark rounded-2xl px-12 py-3 text-white focus:outline-none focus:border-roxo-suave transition-all"
-                  required
-                />
-              </div>
-            </div>
+                <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                      <input 
+                        id="input-login-email"
+                        type="email" 
+                        name="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        autoComplete="new-email"
+                        autoSave="false"
+                        className="w-full bg-white/5 border border-border-dark rounded-2xl px-12 py-3 text-white focus:outline-none focus:border-roxo-suave transition-all text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
 
-            {error && <p className="text-red-400 text-[10px] text-center font-bold leading-tight">{error}</p>}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Senha</label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
+                      <input 
+                        id="input-login-password"
+                        type="password" 
+                        name="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        autoSave="false"
+                        className="w-full bg-white/5 border border-border-dark rounded-2xl px-12 py-3 text-white focus:outline-none focus:border-roxo-suave transition-all text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
 
-            <button 
-              type="submit"
-              disabled={loading}
-              className={`w-full py-4 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-2xl font-bold shadow-lg shadow-roxo-suave/20 transition-all active:scale-95 ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {loading ? 'Entrando...' : 'Entrar no Sistema'}
-            </button>
-          </form>
+                  {error && <p className="text-red-400 text-[11px] text-center font-bold leading-tight">{error}</p>}
+
+                  <div className="flex gap-2 pt-1">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setShowManualLogin(false);
+                        setEmail('');
+                        setPassword('');
+                        setError('');
+                      }}
+                      className="w-1/3 py-3 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Ocultar
+                    </button>
+                    <button 
+                      id="btn-submit-email-login"
+                      type="submit"
+                      disabled={loading}
+                      className={`w-2/3 py-3 bg-roxo-suave hover:bg-roxo-suave/80 text-white rounded-2xl text-xs font-bold shadow-lg shadow-roxo-suave/20 transition-all active:scale-95 cursor-pointer ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {loading ? 'Validando...' : 'Acessar com E-mail'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </AnimatePresence>
+          )}
+
+          {error && !showManualLogin && (
+            <p className="text-red-400 text-xs text-center font-bold leading-tight pt-2">{error}</p>
+          )}
         </div>
 
-        <div className="mt-8 pt-6 border-t border-border-dark text-center">
-          <p className="text-xs text-slate-600 italic">
-            Acesso exclusivo para: <span className="text-roxo-suave">raquelafiliade01@gmail.com</span>
+        <div className="mt-8 pt-6 border-t border-white/10 text-center">
+          <p className="text-[11px] text-slate-500">
+            Ambiente Seguro & Criptografado • Acesso Pessoal
           </p>
-          <div className="mt-4 flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+          <div className="mt-3 flex justify-center gap-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
             <a href="/termos.html" className="hover:text-white transition-colors">Termos de Uso</a>
             <span className="text-slate-700">•</span>
             <a href="/privacidade.html" className="hover:text-white transition-colors">Privacidade</a>
@@ -1170,8 +1219,8 @@ export default function App() {
   const [savedFeedback, setSavedFeedback] = useState<Record<string, boolean>>({});
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
-  const [userEmail, setUserEmail] = useState('raquelduartesimoes@gmail.com');
-  const [userPassword, setUserPassword] = useState('********');
+  const [userEmail, setUserEmail] = useState('');
+  const [userPassword, setUserPassword] = useState('');
   
   // Study State
   const defaultNotebooks: StudyNotebook[] = [
@@ -1758,24 +1807,32 @@ export default function App() {
     if (savedDiary) setDiaryEntries(JSON.parse(savedDiary));
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // setTimeout evita deadlock ao chamar o Supabase (signOut/insert) dentro do callback
+      setTimeout(async () => {
       if (session) {
         const email = session.user.email;
-        const isAllowed = email && (email === 'raquelafiliade01@gmail.com' || email === 'raquelelizabcd@gmail.com' || email === 'raquelduartesimoes@gmail.com' || email.toLowerCase().includes('raquel'));
-        if (!isAllowed) {
+        const authCheck = await agenteSeguranca.inspecionarAuth(email || '', { event: _event });
+        if (!authCheck.permitido) {
           await supabase.auth.signOut();
-          alert('Acesso negado: Este sistema é exclusivo para Raquel.');
+          alert(authCheck.motivo || 'Acesso negado: Este sistema é exclusivo para Raquel.');
           setIsAuthenticated(false);
+          setUserEmail('');
+          setUserPassword('');
           return;
         }
         setIsAuthenticated(true);
+        if (email) setUserEmail(email);
         initSupabase();
         const isGoogle = session.user.identities?.some((id: any) => id.provider === 'google');
         setIsGoogleConnected(!!isGoogle);
       } else {
         setIsAuthenticated(false);
         setIsGoogleConnected(false);
+        setUserEmail('');
+        setUserPassword('');
       }
+      }, 0);
     });
 
     // Check current session
@@ -1783,13 +1840,16 @@ export default function App() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         const email = session.user.email;
-        const isAllowed = email && (email === 'raquelafiliade01@gmail.com' || email === 'raquelelizabcd@gmail.com' || email === 'raquelduartesimoes@gmail.com' || email.toLowerCase().includes('raquel'));
-        if (!isAllowed) {
+        const authCheck = await agenteSeguranca.inspecionarAuth(email || '', { checkType: 'session' });
+        if (!authCheck.permitido) {
           await supabase.auth.signOut();
           setIsAuthenticated(false);
+          setUserEmail('');
+          setUserPassword('');
           return;
         }
         setIsAuthenticated(true);
+        if (email) setUserEmail(email);
         initSupabase();
         const isGoogle = session.user.identities?.some((id: any) => id.provider === 'google');
         setIsGoogleConnected(!!isGoogle);
@@ -2970,12 +3030,15 @@ export default function App() {
   const [diagResult, setDiagResult] = useState<string | null>(null);
   const [diagLoading, setDiagLoading] = useState(false);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !agenteSeguranca.emailAutorizado(userEmail)) {
     return <LoginView onLogin={() => setIsAuthenticated(true)} />;
   }
 
   return (
     <div className="min-h-screen flex bg-bg-dark text-slate-200 font-sans overflow-hidden relative">
+      {/* Badge vermelho discreto de detecção de segurança */}
+      <SecurityBadge onOpenConsole={() => setActiveTab('agentes')} />
+
       {/* ===== MODAL: PRATICAR FALA (SIMULAÇÃO DE CONVERSAÇÃO) ===== */}
       <AnimatePresence>
         {showSpeechModal && (
@@ -8005,29 +8068,23 @@ export default function App() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div className="space-y-4">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Gestão de Acesso</label>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Segurança de Acesso</label>
                       <div className="space-y-3">
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-slate-500 font-bold ml-1">E-MAIL ATUAL</p>
-                          <input 
-                            type="email" 
-                            value={userEmail}
-                            onChange={(e) => setUserEmail(e.target.value)}
-                            className="w-full bg-white/5 border border-border-dark rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-roxo-suave"
-                          />
+                        <div className="p-4 bg-roxo-suave/10 border border-roxo-suave/20 rounded-2xl">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-base">🔒</span>
+                            <p className="text-xs font-bold text-white">Autenticação Google OAuth</p>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Sessão operando em memória volátil (RAM). Nenhuma credencial ou token de acesso é persistido em localStorage, cookies ou arquivos locais.
+                          </p>
                         </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] text-slate-500 font-bold ml-1">NOVA SENHA</p>
-                          <input 
-                            type="password" 
-                            value={userPassword}
-                            onChange={(e) => setUserPassword(e.target.value)}
-                            className="w-full bg-white/5 border border-border-dark rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-roxo-suave"
-                          />
-                        </div>
-                        <button className="w-full py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all">
-                          Atualizar Credenciais
-                        </button>
+                        {userEmail && (
+                          <div className="p-3 bg-white/5 border border-border-dark rounded-xl flex items-center justify-between">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Conta Conectada</span>
+                            <span className="text-xs text-roxo-suave font-semibold">{userEmail}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -8038,8 +8095,19 @@ export default function App() {
                           <LogOut size={32} className="text-red-400 mb-3" />
                           <p className="text-sm text-slate-300 mb-4">Deseja encerrar sua sessão atual?</p>
                           <button 
-                            onClick={() => setIsAuthenticated(false)}
-                            className="px-6 py-2 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20"
+                            id="btn-logout"
+                            onClick={async () => {
+                              try {
+                                await supabase.auth.signOut();
+                              } catch (err) {
+                                console.error('Erro ao encerrar sessão:', err);
+                              }
+                              setIsAuthenticated(false);
+                              setIsGoogleConnected(false);
+                              setUserEmail('');
+                              setUserPassword('');
+                            }}
+                            className="px-6 py-2.5 bg-red-500 text-white rounded-xl text-xs font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-500/20 cursor-pointer active:scale-95"
                           >
                             Sair do Sistema
                           </button>

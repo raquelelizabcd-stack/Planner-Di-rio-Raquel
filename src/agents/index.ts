@@ -1,4 +1,8 @@
-export { AgenteSeguranca } from './seguranca/index';
+export { AgenteSeguranca, agenteSeguranca, BLOCKED_SECURITY_MESSAGE } from './seguranca/index';
+export { securityMiddleware, inspectBackendPayload, safeConsoleLog } from './seguranca/SecurityMiddleware';
+export { SecurityWrapper, SecurityBadge, useSecurityGuardian } from './seguranca/SecurityWrapper';
+export type { SecurityLayer, SensitiveDataType, SecurityDetectionLog, SecurityInspectionResult, SecurityMetrics } from './seguranca/types';
+
 export { AgenteCache } from './cache/index';
 export { AgenteOrquestrador } from './orquestrador/index';
 export { AgenteCalendario } from './calendario/index';

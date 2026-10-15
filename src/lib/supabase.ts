@@ -21,7 +21,54 @@ if (typeof window !== 'undefined') {
   (window as any).__SUPABASE_URL = url;
   (window as any).__SUPABASE_KEY_SET = !!key;
 }
-export const supabase = createClient(url, key);
+// Storage volátil em memória (RAM) - impede armazenamento em localStorage, sessionStorage ou cookies
+const memorySessionStore: Record<string, string> = {};
+
+const volatileStorage = {
+  getItem: (key: string): string | null => {
+    return memorySessionStore[key] ?? null;
+  },
+  setItem: (key: string, value: string): void => {
+    memorySessionStore[key] = value;
+  },
+  removeItem: (key: string): void => {
+    delete memorySessionStore[key];
+  },
+};
+
+// Limpeza defensiva preventiva de resíduos de autenticação legados
+if (typeof window !== 'undefined') {
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('sb-') || k.includes('supabase.auth') || k.includes('auth-token'))) {
+        keysToRemove.push(k);
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    const sessionKeysToRemove: string[] = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && (k.startsWith('sb-') || k.includes('supabase.auth') || k.includes('auth-token'))) {
+        sessionKeysToRemove.push(k);
+      }
+    }
+    sessionKeysToRemove.forEach(k => sessionStorage.removeItem(k));
+  } catch (err) {
+    console.warn('Erro ao limpar storages legados:', err);
+  }
+}
+
+export const supabase = createClient(url, key, {
+  auth: {
+    storage: volatileStorage,
+    persistSession: true, // Mantém a sessão ativa na memória RAM apenas durante o ciclo de vida da aba
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  },
+});
 if (typeof window !== 'undefined') {
   (window as any).supabase = supabase;
 }

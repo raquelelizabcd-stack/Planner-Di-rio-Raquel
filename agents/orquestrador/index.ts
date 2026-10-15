@@ -10,18 +10,27 @@ export class AgenteOrquestrador {
   private auditoria = new AgenteAuditoria();
 
   async executar(prompt: string): Promise<string> {
-    const respostaCache = this.cache.get(prompt);
+    const promptInspecionado = this.seguranca.inspecionarCamada('ia', prompt, {
+      origem: 'Orquestrador_Prompt_Entrada'
+    });
+    const promptSeguro = promptInspecionado.conteudoSanitizado;
+
+    const respostaCache = this.cache.get(promptSeguro);
     if (respostaCache) return `♻️ Resposta do cache: ${respostaCache}`;
 
-    const respostaMemoria = await this.memoria.verificarHistorico(prompt);
+    const respostaMemoria = await this.memoria.verificarHistorico(promptSeguro);
     if (respostaMemoria) return `🧠 Resposta da memória: ${respostaMemoria}`;
 
-    const respostaIA = `✨ Nova resposta gerada para: ${prompt}`;
-    const respostaSegura = this.seguranca.validarSaida(respostaIA);
+    const respostaIA = `✨ Nova resposta gerada para: ${promptSeguro}`;
+    const respostaSegura = this.seguranca.inspecionarIA(respostaIA, promptSeguro);
 
-    this.cache.set(prompt, respostaSegura);
-    await this.memoria.salvarResultado("AgenteOrquestrador", prompt, respostaSegura);
-    await this.auditoria.logAction("AgenteOrquestrador", "execucao", { prompt, respostaSegura });
+    this.cache.set(promptSeguro, respostaSegura);
+    await this.memoria.salvarResultado("AgenteOrquestrador", promptSeguro, respostaSegura);
+    await this.auditoria.logAction("AgenteOrquestrador", "execucao", { 
+      prompt: promptSeguro, 
+      respostaSegura,
+      tokensEconomizados: promptInspecionado.tokensEconomizados
+    });
 
     return respostaSegura;
   }

@@ -70,6 +70,7 @@ import {
 } from '../types';
 import { dataService, encryptApiKey, decryptApiKey, maskApiKey } from '../services/dataService';
 import EscritorioVirtualAgentes from './EscritorioVirtualAgentes';
+import ConsoleSegurancaGuardian from './ConsoleSegurancaGuardian';
 
 interface AgentesTabProps {
   accentColor?: string;
@@ -77,7 +78,7 @@ interface AgentesTabProps {
 }
 
 export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 }: AgentesTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState<'escritorio' | 'control' | 'token_history' | 'publicacao' | 'marketing' | 'debug' | 'pedagogico' | 'logs'>('escritorio');
+  const [activeSubTab, setActiveSubTab] = useState<'escritorio' | 'seguranca' | 'control' | 'token_history' | 'publicacao' | 'marketing' | 'debug' | 'pedagogico' | 'logs'>('escritorio');
 
   
   // States dos Agentes e Medidor
@@ -980,6 +981,7 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
         <div className="flex flex-wrap gap-2 mt-8 pt-6 border-t border-white/10 relative z-10">
           {[
             { id: 'escritorio', label: '🏢 Escritório Virtual', icon: Building2 },
+            { id: 'seguranca', label: '🛡️ Guardião de Segurança', icon: ShieldAlert },
             { id: 'control', label: 'Visão Geral & Tokens', icon: Sliders },
             { id: 'token_history', label: 'Histórico de Tokens', icon: BarChart3 },
             { id: 'publicacao', label: 'Agente de Publicação IA', icon: Share2 },
@@ -991,7 +993,7 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
             <button
               key={tab.id}
               onClick={() => setActiveSubTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSubTab === tab.id
                   ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30'
                   : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
@@ -1008,6 +1010,13 @@ Mantenha respostas objetivas e prontas para uso em sala de aula.`;
       {activeSubTab === 'escritorio' && (
         <section className="mt-8 p-6 rounded-xl bg-gradient-to-br from-[#1a1a2e] to-[#16213e] shadow-lg">
           <EscritorioVirtualAgentes />
+        </section>
+      )}
+
+      {/* ================= SEÇÃO: GUARDIÃO GLOBAL DE SEGURANÇA ================= */}
+      {activeSubTab === 'seguranca' && (
+        <section className="mt-8">
+          <ConsoleSegurancaGuardian accentColor={accentColor} borderRadius={borderRadius} />
         </section>
       )}
 
