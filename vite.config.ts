@@ -18,8 +18,6 @@ export default defineConfig(({mode}) => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâ€”file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       headers: {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
@@ -36,15 +34,6 @@ export default defineConfig(({mode}) => {
         'Expires': '0',
         'X-Frame-Options': 'DENY',
         'X-Content-Type-Options': 'nosniff',
-      },
-    },
-    build: {
-      rollupOptions: {
-        input: {
-          main: path.resolve(__dirname, 'index.html'),
-          termos: path.resolve(__dirname, 'termos.html'),
-          privacidade: path.resolve(__dirname, 'privacidade.html'),
-        },
       },
     },
   };
