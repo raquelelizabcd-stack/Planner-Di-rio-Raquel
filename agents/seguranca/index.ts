@@ -3,6 +3,7 @@ export {
   agenteSeguranca, 
   BLOCKED_SECURITY_MESSAGE, 
   EMAIL_AUTORIZADO, 
+  EMAILS_AUTORIZADOS,
   MENSAGEM_ACESSO_RESTRITO 
 } from './AgenteSeguranca';
 export { SecurityBadge, SecurityWrapper, useSecurityGuardian } from './SecurityWrapper';

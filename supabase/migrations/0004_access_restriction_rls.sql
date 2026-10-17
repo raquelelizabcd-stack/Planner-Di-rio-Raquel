@@ -9,7 +9,6 @@ DO $$
 DECLARE
     t RECORD;
     p RECORD;
-    admin_email CONSTANT TEXT := 'raquelduarteadmi@gmail.com';
 BEGIN
     FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
         -- 1. Ativa RLS
@@ -20,19 +19,19 @@ BEGIN
             EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', p.policyname, t.tablename);
         END LOOP;
 
-        -- 3. SELECT / INSERT / UPDATE / DELETE somente para o e-mail autorizado
+        -- 3. SELECT / INSERT / UPDATE / DELETE somente para as contas autorizadas
         EXECUTE format(
-            'CREATE POLICY "admin_select" ON public.%I FOR SELECT TO authenticated USING (auth.email() = %L)',
-            t.tablename, admin_email);
+            'CREATE POLICY "admin_select" ON public.%I FOR SELECT TO authenticated USING (auth.email() IN (''raquelduarteadmi@gmail.com'', ''raquelelizabcd@gmail.com''))',
+            t.tablename);
         EXECUTE format(
-            'CREATE POLICY "admin_insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (auth.email() = %L)',
-            t.tablename, admin_email);
+            'CREATE POLICY "admin_insert" ON public.%I FOR INSERT TO authenticated WITH CHECK (auth.email() IN (''raquelduarteadmi@gmail.com'', ''raquelelizabcd@gmail.com''))',
+            t.tablename);
         EXECUTE format(
-            'CREATE POLICY "admin_update" ON public.%I FOR UPDATE TO authenticated USING (auth.email() = %L) WITH CHECK (auth.email() = %L)',
-            t.tablename, admin_email, admin_email);
+            'CREATE POLICY "admin_update" ON public.%I FOR UPDATE TO authenticated USING (auth.email() IN (''raquelduarteadmi@gmail.com'', ''raquelelizabcd@gmail.com'')) WITH CHECK (auth.email() IN (''raquelduarteadmi@gmail.com'', ''raquelelizabcd@gmail.com''))',
+            t.tablename);
         EXECUTE format(
-            'CREATE POLICY "admin_delete" ON public.%I FOR DELETE TO authenticated USING (auth.email() = %L)',
-            t.tablename, admin_email);
+            'CREATE POLICY "admin_delete" ON public.%I FOR DELETE TO authenticated USING (auth.email() IN (''raquelduarteadmi@gmail.com'', ''raquelelizabcd@gmail.com''))',
+            t.tablename);
     END LOOP;
 END $$;
 

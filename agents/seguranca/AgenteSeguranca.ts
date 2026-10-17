@@ -9,7 +9,11 @@ import {
 } from "./types";
 
 export const BLOCKED_SECURITY_MESSAGE = "⚠️ Conteúdo bloqueado por segurança";
-export const EMAIL_AUTORIZADO = 'raquelduarteadmi@gmail.com';
+export const EMAILS_AUTORIZADOS: readonly string[] = [
+  'raquelduarteadmi@gmail.com',
+  'raquelelizabcd@gmail.com'
+];
+export const EMAIL_AUTORIZADO = EMAILS_AUTORIZADOS[0];
 export const MENSAGEM_ACESSO_RESTRITO = '⚠️ Acesso restrito: apenas a conta autorizada pode entrar.';
 
 // Cache em memória compartilhado para logs em tempo real do Guardião Global
@@ -431,16 +435,17 @@ export class AgenteSeguranca {
    * Autenticação: Bloqueia acessos não autorizados e valida tentativas com Google OAuth
    */
   emailAutorizado(email?: string | null): boolean {
-    return (email || '').trim().toLowerCase() === EMAIL_AUTORIZADO;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    return EMAILS_AUTORIZADOS.includes(cleanEmail);
   }
 
   /**
-   * Autenticação: libera somente a conta autorizada. Qualquer outra é registrada em
+   * Autenticação: libera somente as contas autorizadas. Qualquer outra é registrada em
    * audit_logs (login_bloqueado) ANTES do signOut, enquanto a sessão ainda existe.
    */
   async inspecionarAuth(email: string, contexto?: any, camada: SecurityLayer = 'auth'): Promise<{ permitido: boolean; motivo?: string }> {
     const cleanEmail = (email || '').trim().toLowerCase();
-    if (cleanEmail === EMAIL_AUTORIZADO) return { permitido: true };
+    if (this.emailAutorizado(cleanEmail)) return { permitido: true };
 
     await this.registrarLoginBloqueado(cleanEmail, contexto, camada);
     return { permitido: false, motivo: MENSAGEM_ACESSO_RESTRITO };

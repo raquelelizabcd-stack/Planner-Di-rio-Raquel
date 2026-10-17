@@ -199,9 +199,11 @@ describe("AgenteSeguranca - Suíte de Testes Unitários", () => {
       expect(statsAposLimpeza.tokensEconomizadosTotal).toBe(0);
     });
 
-    it("deve validar autorização de e-mail estritamente para o administrador", () => {
+    it("deve validar autorização de e-mail estritamente para as contas autorizadas", () => {
       expect(agente.emailAutorizado("raquelduarteadmi@gmail.com")).toBe(true);
       expect(agente.emailAutorizado("  RAQUELDUARTEADMI@GMAIL.COM  ")).toBe(true);
+      expect(agente.emailAutorizado("raquelelizabcd@gmail.com")).toBe(true);
+      expect(agente.emailAutorizado("  RAQUELELIZABCD@GMAIL.COM  ")).toBe(true);
       expect(agente.emailAutorizado("outro@gmail.com")).toBe(false);
       expect(agente.emailAutorizado(null)).toBe(false);
     });
