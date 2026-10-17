@@ -1,8 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
 
+/**
+ * Agente de Memória responsável por consultar histórico de execuções
+ * persistidas e salvar novos resultados para reaproveitamento contextual.
+ */
 export class AgenteMemoria {
-  private supabase;
-  constructor() {
+  private supabase: any;
+
+  /**
+   * Construtor com suporte a Injeção de Dependências para testabilidade.
+   *
+   * @param supabaseClient Cliente Supabase customizado ou mockado para testes
+   */
+  constructor(supabaseClient?: any) {
+    if (supabaseClient) {
+      this.supabase = supabaseClient;
+      return;
+    }
+
     const supabaseUrl = 
       (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SUPABASE_URL) || 
       (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_SUPABASE_URL) || 
@@ -15,6 +30,12 @@ export class AgenteMemoria {
     this.supabase = createClient(supabaseUrl, supabaseKey);
   }
 
+  /**
+   * Consulta o histórico persistido no Supabase buscando correspondência com o prompt informado.
+   *
+   * @param prompt Texto da solicitação a ser buscada no histórico
+   * @returns Promise<string | null> Resposta prévia encontrada ou null se inexistente/erro
+   */
   async verificarHistorico(prompt: string): Promise<string | null> {
     try {
       const { data } = await this.supabase
@@ -32,7 +53,14 @@ export class AgenteMemoria {
     return null;
   }
 
-  async salvarResultado(agentName: string, prompt: string, resultado: string) {
+  /**
+   * Salva o resultado de execução no log de auditoria / memória no Supabase.
+   *
+   * @param agentName Nome do agente executor
+   * @param prompt Prompt original processado
+   * @param resultado Resposta sanitizada gerada
+   */
+  async salvarResultado(agentName: string, prompt: string, resultado: string): Promise<void> {
     try {
       await this.supabase.from("audit_logs").insert({
         agent_name: agentName,
@@ -45,3 +73,5 @@ export class AgenteMemoria {
     }
   }
 }
+
+export default AgenteMemoria;

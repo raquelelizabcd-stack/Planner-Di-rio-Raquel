@@ -1,8 +1,12 @@
 import { createClient } from "@supabase/supabase-js";
 
 export class AgenteAuditoria {
-  private supabase;
-  constructor() {
+  private supabase: any;
+  constructor(supabaseClient?: any) {
+    if (supabaseClient) {
+      this.supabase = supabaseClient;
+      return;
+    }
     this.supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL || "",
       process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
@@ -19,5 +23,15 @@ export class AgenteAuditoria {
     } catch (e) {
       console.warn("AgenteAuditoria: logAction falhou ou offline", e);
     }
+  }
+
+  /**
+   * Registra uma atividade ou evento de auditoria genérico com tipo e detalhes.
+   *
+   * @param tipo Identificador da ação/evento (ex: 'erro', 'execucao')
+   * @param details Metadados adicionais associados à atividade
+   */
+  async logAtividade(tipo: string, details: Record<string, any> = {}) {
+    return this.logAction("AgenteOrquestrador", tipo, details);
   }
 }

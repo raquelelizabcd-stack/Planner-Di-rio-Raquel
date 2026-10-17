@@ -1,4 +1,4 @@
-import { agenteSeguranca, BLOCKED_SECURITY_MESSAGE } from './index';
+import { agenteSeguranca, BLOCKED_SECURITY_MESSAGE } from './AgenteSeguranca';
 import { SecurityLayer } from './types';
 import { supabase } from '../../lib/supabase';
 

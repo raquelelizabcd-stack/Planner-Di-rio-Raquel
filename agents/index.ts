@@ -3,7 +3,7 @@ export { securityMiddleware, inspectBackendPayload, safeConsoleLog } from './seg
 export type { SecurityLayer, SensitiveDataType, SecurityDetectionLog, SecurityInspectionResult, SecurityMetrics } from './seguranca/types';
 
 export { AgenteCache } from './cache/index';
-export { AgenteOrquestrador } from './orquestrador/index';
+export { AgenteOrquestrador, LOG_ACTIONS, type LogActionType } from './orquestrador/index';
 export { AgenteCalendario } from './calendario/index';
 export { AgenteAuditoria } from './auditoria/index';
 export { AgenteFoco } from './foco/index';

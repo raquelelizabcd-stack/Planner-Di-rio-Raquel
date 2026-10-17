@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, ShieldCheck, X, Eye } from 'lucide-react';
-import { agenteSeguranca, BLOCKED_SECURITY_MESSAGE } from './index';
+import { agenteSeguranca, BLOCKED_SECURITY_MESSAGE } from './AgenteSeguranca';
 import { SecurityDetectionLog, SecurityLayer } from './types';
 
 /**
