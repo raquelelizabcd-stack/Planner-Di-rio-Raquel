@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
-import { GoogleGenAI } from "@google/genai";
+import { aiService } from '../services/aiService';
 import { StudyProgress, StudyNote } from '../types';
 
 const SUPABASE_TOPICS = [
@@ -269,16 +269,8 @@ export default function EstudosTab() {
     setIsTyping(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userMsg,
-        config: {
-          systemInstruction: "Você é um assistente de estudos focado em Supabase e desenvolvimento backend. Suas respostas devem ser simples, didáticas, práticas e diretas, ideais para iniciantes. Use markdown para formatar códigos ou listas."
-        }
-      });
-      
-      setChatMessages(prev => [...prev, { role: 'bot', text: response.text || 'Desculpe, tive um problema ao processar sua dúvida.' }]);
+      const botResponse = await aiService.explainStudyTopic(userMsg, 'Supabase e Backend');
+      setChatMessages(prev => [...prev, { role: 'bot', text: botResponse || 'Desculpe, tive um problema ao processar sua dúvida.' }]);
     } catch (error) {
       console.error('Erro no chat de estudos:', error);
       setChatMessages(prev => [...prev, { role: 'bot', text: 'Erro ao conectar com a IA. Verifique sua conexão ou chave de API.' }]);

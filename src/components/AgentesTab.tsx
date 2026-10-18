@@ -52,7 +52,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
-import { GoogleGenAI } from '@google/genai';
+import { aiService } from '../services/aiService';
 import { 
   AgentStatus, 
   AgentExecutionLog, 
@@ -208,7 +208,7 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
     if (configuredProvider && configuredProvider.apiKey) {
       return configuredProvider.apiKey;
     }
-    let key = process.env.GEMINI_API_KEY || '';
+    let key = '';
     if (!key && typeof window !== 'undefined') {
       try {
         const saved = localStorage.getItem('raquel_api_keys');
@@ -521,55 +521,13 @@ export default function AgentesTab({ accentColor = '#6a5acd', borderRadius = 24 
 
     setRunningAgentId('publicacao_ia');
     try {
-      const apiKey = getApiKey();
       const tokensEst = 195; // limite máximo 200 tokens exigido
-      let captionText = '';
       let hashtagsArr = ['#MarketingDigital', '#IA', '#Inovacao', '#Educacao', '#RaquelDuarte'];
-
-      const promptText = `Você é o Agente de Publicação IA da professora e especialista Raquel Duarte.
-Gere uma publicação em Português do Brasil para LinkedIn e Instagram sobre o tema: "${selectedCategory} - ${customTopicPrompt}".
-
-REGRAS RÍGIDAS DE GERAÇÃO:
-1. MÁXIMO DE 2 PARÁGRAFOS curtos, legíveis e com tom profissional altamente engajador.
-2. EXATAMENTE 5 HASHTAGS ESTRATÉGICAS ao final (ex: #MarketingDigital #InteligenciaArtificial #Educacao #Inovacao #RaquelDuarte).
-3. Mantenha o texto estritamente dentro do limite de 200 tokens.`;
-
-      const openaiKey = process.env.OPENAI_API_KEY;
-      if (openaiKey) {
-        try {
-          const res = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${openaiKey}`
-            },
-            body: JSON.stringify({
-              model: 'gpt-4o-mini',
-              messages: [{ role: 'user', content: promptText }],
-              max_tokens: 200
-            })
-          });
-          const data = await res.json();
-          if (data?.choices?.[0]?.message?.content) {
-            captionText = data.choices[0].message.content;
-          }
-        } catch (openaiErr) {
-          console.error('Erro na chamada da API ChatGPT (OpenAI):', openaiErr);
-        }
-      }
-
-      if (!captionText && apiKey) {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: promptText
-        });
-        captionText = response.text || '';
-      }
-
-      if (!captionText) {
-        captionText = `A Inteligência Artificial e as novas tecnologias digitais estão redefinindo os métodos de ensino técnico e a qualificação profissional. Integrar infográficos e automações na rotina cria um ambiente de aprendizado dinâmico e focado em resultados práticos.\n\nInvestir na capacitação constante e na aplicação de ferramentas modernas é o caminho mais rápido para liderar transformações com impacto real no mercado.`;
-      }
+      const captionText = await aiService.generatePublicacaoPost({
+        category: selectedCategory,
+        topic: customTopicPrompt,
+        platform: targetPlatform
+      });
 
       // Imagem Infográfico no padrão visual LinkedIn Raquel Duarte (Fundo escuro, Paleta Neon: #7B2CBF, #00B4D8, #FF4D6D, #FFD166)
       const imageInfographicPrompt = `Infographic poster dark mode background, neon palette with purple #7B2CBF, cyan #00B4D8, pink #FF4D6D, yellow #FFD166. Modern clean sans-serif typography, title: "${selectedCategory}", minimalist icons. LinkedIn post layout for Raquel Duarte.`;
@@ -658,27 +616,8 @@ REGRAS RÍGIDAS DE GERAÇÃO:
 
     setRunningAgentId('marketing');
     try {
-      const apiKey = getApiKey();
-      let resultText = '';
-      let tokensEst = 280;
-
-      if (apiKey) {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: `Você é o Agente de Marketing Digital do Planner Raquel. Busca as principais notícias e tendências em alta de Marketing Digital, Redes Sociais e IA Aplicada.\n\nTópico / Foco Solicitado: "${marketingTopicInput}".\n\nREGRAS OBRIGATÓRIAS:\n1. Resuma a resposta em exatamente ATÉ 5 TÓPICOS CURTOS e diretos.\n2. Máximo 300 tokens de limite.\n3. Escreva em Português do Brasil com linguagem profissional e acionável para professores/profissionais de marketing.`
-        });
-        resultText = response.text || 'Nenhuma tendência retornada.';
-      } else {
-        resultText = `### 📰 Resumo de Tendências de Marketing Digital (Simulação)
-
-1. **Agentes Autônomos no WhatsApp**: Empresas estão adotando agentes integrados a CRMs para atendimento técnico.
-2. **Short Video SEO**: Algoritmos do TikTok e Instagram agora priorizam transcrições em texto de Reels e Shorts.
-3. **Hyper-Personalização com IA**: E-mails de nutrir leads gerados em tempo real com base no comportamento de navegação.
-4. **Social Commerce em Alta**: Compra direta via transmissões ao vivo e links interativos no Reels.
-5. **Micro-Influenciadores Didáticos**: Marcas de edtech focam em parcerias com educadores para conteúdo autêntico.`;
-      }
-
+      const tokensEst = 280;
+      const resultText = await aiService.getMarketingTrends(marketingTopicInput);
       setMarketingNewsOutput(resultText);
 
       // Salvar automaticamente na biblioteca do Planner vinculando à turma
@@ -727,30 +666,8 @@ REGRAS RÍGIDAS DE GERAÇÃO:
 
     setRunningAgentId('debug_ia');
     try {
-      const apiKey = getApiKey();
-      let analysisText = '';
-      let tokensEst = 320;
-
-      if (apiKey && debugLogInput.trim()) {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: `Você é o Agente Debug IA do Planner Diário Raquel. Analise o seguinte log de erro / código:\n\n"${debugLogInput}"\n\nForneça:\n1. Diagnóstico do Erro\n2. Sugestão de Correção Direta\n3. Passo a passo prático para resolver (máximo 3 passos).`
-        });
-        analysisText = response.text || 'Análise concluída sem anormalidades.';
-      } else {
-        analysisText = `### 🧩 Diagnóstico Debug IA (Análise de Log)
-
-* **Erro Identificado**: Acesso a propriedade em objeto nulo ou indefinido durante a renderização.
-* **Módulo Atingido**: Componente de Interface do Planner Diário Raquel.
-* **Sugestão de Correção**: Adicionar verificação opcional (\`?.map()\`) ou valor padrão de array vazio (\`[]\`).
-
-#### Passo a Passo Prático:
-1. Verifique a busca de dados assíncrona no método do Supabase ou LocalStorage.
-2. Certifique-se de retornar um array inicial caso o resultado venha indefinido.
-3. Utilize operador de coalescência nula: \`const list = data ?? [];\``;
-      }
-
+      const tokensEst = 320;
+      const analysisText = await aiService.analyzeDebugLog(debugLogInput);
       setDebugOutput(analysisText);
 
       // Registrar Bug na lista organizada
@@ -797,65 +714,14 @@ REGRAS RÍGIDAS DE GERAÇÃO:
 
     setRunningAgentId('suporte_pedagogico');
     try {
-      const apiKey = getApiKey();
       const selectedClass = classes.find(c => c.id === selectedClassId);
-      let planContent = '';
-      let tokensEst = 450;
-
-      const promptText = `Você é o Agente de Suporte Pedagógico especializado em Educação Profissional Técnica de Nível Médio em Marketing.
-Gerencie e elabore um Plano de Aula completo e estruturado para a seguinte turma:
-- Turma: ${selectedClass?.name || 'Técnico em Marketing'} (${selectedClass?.gradeYear || 'Ensino Técnico'})
-- Disciplina: ${pedagogicoSubject}
-- Tópico da Aula: ${pedagogicoTopic}
-- Observação Adicional: ${pedagogicoPrompt || 'Foco em aplicação prática no mercado'}
-
-A SUA RESPOSTA DEVE CONTER OBRIGATORIAMENTE OS SEGUINTES 6 BLOCOS:
-1. 🎯 Objetivos de Aprendizagem (Alinhados às competências técnicas de Marketing)
-2. 📚 Conteúdos Programáticos (Sequência lógica: Teoria -> Prática -> Exemplos Reais)
-3. 📝 Metodologias Didáticas (Exposição dialogada, estudos de caso, projetos)
-4. 🧾 Avaliações (Formas de avaliação técnica e participação)
-5. 🔄 Adaptação por Turma (Ajustes com base no perfil da turma)
-6. 💡 Sugestões Extras (Ideias criativas, dinâmicas de grupo e jogos educativos)
-
-Mantenha respostas objetivas e prontas para uso em sala de aula.`;
-
-      if (apiKey) {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-          model: 'gemini-3-flash-preview',
-          contents: promptText
-        });
-        planContent = response.text || 'Erro ao gerar plano pedagógico.';
-      } else {
-        planContent = `### 🧠 Plano de Aula Técnico em Marketing Digital
-
-**Turma**: ${selectedClass?.name || 'Turma 3001 - MKT Digital'} | **Disciplina**: ${pedagogicoSubject}
-
----
-
-#### 1. 🎯 Objetivos de Aprendizagem
-* Compreender as etapas estratégicas de atração e nutrição no Funil de Vendas Inbound.
-* Desenvolver landing pages com chamadas para ação (CTAs) de alta conversão.
-
-#### 2. 📚 Conteúdos Programáticos
-* **Teoria (20 min)**: Conceito de Topo, Meio e Base do Funil de Marketing.
-* **Prática (40 min)**: Criação de régua de automação de e-mail marketing.
-* **Exemplo Real (20 min)**: Estudo de caso de um MicroSaas brasileiro.
-
-#### 3. 📝 Metodologias Didáticas
-* Exposição dialogada com slides interativos.
-* Estudo de caso em grupos de 4 alunos.
-
-#### 4. 🧾 Avaliações
-* Resolução de quiz prático ao final da aula.
-* Entrega da estrutura do funil da empresa simulada.
-
-#### 5. 🔄 Adaptação por Turma
-* Ritmo dinâmico com uso de ferramentas no-code para simulação em tempo real.
-
-#### 6. 💡 Sugestões Extras
-* **Jogo Educativo**: "Batalha do Funil" - Grupos competem pela maior taxa de conversão simulada.`;
-      }
+      const tokensEst = 450;
+      const planContent = await aiService.generateLessonPlan({
+        subject: pedagogicoSubject,
+        topic: pedagogicoTopic,
+        className: selectedClass?.name || 'Turma Técnica',
+        prompt: pedagogicoPrompt
+      });
 
       setPedagogicoOutput(planContent);
 

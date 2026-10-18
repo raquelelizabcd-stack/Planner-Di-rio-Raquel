@@ -1,16 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 
 const getSupabaseConfig = () => {
-  // Prioritize environment variables, but strictly validate the URL
-  const envUrl = (import.meta as any).env?.VITE_SUPABASE_URL;
-  const envKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY;
-  
+  // Leitura isomórfica: suporta Node.js na Vercel (process.env) e Vite no navegador (import.meta.env)
+  const isProcessDefined = typeof process !== 'undefined' && process.env;
+  const isImportMetaDefined = typeof import.meta !== 'undefined' && (import.meta as any).env;
+
+  const envUrl =
+    (isProcessDefined && (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)) ||
+    (isImportMetaDefined && ((import.meta as any).env.VITE_SUPABASE_URL || (import.meta as any).env.NEXT_PUBLIC_SUPABASE_URL));
+
+  const envKey =
+    (isProcessDefined && (process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)) ||
+    (isImportMetaDefined && ((import.meta as any).env.VITE_SUPABASE_ANON_KEY || (import.meta as any).env.NEXT_PUBLIC_SUPABASE_ANON_KEY));
+
   const defaultUrl = 'https://cjnagdninashngvpxidc.supabase.co'; // Base URL para o client JS
   const defaultKey = 'sb_publishable__Pn9EN9UXSnPAYhL4X86nA_E8jqveLM';
 
-  // Return the environment variable only if it looks like a valid URL, otherwise use the provided default
   const finalUrl = (envUrl && typeof envUrl === 'string' && envUrl.startsWith('http')) ? envUrl : defaultUrl;
-  const finalKey = (envKey && typeof envKey === 'string' && envKey.length > 50) ? envKey : defaultKey;
+  const finalKey = (envKey && typeof envKey === 'string' && envKey.length > 20) ? envKey : defaultKey;
 
   return { url: finalUrl, key: finalKey };
 };

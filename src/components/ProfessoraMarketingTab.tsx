@@ -52,7 +52,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
-import { GoogleGenAI } from '@google/genai';
+import { aiService } from '../services/aiService';
 import { ProfessoraMarketingItem, ProfessoraClass } from '../types';
 import { dataService } from '../services/dataService';
 import { supabase } from '../lib/supabase';
@@ -449,36 +449,20 @@ export default function ProfessoraMarketingTab({ accentColor = '#6a5acd', border
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const getApiKey = (): string => {
-    let key = process.env.GEMINI_API_KEY || '';
-    if (!key && typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem('raquel_api_keys');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (parsed.gemini) key = parsed.gemini;
-        }
-      } catch (e) {
-        console.error('Erro ao buscar chave API:', e);
-      }
-    }
-    return key;
-  };
-
   const callGemini = async (prompt: string, systemInstruction: string): Promise<string> => {
-    const apiKey = getApiKey();
-    if (!apiKey) {
-      throw new Error('Chave da API Gemini não configurada. Por favor, adicione sua chave nas Configurações.');
+    const fullPrompt = systemInstruction ? `${systemInstruction}\n\n${prompt}` : prompt;
+    try {
+      return await aiService.generateLessonPlan({
+        subject: 'Marketing Técnico',
+        topic: 'Plano Pedagógico',
+        className: 'Turma de Marketing',
+        prompt: fullPrompt
+      });
+    } catch (err: any) {
+      console.error('Erro ao chamar IA pedagógica:', err);
+      showToast(err.message || 'Erro ao comunicar com a IA');
+      return 'Não foi possível obter resposta da IA no momento.';
     }
-    const ai = new GoogleGenAI({ apiKey });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-      config: {
-        systemInstruction: systemInstruction
-      }
-    });
-    return response.text || 'Não foi possível obter resposta da IA.';
   };
 
   // --- HANDLERS: TURMAS ---

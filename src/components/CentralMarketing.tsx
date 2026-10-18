@@ -39,7 +39,7 @@ import {
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from '@google/genai';
+import { aiService } from '../services/aiService';
 import { dataService } from '../services/dataService';
 import { supabase } from '../lib/supabase';
 import { 
@@ -738,12 +738,6 @@ export default function CentralMarketing({ accentColor, borderRadius }: CentralM
     try {
       const selectedProj = projects.find(p => p.id === mktProjSelect)?.name || 'Projeto Geral';
       
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        throw new Error('Chave de API do Gemini não configurada nas variáveis de ambiente. Por favor, adicione GEMINI_API_KEY no menu Configurações.');
-      }
-      
-      const ai = new GoogleGenAI({ apiKey });
       const prompt = `Você é o Assitente de IA de Conteúdo da Central de Marketing Pessoal da Raquel Duarte.
 Seu objetivo é criar uma campanha completa e polida para divulgar o projeto: "${selectedProj}".
 
@@ -766,15 +760,17 @@ Chaves obrigatórias no JSON:
   "emailCampaign": "E-mail completo e cativante incluindo Assunto e Corpo de e-mail focado em conversão"
 }`;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
-      });
-
-      const parsedJSON = JSON.parse(response.text?.trim() || '{}');
+      const aiResponseText = await aiService.generateMarketingCopy(prompt);
+      let parsedJSON: any = {};
+      try {
+        const cleanJson = aiResponseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        parsedJSON = JSON.parse(cleanJson);
+      } catch {
+        parsedJSON = {
+          instagramFeed: aiResponseText,
+          linkedinPost: aiResponseText
+        };
+      }
 
       const newContent: MarketingContent = {
         id: 'content-' + Date.now(),

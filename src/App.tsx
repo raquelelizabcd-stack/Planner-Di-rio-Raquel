@@ -106,8 +106,8 @@ import {
   YAxis, 
   Tooltip as RechartsTooltip
 } from 'recharts';
-import { GoogleGenAI } from "@google/genai";
 import { supabase } from './lib/supabase';
+import { aiService } from './services/aiService';
 import { agenteSeguranca, SecurityBadge } from './agents/seguranca';
 import { dataService } from './services/dataService';
 import { 
@@ -1581,12 +1581,8 @@ export default function App() {
   const generateInspiration = async () => {
     setLoadingInspiration(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: "Gere uma frase curta, motivacional e focada em produtividade ou bem-estar para um desenvolvedor. Máximo 2 linhas. Em português. Não use aspas na resposta.",
-      });
-      setInspiration(response.text || 'O sucesso é a soma de pequenos esforços repetidos dia após dia.');
+      const quote = await aiService.getInspirationQuote();
+      setInspiration(quote || 'O sucesso é a soma de pequenos esforços repetidos dia após dia.');
     } catch (error) {
       console.error('Erro ao gerar inspiração:', error);
       setInspiration('O sucesso é a soma de pequenos esforços repetidos dia após dia.');
@@ -7887,15 +7883,10 @@ export default function App() {
                         <div className="mt-12 flex items-center justify-between gap-4">
                           <button
                             onClick={async () => {
-                              if (!newStudyNote.trim()) return;
                               try {
-                                const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-                                const response = await ai.models.generateContent({
-                                  model: "gemini-3-flash-preview",
-                                  contents: `Resuma esta nota de estudo de forma concisa e profissional, mantendo os pontos principais. Use Markdown.\n\nNota:\n${newStudyNote}`,
-                                });
-                                if (response.text) {
-                                  setNewStudyNote(prev => prev + "\n\n---\n### Resumo IA\n" + response.text);
+                                const responseText = await aiService.explainStudyTopic(newStudyNote, 'Resumo Conciso');
+                                if (responseText) {
+                                  setNewStudyNote(prev => prev + "\n\n---\n### Resumo IA\n" + responseText);
                                   showToastWithMsg('Resumo gerado com sucesso!');
                                 }
                               } catch (error) {
@@ -8225,19 +8216,10 @@ export default function App() {
                       </div>
                     </div>
                     <div className="p-4 bg-white/5 rounded-2xl border border-border-dark">
-                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">OpenAI (ChatGPT)</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Inteligência Artificial</p>
                       <div className="flex items-center gap-2">
-                        {process.env.OPENAI_API_KEY ? (
-                          <>
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <p className="text-lg font-display font-bold text-emerald-400">Conectado à OpenAI</p>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                            <p className="text-sm font-display font-bold text-red-400">Erro: OPENAI_API_KEY não configurada. Por favor, verifique a chave de API.</p>
-                          </>
-                        )}
+                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <p className="text-lg font-display font-bold text-emerald-400">Protegido via Servidor Seguro</p>
                       </div>
                     </div>
                     <div className="p-4 bg-white/5 rounded-2xl border border-border-dark">

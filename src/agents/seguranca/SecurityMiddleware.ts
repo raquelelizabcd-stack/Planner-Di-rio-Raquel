@@ -5,12 +5,10 @@ import { supabase } from '../../lib/supabase';
 export const MENSAGEM_ACESSO_ADMIN = 'Acesso restrito ao administrador.';
 
 /**
- * Resolve o e-mail do solicitante: usa req.user.email (se um middleware anterior já autenticou)
- * ou valida o Bearer token junto ao Supabase (nunca confia em JWT sem verificar a assinatura).
+ * Resolve o e-mail do solicitante validando o Bearer token junto ao Supabase Auth
+ * (nunca confia em e-mails enviados no corpo, parâmetros ou propriedades artificiais da requisição).
  */
 async function resolverEmail(req: any): Promise<string | null> {
-  if (req?.user?.email) return String(req.user.email);
-
   const authHeader: string | undefined = req?.headers?.['authorization'];
   const match = authHeader && /^Bearer\s+(.+)$/i.exec(authHeader);
   if (!match) return null;
