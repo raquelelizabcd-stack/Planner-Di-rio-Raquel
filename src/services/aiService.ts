@@ -47,50 +47,28 @@ async function callSecureAI<T = string>(action: string, payload: Record<string, 
     }
 
     if (!response.ok) {
-      // Se estiver rodando puramente no Vite local sem o Vercel Serverless (ex: dev local offline)
-      if (response.status === 404) {
-        console.warn('Endpoint /api/ai/agent não encontrado no servidor de desenvolvimento local. Utilizando fallback seguro.');
-        return getLocalFallback<T>(action, payload);
+      // Se for a frase de inspiração e o backend não estiver acessível, usa frase de reserva local
+      if (action === 'inspiration_quote') {
+        return 'O sucesso é a soma de pequenos esforços repetidos dia após dia.' as T;
       }
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || errorData.error || `Erro HTTP ${response.status} ao processar IA.`);
+      throw new Error(errorData.message || errorData.error || `Erro ao processar inteligência artificial (HTTP ${response.status}).`);
     }
 
     const json: AIServiceResponse<T> = await response.json();
     return json.data;
   } catch (error: any) {
-    // Fallback gracioso para modo de desenvolvimento desconectado
-    if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
-      console.warn('Servidor de backend não acessível. Utilizando fallback seguro de desenvolvimento.');
-      return getLocalFallback<T>(action, payload);
-    }
-    throw error;
-  }
-}
-
-/**
- * Fallback seguro para testes e desenvolvimento local sem rede
- */
-function getLocalFallback<T = string>(action: string, payload: Record<string, any>): T {
-  switch (action) {
-    case 'inspiration_quote':
+    // Para a frase de inspiração diária, entrega a frase padrão para não quebrar a abertura do painel
+    if (action === 'inspiration_quote') {
       return 'O sucesso é a soma de pequenos esforços repetidos dia após dia.' as T;
-    case 'marketing_trends':
-      return `### 📰 Tendências de Marketing Digital (Modo de Demonstração)\n\n1. **Agentes Autônomos de Atendimento**\n2. **Short Video SEO e Transcrições**\n3. **Hiper-personalização de Conteúdo**\n4. **Social Commerce no Reels**\n5. **Micro-influenciadores de EdTech**` as T;
-    case 'debug_analysis':
-      return `### 🧩 Diagnóstico Debug IA (Modo de Demonstração)\n\n* **Status**: Sistema operacional.\n* **Recomendação**: Adicionar verificação defensiva condicional.` as T;
-    case 'pedagogico_plan':
-      return `### 🧠 Plano de Aula Técnico (Modo de Demonstração)\n\n**Turma**: ${payload.className || 'Técnico em Marketing'} | **Disciplina**: ${payload.subject || 'Marketing'}\n\n1. 🎯 Objetivos: Competências práticas de mercado.\n2. 📚 Conteúdo: Funil e automações digitais.\n3. 📝 Metodologias: Estudos de caso reais.` as T;
-    case 'publicacao_post':
-      return `A Inteligência Artificial e a inovação tecnológica estão transformando a rotina profissional.\n\nInvestir na capacitação contínua é o caminho mais seguro para liderar resultados.\n\n#MarketingDigital #InteligenciaArtificial #Educacao #Inovacao #RaquelDuarte` as T;
-    case 'study_explain':
-      return `Resumo didático sobre ${payload.topic || 'o tema'}: Pratique com aplicações reais em pequenos blocos de foco.` as T;
-    case 'marketing_copy':
-      return `Ideia estratégica de conteúdo: Posicione seu diferencial com clareza e autoridade.` as T;
-    case 'chat_helper':
-      return 'Olá, Raquel! Estou pronta para te apoiar em suas tarefas e projetos.' as T;
-    default:
-      return 'Conteúdo processado com sucesso.' as T;
+    }
+
+    // Erros de rede ou conexão offline
+    if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+      throw new Error('Não foi possível conectar ao servidor de IA. Verifique sua conexão com a internet ou as variáveis no servidor.');
+    }
+
+    throw error;
   }
 }
 

@@ -19,8 +19,15 @@ function createMockRes() {
 }
 
 describe('Handler Serverless /api/ai/agent - Auditoria e Testes de Segurança', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env = { ...originalEnv };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
   });
 
   it('1. Deve rejeitar com 403 requisições sem cabeçalho Authorization (sem JWT)', async () => {
@@ -74,7 +81,6 @@ describe('Handler Serverless /api/ai/agent - Auditoria e Testes de Segurança', 
 
     await handler(req, res);
 
-    // Deve ser bloqueado imediatamente pelo SecurityMiddleware, pois req.user.email foi ignorado
     expect(res.status).toHaveBeenCalledWith(403);
     expect(res.body).toEqual({
       error: 'FORBIDDEN',
@@ -117,7 +123,38 @@ describe('Handler Serverless /api/ai/agent - Auditoria e Testes de Segurança', 
     expect(res.body.error).toBe('METHOD_NOT_ALLOWED');
   });
 
-  it('6. Deve autorizar com 200 requisição com Bearer JWT válido da conta da Raquel', async () => {
+  it('6. Deve rejeitar com 503 tarefas personalizadas quando a chave GEMINI_API_KEY estiver ausente (Transparência sem fake response)', async () => {
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    const getUserSpy = jest.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
+      data: { user: { id: 'raquel-admin-id', email: 'raquelduarteadmi@gmail.com' } as any },
+      error: null,
+    });
+
+    const req: any = {
+      method: 'POST',
+      headers: {
+        authorization: 'Bearer token_legitimo_raquel',
+      },
+      body: {
+        action: 'marketing_trends',
+        payload: { topic: 'SEO' },
+      },
+    };
+    const res = createMockRes();
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(503);
+    expect(res.body.error).toBe('AI_CONFIG_ERROR');
+    expect(res.body.message).toContain('Chave de API do provedor não configurada no servidor');
+    getUserSpy.mockRestore();
+  });
+
+  it('7. Deve retornar 200 com isFallback=true para inspiration_quote quando a chave estiver ausente', async () => {
+    delete process.env.GEMINI_API_KEY;
+
     const getUserSpy = jest.spyOn(supabase.auth, 'getUser').mockResolvedValueOnce({
       data: { user: { id: 'raquel-admin-id', email: 'raquelduarteadmi@gmail.com' } as any },
       error: null,
@@ -137,11 +174,10 @@ describe('Handler Serverless /api/ai/agent - Auditoria e Testes de Segurança', 
 
     await handler(req, res);
 
-    expect(getUserSpy).toHaveBeenCalledWith('token_legitimo_raquel');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.action).toBe('inspiration_quote');
-    expect(res.body.data).toBeDefined();
+    expect(res.body.isFallback).toBe(true);
+    expect(res.body.data).toBe('O sucesso é a soma de pequenos esforços repetidos dia após dia.');
     getUserSpy.mockRestore();
   });
 });

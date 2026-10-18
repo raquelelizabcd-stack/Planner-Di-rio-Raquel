@@ -96,24 +96,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const geminiKey = process.env.GEMINI_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
+  // Verificação de configuração de IA: tarefas personalizadas exigem chave no servidor
+  if (action !== 'inspiration_quote') {
+    const hasRequiredKey = action === 'publicacao_post' ? (openaiKey || geminiKey) : !!geminiKey;
+    if (!hasRequiredKey) {
+      return res.status(503).json({
+        error: 'AI_CONFIG_ERROR',
+        message: 'Serviço de IA indisponível: Chave de API do provedor não configurada no servidor.'
+      });
+    }
+  }
+
   try {
     let resultText = '';
     let tokensEstimate = 100;
+    let isFallback = false;
 
     switch (action as AllowedAIAction) {
       case 'marketing_trends': {
         const topic = (sanitizedPayload.topic || 'Tendências de IA no Marketing Digital').slice(0, 300);
         tokensEstimate = 280;
 
-        if (!geminiKey) {
-          resultText = `### 📰 Resumo de Tendências de Marketing Digital (Modo de Demonstração)\n\n1. **Agentes Autônomos no WhatsApp**: Integração avançada com CRMs.\n2. **Short Video SEO**: Algoritmos priorizando transcrições.\n3. **Hyper-Personalização com IA**: Conteúdo adaptativo em tempo real.\n4. **Social Commerce**: Vendas diretas por canais sociais.\n5. **Micro-Influenciadores**: Parcerias didáticas focadas em nicho.`;
-        } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Você é o Agente de Marketing Digital do Planner Raquel. Busca as principais notícias e tendências em alta de Marketing Digital, Redes Sociais e IA Aplicada.\n\nTópico / Foco Solicitado: "${topic}".\n\nREGRAS OBRIGATÓRIAS:\n1. Resuma a resposta em exatamente ATÉ 5 TÓPICOS CURTOS e diretos.\n2. Máximo 300 tokens de limite.\n3. Escreva em Português do Brasil com linguagem profissional e acionável para professores/profissionais de marketing.`
-          });
-          resultText = response.text || 'Nenhuma tendência retornada.';
+        const ai = new GoogleGenAI({ apiKey: geminiKey! });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Você é o Agente de Marketing Digital do Planner Raquel. Busca as principais notícias e tendências em alta de Marketing Digital, Redes Sociais e IA Aplicada.\n\nTópico / Foco Solicitado: "${topic}".\n\nREGRAS OBRIGATÓRIAS:\n1. Resuma a resposta em exatamente ATÉ 5 TÓPICOS CURTOS e diretos.\n2. Máximo 300 tokens de limite.\n3. Escreva em Português do Brasil com linguagem profissional e acionável para professores/profissionais de marketing.`
+        });
+        resultText = response.text || '';
+        if (!resultText) {
+          throw new Error('Provedor de IA retornou conteúdo vazio para tendências de marketing.');
         }
         break;
       }
@@ -122,15 +133,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const errorLog = (sanitizedPayload.errorLog || '').slice(0, 2000);
         tokensEstimate = 320;
 
-        if (!geminiKey) {
-          resultText = `### 🧩 Diagnóstico Debug IA (Modo de Demonstração)\n\n* **Status**: Sistema operacional.\n* **Recomendação**: Aplicar tratamento defensivo com operador de encadeamento opcional (?.) e coalescência nula (?? []).`;
-        } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Você é o Agente Debug IA do Planner Diário Raquel. Analise o seguinte log de erro / código:\n\n"${errorLog}"\n\nForneça:\n1. Diagnóstico do Erro\n2. Sugestão de Correção Direta\n3. Passo a passo prático para resolver (máximo 3 passos).`
-          });
-          resultText = response.text || 'Análise concluída sem anormalidades.';
+        const ai = new GoogleGenAI({ apiKey: geminiKey! });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Você é o Agente Debug IA do Planner Diário Raquel. Analise o seguinte log de erro / código:\n\n"${errorLog}"\n\nForneça:\n1. Diagnóstico do Erro\n2. Sugestão de Correção Direta\n3. Passo a passo prático para resolver (máximo 3 passos).`
+        });
+        resultText = response.text || '';
+        if (!resultText) {
+          throw new Error('Provedor de IA retornou conteúdo vazio para análise de debug.');
         }
         break;
       }
@@ -139,13 +149,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { subject = 'Marketing', topic = 'Geral', className = 'Turma Técnica', prompt = '' } = sanitizedPayload;
         tokensEstimate = 450;
 
-        if (!geminiKey) {
-          resultText = `### 🧠 Plano de Aula Técnico em Marketing Digital (Modo de Demonstração)\n\n**Turma**: ${className} | **Disciplina**: ${subject}\n\n#### 1. 🎯 Objetivos de Aprendizagem\n* Compreender estratégias práticas aplicadas ao mercado.\n\n#### 2. 📚 Conteúdos Programáticos\n* Teoria (20 min), Prática (40 min), Estudo de caso real (20 min).`;
-        } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Você é o Agente de Suporte Pedagógico especializado em Educação Profissional Técnica de Nível Médio em Marketing.
+        const ai = new GoogleGenAI({ apiKey: geminiKey! });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Você é o Agente de Suporte Pedagógico especializado em Educação Profissional Técnica de Nível Médio em Marketing.
 Gerencie e elabore um Plano de Aula completo e estruturado para a seguinte turma:
 - Turma: ${className}
 - Disciplina: ${subject}
@@ -159,8 +166,10 @@ A SUA RESPOSTA DEVE CONTER OBRIGATORIAMENTE OS SEGUINTES 6 BLOCOS:
 4. 🧾 Avaliações
 5. 🔄 Adaptação por Turma
 6. 💡 Sugestões Extras`
-          });
-          resultText = response.text || 'Erro ao gerar plano pedagógico.';
+        });
+        resultText = response.text || '';
+        if (!resultText) {
+          throw new Error('Provedor de IA retornou conteúdo vazio para plano pedagógico.');
         }
         break;
       }
@@ -197,7 +206,7 @@ REGRAS RÍGIDAS DE GERAÇÃO:
               resultText = dataOpenAI.choices[0].message.content;
             }
           } catch (err) {
-            console.warn('Fallback para Gemini após erro na OpenAI:', err);
+            console.warn('Fallback para Gemini após falha na OpenAI:', err);
           }
         }
 
@@ -211,7 +220,7 @@ REGRAS RÍGIDAS DE GERAÇÃO:
         }
 
         if (!resultText) {
-          resultText = `A Inteligência Artificial e as novas tecnologias digitais estão redefinindo os métodos de ensino técnico e a qualificação profissional. Integrar inovações na rotina cria um ambiente de aprendizado dinâmico e focado em resultados práticos.\n\nInvestir na capacitação constante é o caminho mais rápido para liderar transformações com impacto real.\n\n#MarketingDigital #InteligenciaArtificial #Educacao #Inovacao #RaquelDuarte`;
+          throw new Error('Nenhum provedor de IA conseguiu gerar a publicação solicitada.');
         }
         break;
       }
@@ -220,13 +229,21 @@ REGRAS RÍGIDAS DE GERAÇÃO:
         tokensEstimate = 60;
         if (!geminiKey) {
           resultText = 'O sucesso é a soma de pequenos esforços repetidos dia após dia.';
+          isFallback = true;
+          tokensEstimate = 0;
         } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: 'Gere uma frase curta, motivacional e focada em produtividade ou bem-estar para um desenvolvedor. Máximo 2 linhas. Em português. Não use aspas na resposta.'
-          });
-          resultText = response.text?.trim() || 'O sucesso é a soma de pequenos esforços repetidos dia após dia.';
+          try {
+            const ai = new GoogleGenAI({ apiKey: geminiKey });
+            const response = await ai.models.generateContent({
+              model: 'gemini-3-flash-preview',
+              contents: 'Gere uma frase curta, motivacional e focada em produtividade ou bem-estar para um desenvolvedor. Máximo 2 linhas. Em português. Não use aspas na resposta.'
+            });
+            resultText = response.text?.trim() || 'O sucesso é a soma de pequenos esforços repetidos dia após dia.';
+          } catch {
+            resultText = 'O sucesso é a soma de pequenos esforços repetidos dia após dia.';
+            isFallback = true;
+            tokensEstimate = 0;
+          }
         }
         break;
       }
@@ -236,18 +253,17 @@ REGRAS RÍGIDAS DE GERAÇÃO:
         const level = (sanitizedPayload.level || 'Geral').slice(0, 100);
         tokensEstimate = 350;
 
-        if (!geminiKey) {
-          resultText = `Resumo Didático sobre ${topic} (${level}): Pratique a aplicação prática com projetos estruturados e pequenos passos contínuos.`;
-        } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Você é uma tutora pedagógica técnica e didática. Explique o tópico "${topic}" para nível "${level}" em português do Brasil com:
+        const ai = new GoogleGenAI({ apiKey: geminiKey! });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Você é uma tutora pedagógica técnica e didática. Explique o tópico "${topic}" para nível "${level}" em português do Brasil com:
 1. Resumo conciso em 2 parágrafos
 2. Exemplo prático de aplicação
 3. 1 exercício rápido para fixação.`
-          });
-          resultText = response.text || 'Conteúdo gerado com sucesso.';
+        });
+        resultText = response.text || '';
+        if (!resultText) {
+          throw new Error('Provedor de IA retornou conteúdo vazio para explicação pedagógica.');
         }
         break;
       }
@@ -256,15 +272,14 @@ REGRAS RÍGIDAS DE GERAÇÃO:
         const prompt = (sanitizedPayload.prompt || 'Ideia de post').slice(0, 1000);
         tokensEstimate = 250;
 
-        if (!geminiKey) {
-          resultText = 'Copy estratégica: Conecte sua proposta de valor com a necessidade real do seu público técnico.';
-        } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Você é especialista em Marketing de Conteúdo e Copywriting Estratégico. Atenda à seguinte solicitação: "${prompt}". Mantenha texto persuasivo, profissional e em Português do Brasil com limite máximo de 250 tokens.`
-          });
-          resultText = response.text || 'Copy gerada com sucesso.';
+        const ai = new GoogleGenAI({ apiKey: geminiKey! });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Você é especialista em Marketing de Conteúdo e Copywriting Estratégico. Atenda à seguinte solicitação: "${prompt}". Mantenha texto persuasivo, profissional e em Português do Brasil com limite máximo de 250 tokens.`
+        });
+        resultText = response.text || '';
+        if (!resultText) {
+          throw new Error('Provedor de IA retornou conteúdo vazio para copy de marketing.');
         }
         break;
       }
@@ -273,15 +288,14 @@ REGRAS RÍGIDAS DE GERAÇÃO:
         const userMsg = (sanitizedPayload.message || '').slice(0, 1000);
         tokensEstimate = 250;
 
-        if (!geminiKey) {
-          resultText = 'Olá, Raquel! Estou pronta para te apoiar em suas tarefas, estudos e publicações.';
-        } else {
-          const ai = new GoogleGenAI({ apiKey: geminiKey });
-          const response = await ai.models.generateContent({
-            model: 'gemini-3-flash-preview',
-            contents: `Você é a assistente pessoal do Planner Diário Raquel. Responda em Português do Brasil de forma empática, prestativa e objetiva:\n\n"${userMsg}"`
-          });
-          resultText = response.text || 'Estou à disposição.';
+        const ai = new GoogleGenAI({ apiKey: geminiKey! });
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Você é a assistente pessoal do Planner Diário Raquel. Responda em Português do Brasil de forma empática, prestativa e objetiva:\n\n"${userMsg}"`
+        });
+        resultText = response.text || '';
+        if (!resultText) {
+          throw new Error('Provedor de IA retornou conteúdo vazio para assistente pessoal.');
         }
         break;
       }
@@ -300,14 +314,15 @@ REGRAS RÍGIDAS DE GERAÇÃO:
       success: true,
       action,
       data: safeOutput,
+      isFallback: isFallback || undefined,
       tokensEstimate
     });
 
   } catch (error: any) {
-    console.error(`Erro ao processar ação de IA "${action}":`, error);
-    return res.status(500).json({
-      error: 'AI_EXECUTION_ERROR',
-      message: 'Ocorreu um erro interno ao processar a inteligência artificial. Verifique se as variáveis de ambiente estão configuradas no servidor.'
+    console.error(`Erro ao processar ação de IA "${action}":`, error?.message || error);
+    return res.status(502).json({
+      error: 'AI_PROVIDER_ERROR',
+      message: 'O serviço de inteligência artificial está temporariamente indisponível. Tente novamente em alguns instantes.'
     });
   }
 }
